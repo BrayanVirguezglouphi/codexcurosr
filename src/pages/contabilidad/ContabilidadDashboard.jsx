@@ -9,6 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 const ContabilidadDashboard = () => {
   const { getItems } = useStorage();
   const facturas = getItems('facturas');
+  const avancesFactura = getItems('avancesFactura');
   
   // Datos de ejemplo para la gráfica de transacciones
   const datosTransacciones = [
@@ -27,6 +28,13 @@ const ContabilidadDashboard = () => {
       icon: <FileText className="h-10 w-10 text-primary" />,
       path: '/contabilidad/facturas',
       count: facturas.length
+    },
+    {
+      title: 'Avances de Factura',
+      description: 'Pagos parciales',
+      icon: <FileText className="h-10 w-10 text-primary" />,
+      path: '/contabilidad/avances-factura',
+      count: avancesFactura.length
     },
     {
       title: 'Transacciones',
