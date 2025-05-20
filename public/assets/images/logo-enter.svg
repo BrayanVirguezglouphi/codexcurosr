@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Círculo exterior -->
+  <circle cx="100" cy="100" r="95" stroke="white" stroke-width="10"/>
+  
+  <!-- Flecha -->
+  <path d="M140 100H60M60 100L90 70M60 100L90 130" 
+        stroke="white" 
+        stroke-width="12" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Texto "enter" -->
+  <text x="100" y="180" 
+        font-family="Arial, sans-serif" 
+        font-size="24" 
+        fill="white" 
+        text-anchor="middle">
+    enter
+  </text>
+</svg> 

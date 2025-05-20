@@ -1,0 +1,38 @@
+/* Estilos específicos para la página de login */
+.bg-login {
+  background-color: #1e4c78;
+  background-image: linear-gradient(to bottom right, #1e4c78, #2B4465);
+}
+
+.login-container {
+  backdrop-filter: blur(8px);
+}
+
+.login-input {
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+.login-input:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.login-button {
+  transition: all 0.3s ease;
+}
+
+/* Animación suave para el logo */
+.logo-enter {
+  animation: fadeInDown 0.8s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+} 
