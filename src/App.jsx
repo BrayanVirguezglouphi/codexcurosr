@@ -36,6 +36,7 @@ import ClasificacionesContables from '@/pages/contabilidad/ClasificacionesContab
 import LineasServicios from '@/pages/contabilidad/LineasServicios';
 import Impuestos from '@/pages/contabilidad/Impuestos';
 import CentrosCostos from '@/pages/contabilidad/CentrosCostos';
+import AvancesFactura from '@/pages/contabilidad/AvancesFactura';
 
 import RRHHDashboard from '@/pages/rrhh/RRHHDashboard';
 import Empleados from '@/pages/rrhh/Empleados';
@@ -99,6 +100,7 @@ function App() {
                 <Route path="contabilidad">
                   <Route index element={<ContabilidadDashboard />} />
                   <Route path="facturas" element={<FacturasPage />} />
+                  <Route path="avances-factura" element={<AvancesFactura />} />
                   <Route path="transacciones" element={<Transacciones />} />
                   <Route path="contratos" element={<ContratosContables />} />
                   <Route path="gastos" element={<Gastos />} />

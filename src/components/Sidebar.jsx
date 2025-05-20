@@ -40,6 +40,7 @@ const menuItems = [
     icon: <DollarSign className="h-5 w-5" />,
     items: [
       { name: 'Facturas', path: '/contabilidad/facturas', icon: <FileText className="h-4 w-4" /> },
+      { name: 'Avances de Factura', path: '/contabilidad/avances-factura', icon: <FileText className="h-4 w-4" /> },
       { name: 'Transacciones', path: '/contabilidad/transacciones', icon: <CreditCard className="h-4 w-4" /> },
       { name: 'Contratos', path: '/contabilidad/contratos', icon: <Receipt className="h-4 w-4" /> },
       { name: 'Gastos', path: '/contabilidad/gastos', icon: <Wallet className="h-4 w-4" /> },

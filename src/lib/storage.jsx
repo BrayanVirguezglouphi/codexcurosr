@@ -215,6 +215,31 @@ export const StorageProvider = ({ children }) => {
       ];
       saveData('facturas', facturasEjemplo);
     }
+
+    // Avances de factura de ejemplo
+    if (!localStorage.getItem('avancesFactura')) {
+      const avancesEjemplo = [
+        {
+          id: '1',
+          factura: 'F-2023-001',
+          fecha: '2023-06-01',
+          monto: 500,
+          estado: 'Pendiente',
+          descripcion: 'Primer avance',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: '2',
+          factura: 'F-2023-002',
+          fecha: '2023-06-05',
+          monto: 300,
+          estado: 'Completado',
+          descripcion: 'Avance final',
+          createdAt: new Date().toISOString()
+        }
+      ];
+      saveData('avancesFactura', avancesEjemplo);
+    }
   }, []);
   
   const value = {
