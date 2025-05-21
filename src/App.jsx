@@ -91,7 +91,7 @@ function App() {
                   <Route index element={<FacturasPage />} />
                   <Route path="facturas" element={<FacturasPage />} />
                   <Route path="transacciones" element={<Transacciones />} />
-                  <Route path="contratos" element={<ContratosContables />} />
+                  <Route path="contratos" element={<Contratos />} />
                   <Route path="servicios" element={<LineasServicios />} />
                   <Route path="impuestos" element={<Impuestos />} />
                   <Route path="terceros" element={<Terceros />} />
