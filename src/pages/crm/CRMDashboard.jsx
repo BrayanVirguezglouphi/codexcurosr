@@ -3,26 +3,29 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, UserPlus, Phone, Mail, TrendingUp, BarChart3, Calendar } from 'lucide-react';
-import { useStorage } from '@/lib/storage';
+import { Users, UserPlus, Phone, BarChart3 } from 'lucide-react';
 
 const CRMDashboard = () => {
-  const { getItems } = useStorage();
-  const clientes = getItems('clientes');
-  
   const moduleCards = [
     {
-      title: 'Clientes',
-      description: 'Gestión de clientes',
-      icon: <Users className="h-10 w-10 text-primary" />,
-      path: '/crm/clientes',
-      count: clientes.length
+      title: 'Mercados',
+      description: 'Segmentos y oportunidades',
+      icon: <BarChart3 className="h-10 w-10 text-primary" />,
+      path: '/crm/mercado',
+      count: 3
     },
     {
-      title: 'Oportunidades',
-      description: 'Seguimiento de oportunidades de venta',
-      icon: <TrendingUp className="h-10 w-10 text-primary" />,
-      path: '/crm/oportunidades',
+      title: 'Perfiles Buyer',
+      description: 'Caracterización de clientes',
+      icon: <UserPlus className="h-10 w-10 text-primary" />,
+      path: '/crm/buyer',
+      count: 2
+    },
+    {
+      title: 'Empresas',
+      description: 'Información de empresas',
+      icon: <Users className="h-10 w-10 text-primary" />,
+      path: '/crm/empresas',
       count: 5
     },
     {
@@ -43,7 +46,7 @@ const CRMDashboard = () => {
       >
         <h1 className="text-3xl font-bold tracking-tight">CRM Dashboard</h1>
         <p className="text-muted-foreground mt-2">
-          Gestione sus clientes, oportunidades y contactos
+          Gestione mercados, compradores y contactos
         </p>
       </motion.div>
 
@@ -58,36 +61,19 @@ const CRMDashboard = () => {
           <CardContent className="p-6">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Clientes</p>
-                <h3 className="text-2xl font-bold mt-1">{clientes.length}</h3>
-                <p className="text-xs mt-1 text-green-500">
-                  +2 desde el mes pasado
-                </p>
-              </div>
-              <div className="bg-primary/10 p-3 rounded-full">
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="overflow-hidden border-primary/10">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Oportunidades Abiertas</p>
+                <p className="text-sm font-medium text-muted-foreground">Mercados Activos</p>
                 <h3 className="text-2xl font-bold mt-1">5</h3>
                 <p className="text-xs mt-1 text-green-500">
                   +1 desde la semana pasada
                 </p>
               </div>
               <div className="bg-primary/10 p-3 rounded-full">
-                <TrendingUp className="h-8 w-8 text-primary" />
+                <BarChart3 className="h-8 w-8 text-primary" />
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="overflow-hidden border-primary/10">
           <CardContent className="p-6">
             <div className="flex justify-between items-center">
@@ -142,44 +128,6 @@ const CRMDashboard = () => {
         </div>
       </motion.div>
 
-      {/* Clientes Recientes */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <h2 className="text-2xl font-bold mb-4">Clientes Recientes</h2>
-        <Card>
-          <CardHeader>
-            <CardTitle>Últimos Clientes</CardTitle>
-            <CardDescription>Clientes agregados recientemente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {clientes.slice(0, 3).map((cliente, index) => (
-                <div key={cliente.id} className="flex items-start space-x-4">
-                  <div className="bg-primary/10 p-2 rounded-full">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{cliente.nombre}</p>
-                    <p className="text-xs text-muted-foreground">{cliente.email}</p>
-                    <p className="text-xs text-muted-foreground">{cliente.telefono}</p>
-                  </div>
-                  <div className="bg-muted px-2 py-1 rounded text-xs">
-                    {cliente.tipo}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Link to="/crm/clientes" className="text-sm text-primary">
-              Ver todos los clientes →
-            </Link>
-          </CardFooter>
-        </Card>
-      </motion.div>
     </div>
   );
 };
