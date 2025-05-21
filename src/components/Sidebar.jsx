@@ -28,7 +28,6 @@ const menuItems = [
     icon: <Users className="h-5 w-5" />,
     items: [
       { name: 'Contactos', path: '/crm/contactos', icon: <Contact className="h-4 w-4" /> },
-      { name: 'Oportunidades', path: '/crm/oportunidades', icon: <Target className="h-4 w-4" /> },
       { name: 'Mercado', path: '/crm/mercado', icon: <Building2 className="h-4 w-4" /> },
       { name: 'Perfiles de Compradores', path: '/crm/buyer', icon: <UserSquare2 className="h-4 w-4" /> },
       { name: 'Empresas', path: '/crm/empresas', icon: <Building2 className="h-4 w-4" /> },
@@ -40,12 +39,11 @@ const menuItems = [
     icon: <DollarSign className="h-5 w-5" />,
     items: [
       { name: 'Facturas', path: '/contabilidad/facturas', icon: <FileText className="h-4 w-4" /> },
-      { name: 'Avances de Factura', path: '/contabilidad/avances-factura', icon: <FileText className="h-4 w-4" /> },
       { name: 'Transacciones', path: '/contabilidad/transacciones', icon: <CreditCard className="h-4 w-4" /> },
       { name: 'Contratos', path: '/contabilidad/contratos', icon: <Receipt className="h-4 w-4" /> },
-      { name: 'Gastos', path: '/contabilidad/gastos', icon: <Wallet className="h-4 w-4" /> },
-      { name: 'Ingresos', path: '/contabilidad/ingresos', icon: <PiggyBank className="h-4 w-4" /> },
-      { name: 'Centro de Costos', path: '/contabilidad/centros-costos', icon: <Building2 className="h-4 w-4" /> },
+      { name: 'Línea de Servicios', path: '/contabilidad/servicios', icon: <FileText className="h-4 w-4" /> },
+      { name: 'Impuestos', path: '/contabilidad/impuestos', icon: <PiggyBank className="h-4 w-4" /> },
+      { name: 'Terceros', path: '/contabilidad/terceros', icon: <Users className="h-4 w-4" /> },
     ]
   },
   {
@@ -53,10 +51,10 @@ const menuItems = [
     path: '/rrhh',
     icon: <Briefcase className="h-5 w-5" />,
     items: [
-      { name: 'Empleados', path: '/rrhh/empleados', icon: <Users className="h-4 w-4" /> },
       { name: 'Contratos', path: '/rrhh/contratos', icon: <FileText className="h-4 w-4" /> },
-      { name: 'Vacaciones', path: '/rrhh/vacaciones', icon: <Calendar className="h-4 w-4" /> },
       { name: 'Cargos y funciones', path: '/rrhh/cargos', icon: <UserCog className="h-4 w-4" /> },
+      { name: 'Capacitaciones y Skills', path: '/rrhh/capacitaciones', icon: <Calendar className="h-4 w-4" /> },
+      { name: 'Asignaciones y Evaluaciones', path: '/rrhh/asignaciones', icon: <Users className="h-4 w-4" /> },
     ]
   },
   {

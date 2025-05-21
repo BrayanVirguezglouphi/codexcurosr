@@ -18,32 +18,23 @@ import Dashboard from '@/pages/Dashboard';
 
 // Módulos
 import CRMDashboard from '@/pages/crm/CRMDashboard';
-import Clientes from '@/pages/crm/Clientes';
-import Oportunidades from '@/pages/crm/Oportunidades';
 import Contactos from '@/pages/crm/Contactos';
 import Mercado from '@/pages/crm/Mercado';
 import Buyer from '@/pages/crm/Buyer';
 import Empresas from '@/pages/crm/Empresas';
 
-import ContabilidadDashboard from '@/pages/contabilidad/ContabilidadDashboard';
 import Facturas from '@/pages/contabilidad/Facturas';
-import Gastos from '@/pages/contabilidad/Gastos';
-import Ingresos from '@/pages/contabilidad/Ingresos';
 import Transacciones from '@/pages/contabilidad/Transacciones';
 import Contratos from '@/pages/contabilidad/Contratos';
-import ContratosContables from '@/pages/contabilidad/Contratos';
-import ClasificacionesContables from '@/pages/contabilidad/ClasificacionesContables';
 import LineasServicios from '@/pages/contabilidad/LineasServicios';
 import Impuestos from '@/pages/contabilidad/Impuestos';
-import CentrosCostos from '@/pages/contabilidad/CentrosCostos';
-import AvancesFactura from '@/pages/contabilidad/AvancesFactura';
+import Terceros from '@/pages/contabilidad/Terceros';
 
 import RRHHDashboard from '@/pages/rrhh/RRHHDashboard';
-import Empleados from '@/pages/rrhh/Empleados';
-import Vacaciones from '@/pages/rrhh/Vacaciones';
-import Nominas from '@/pages/rrhh/Nominas';
 import ContratosLaborales from '@/pages/rrhh/Contratos';
 import Cargos from '@/pages/rrhh/Cargos';
+import CapacitacionesSkills from '@/pages/rrhh/CapacitacionesSkills';
+import AsignacionesEvaluaciones from '@/pages/rrhh/AsignacionesEvaluaciones';
 
 const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
@@ -90,7 +81,6 @@ function App() {
                 <Route path="crm">
                   <Route index element={<CRMDashboard />} />
                   <Route path="contactos" element={<Contactos />} />
-                  <Route path="oportunidades" element={<Oportunidades />} />
                   <Route path="mercado" element={<Mercado />} />
                   <Route path="buyer" element={<Buyer />} />
                   <Route path="empresas" element={<Empresas />} />
@@ -98,27 +88,22 @@ function App() {
 
                 {/* Contabilidad Routes */}
                 <Route path="contabilidad">
-                  <Route index element={<ContabilidadDashboard />} />
+                  <Route index element={<FacturasPage />} />
                   <Route path="facturas" element={<FacturasPage />} />
-                  <Route path="avances-factura" element={<AvancesFactura />} />
                   <Route path="transacciones" element={<Transacciones />} />
                   <Route path="contratos" element={<ContratosContables />} />
-                  <Route path="gastos" element={<Gastos />} />
-                  <Route path="ingresos" element={<Ingresos />} />
-                  <Route path="clasificaciones" element={<ClasificacionesContables />} />
                   <Route path="servicios" element={<LineasServicios />} />
                   <Route path="impuestos" element={<Impuestos />} />
-                  <Route path="centros-costos" element={<CentrosCostos />} />
+                  <Route path="terceros" element={<Terceros />} />
                 </Route>
 
                 {/* RRHH Routes */}
                 <Route path="rrhh">
                   <Route index element={<RRHHDashboard />} />
-                  <Route path="empleados" element={<Empleados />} />
                   <Route path="contratos" element={<ContratosLaborales />} />
-                  <Route path="nominas" element={<Nominas />} />
-                  <Route path="vacaciones" element={<Vacaciones />} />
                   <Route path="cargos" element={<Cargos />} />
+                  <Route path="capacitaciones" element={<CapacitacionesSkills />} />
+                  <Route path="asignaciones" element={<AsignacionesEvaluaciones />} />
                 </Route>
               </Route>
 
