@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  Plus, 
+  Plus,
   Search,
   Link,
   ChevronDown,
   Pencil,
-  Trash
+  Trash,
+  ArrowUpAZ,
+  ArrowDownAZ
 } from 'lucide-react';
 
 // Datos de ejemplo - Terceros (Personal)
@@ -58,7 +60,12 @@ const contratosIniciales = [
     tituloContrato: 'CONTRATO_1',
     urlAnexosContrato: 'http://anexo1.zip',
     urlContratoFirmado: 'http://contrato1.pdf',
-    baseOperaciones: 'Base de colombia'
+    baseOperaciones: 'Base de colombia',
+    alertaControlada: false,
+    faseOperaciones: '',
+    pqrPrevia: '',
+    observacionAdicional: '',
+    tipoIncidente: ''
   }
 ];
 
@@ -70,6 +77,8 @@ const Contratos = () => {
   const [terceroSeleccionado, setTerceroSeleccionado] = useState(null);
   const [contratoSeleccionado, setContratoSeleccionado] = useState(null);
   const [editando, setEditando] = useState(false);
+  const [sortTercerosAsc, setSortTercerosAsc] = useState(true);
+  const [sortContratosAsc, setSortContratosAsc] = useState(true);
 
   const handleTerceroClick = (tercero) => {
     setTerceroSeleccionado(tercero);
@@ -81,13 +90,25 @@ const Contratos = () => {
     setEditando(false);
   };
 
-  const filtrarTerceros = terceros.filter(tercero =>
-    tercero.nombre.toLowerCase().includes(searchTerceros.toLowerCase())
-  );
+  const filtrarTerceros = terceros
+    .filter((tercero) =>
+      tercero.nombre.toLowerCase().includes(searchTerceros.toLowerCase())
+    )
+    .sort((a, b) =>
+      sortTercerosAsc
+        ? a.nombre.localeCompare(b.nombre)
+        : b.nombre.localeCompare(a.nombre)
+    );
 
-  const filtrarContratos = contratos.filter(contrato =>
-    terceroSeleccionado && contrato.terceroId === terceroSeleccionado.id
-  );
+  const filtrarContratos = contratos
+    .filter(
+      (contrato) => terceroSeleccionado && contrato.terceroId === terceroSeleccionado.id
+    )
+    .sort((a, b) =>
+      sortContratosAsc
+        ? a.tipoContrato.localeCompare(b.tipoContrato)
+        : b.tipoContrato.localeCompare(a.tipoContrato)
+    );
 
   const handleNuevoContrato = () => {
     if (!terceroSeleccionado) {
@@ -107,7 +128,12 @@ const Contratos = () => {
       tituloContrato: '',
       urlAnexosContrato: '',
       urlContratoFirmado: '',
-      baseOperaciones: ''
+      baseOperaciones: '',
+      alertaControlada: false,
+      faseOperaciones: '',
+      pqrPrevia: '',
+      observacionAdicional: '',
+      tipoIncidente: ''
     });
   };
 
@@ -118,8 +144,15 @@ const Contratos = () => {
         <div className="w-1/5 border-r bg-white p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Terceros</h2>
-            <button className="text-gray-600">
-              <ChevronDown className="w-5 h-5" />
+            <button
+              className="text-gray-600"
+              onClick={() => setSortTercerosAsc(!sortTercerosAsc)}
+            >
+              {sortTercerosAsc ? (
+                <ArrowDownAZ className="w-5 h-5" />
+              ) : (
+                <ArrowUpAZ className="w-5 h-5" />
+              )}
             </button>
           </div>
           <div className="relative mb-4">
@@ -160,8 +193,15 @@ const Contratos = () => {
         <div className="w-1/5 border-r bg-white p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Contratos</h2>
-            <button className="text-gray-600">
-              <ChevronDown className="w-5 h-5" />
+            <button
+              className="text-gray-600"
+              onClick={() => setSortContratosAsc(!sortContratosAsc)}
+            >
+              {sortContratosAsc ? (
+                <ArrowDownAZ className="w-5 h-5" />
+              ) : (
+                <ArrowUpAZ className="w-5 h-5" />
+              )}
             </button>
           </div>
           <div className="relative mb-4">
@@ -208,7 +248,7 @@ const Contratos = () => {
             <div className="flex space-x-2">
               <button
                 onClick={handleNuevoContrato}
-                className="bg-[#2B4465] text-white px-4 py-2 rounded-lg flex items-center"
+                className="bg-[#1b355d] text-white px-4 py-2 rounded-lg flex items-center"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Nuevo
@@ -362,6 +402,61 @@ const Contratos = () => {
                   <input
                     type="text"
                     value={contratoSeleccionado.baseOperaciones}
+                    className="w-full p-2 border rounded-lg bg-gray-50"
+                    readOnly={!editando}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    alerta_controlada
+                  </label>
+                  <input
+                    type="text"
+                    value={contratoSeleccionado.alertaControlada ? 'Si' : 'No'}
+                    className="w-full p-2 border rounded-lg bg-gray-50"
+                    readOnly={!editando}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    fase_operaciones
+                  </label>
+                  <input
+                    type="text"
+                    value={contratoSeleccionado.faseOperaciones}
+                    className="w-full p-2 border rounded-lg bg-gray-50"
+                    readOnly={!editando}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    pqr_previa_numero_radicacion
+                  </label>
+                  <input
+                    type="text"
+                    value={contratoSeleccionado.pqrPrevia}
+                    className="w-full p-2 border rounded-lg bg-gray-50"
+                    readOnly={!editando}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    observacion_adicional
+                  </label>
+                  <input
+                    type="text"
+                    value={contratoSeleccionado.observacionAdicional}
+                    className="w-full p-2 border rounded-lg bg-gray-50"
+                    readOnly={!editando}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    tipo_incidente
+                  </label>
+                  <input
+                    type="text"
+                    value={contratoSeleccionado.tipoIncidente}
                     className="w-full p-2 border rounded-lg bg-gray-50"
                     readOnly={!editando}
                   />
