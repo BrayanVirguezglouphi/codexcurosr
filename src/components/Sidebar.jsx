@@ -52,6 +52,7 @@ const menuItems = [
     icon: <Briefcase className="h-5 w-5" />,
     items: [
       { name: 'Contratos', path: '/rrhh/contratos', icon: <FileText className="h-4 w-4" /> },
+      { name: 'Contratos RRHH', path: '/rrhh/contratos-rrhh', icon: <FileText className="h-4 w-4" /> },
       { name: 'Cargos y funciones', path: '/rrhh/cargos', icon: <UserCog className="h-4 w-4" /> },
       { name: 'Capacitaciones y Skills', path: '/rrhh/capacitaciones', icon: <Calendar className="h-4 w-4" /> },
       { name: 'Asignaciones y Evaluaciones', path: '/rrhh/asignaciones', icon: <Users className="h-4 w-4" /> },
