@@ -24,6 +24,7 @@ import Buyer from '@/pages/crm/Buyer';
 import Empresas from '@/pages/crm/Empresas';
 
 import Facturas from '@/pages/contabilidad/Facturas';
+import ContabilidadDashboard from '@/pages/contabilidad/ContabilidadDashboard';
 import Transacciones from '@/pages/contabilidad/Transacciones';
 import Contratos from '@/pages/contabilidad/Contratos';
 import LineasServicios from '@/pages/contabilidad/LineasServicios';
@@ -88,7 +89,7 @@ function App() {
 
                 {/* Contabilidad Routes */}
                 <Route path="contabilidad">
-                  <Route index element={<FacturasPage />} />
+                  <Route index element={<ContabilidadDashboard />} />
                   <Route path="facturas" element={<FacturasPage />} />
                   <Route path="transacciones" element={<Transacciones />} />
                   <Route path="contratos" element={<Contratos />} />
