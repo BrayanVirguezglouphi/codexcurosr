@@ -36,6 +36,7 @@ import ContratosLaborales from '@/pages/rrhh/Contratos';
 import Cargos from '@/pages/rrhh/Cargos';
 import CapacitacionesSkills from '@/pages/rrhh/CapacitacionesSkills';
 import AsignacionesEvaluaciones from '@/pages/rrhh/AsignacionesEvaluaciones';
+import ContratosRRHH from '@/pages/rrhh/ContratosRRHH';
 
 const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem('user');
@@ -102,6 +103,7 @@ function App() {
                 <Route path="rrhh">
                   <Route index element={<RRHHDashboard />} />
                   <Route path="contratos" element={<ContratosLaborales />} />
+                  <Route path="contratos-rrhh" element={<ContratosRRHH />} />
                   <Route path="cargos" element={<Cargos />} />
                   <Route path="capacitaciones" element={<CapacitacionesSkills />} />
                   <Route path="asignaciones" element={<AsignacionesEvaluaciones />} />
