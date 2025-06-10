@@ -24,15 +24,16 @@ import Buyer from '@/pages/crm/Buyer';
 import Empresas from '@/pages/crm/Empresas';
 
 import Facturas from '@/pages/contabilidad/Facturas';
+
 import ContabilidadDashboard from '@/pages/contabilidad/ContabilidadDashboard';
 import Transacciones from '@/pages/contabilidad/Transacciones';
 import Contratos from '@/pages/contabilidad/Contratos';
 import LineasServicios from '@/pages/contabilidad/LineasServicios';
 import Impuestos from '@/pages/contabilidad/Impuestos';
+import ClasificacionesContables from '@/pages/contabilidad/ClasificacionesContables';
 import Terceros from '@/pages/contabilidad/Terceros';
 
 import RRHHDashboard from '@/pages/rrhh/RRHHDashboard';
-import ContratosLaborales from '@/pages/rrhh/Contratos';
 import Cargos from '@/pages/rrhh/Cargos';
 import CapacitacionesSkills from '@/pages/rrhh/CapacitacionesSkills';
 import AsignacionesEvaluaciones from '@/pages/rrhh/AsignacionesEvaluaciones';
@@ -92,17 +93,18 @@ function App() {
                 <Route path="contabilidad">
                   <Route index element={<ContabilidadDashboard />} />
                   <Route path="facturas" element={<FacturasPage />} />
+  
                   <Route path="transacciones" element={<Transacciones />} />
                   <Route path="contratos" element={<Contratos />} />
                   <Route path="servicios" element={<LineasServicios />} />
                   <Route path="impuestos" element={<Impuestos />} />
+                  <Route path="clasificaciones-contables" element={<ClasificacionesContables />} />
                   <Route path="terceros" element={<Terceros />} />
                 </Route>
 
                 {/* RRHH Routes */}
                 <Route path="rrhh">
                   <Route index element={<RRHHDashboard />} />
-                  <Route path="contratos" element={<ContratosLaborales />} />
                   <Route path="contratos-rrhh" element={<ContratosRRHH />} />
                   <Route path="cargos" element={<Cargos />} />
                   <Route path="capacitaciones" element={<CapacitacionesSkills />} />

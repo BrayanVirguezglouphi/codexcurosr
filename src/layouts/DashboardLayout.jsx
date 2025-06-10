@@ -19,7 +19,7 @@ import {
   User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/use-toast';
 
 const menuItems = [
@@ -59,7 +59,8 @@ const menuItems = [
       { title: 'Empleados', path: '/rrhh/empleados' },
       { title: 'Evaluaciones', path: '/rrhh/evaluaciones' },
       { title: 'Vacaciones', path: '/rrhh/vacaciones' },
-      { title: 'Nóminas', path: '/rrhh/nominas' }
+      { title: 'Nóminas', path: '/rrhh/nominas' },
+      { title: 'Contratos RRHH', path: '/rrhh/contratos-rrhh' }
     ]
   }
 ];
@@ -109,61 +110,60 @@ const DashboardLayout = () => {
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <motion.aside
-        initial={{ width: isSidebarOpen ? 280 : 80 }}
-        animate={{ width: isSidebarOpen ? 280 : 80 }}
+        initial={{ width: isSidebarOpen ? 280 : 72 }}
+        animate={{ width: isSidebarOpen ? 280 : 72 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="bg-[#2B4465] text-white relative z-10"
+        className="relative z-10 h-screen shadow-xl border-r border-white/10 bg-[#2B4465]/80 backdrop-blur-md flex flex-col"
+        style={{
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+        }}
       >
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           {isSidebarOpen ? (
-            <h1 className="text-xl font-bold text-white">Sistema Empresarial</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white drop-shadow-lg select-none transition-all duration-300">Sistema Empresarial</h1>
           ) : (
-            <span className="text-xl font-bold text-white">SE</span>
+            <span className="text-2xl font-extrabold text-white drop-shadow-lg select-none transition-all duration-300">SE</span>
           )}
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={toggleSidebar}>
-            {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 transition-all duration-200" onClick={toggleSidebar}>
+            {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
         </div>
 
-        <nav className="p-2 space-y-1 overflow-y-auto h-[calc(100vh-64px-64px)]">
+        <nav className="p-2 space-y-2 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
           {menuItems.map((item) => (
             <div key={item.title} className="space-y-1">
               {item.submenu ? (
                 <>
                   <button
                     onClick={() => handleMenuClick(item)}
-                    className={`sidebar-item w-full flex items-center justify-between p-3 rounded-md transition-colors ${
-                      isActive(item.path) 
-                        ? 'bg-white/20 text-white' 
-                        : 'text-white/80 hover:bg-white/10'
-                    }`}
+                    className={`sidebar-item w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 group
+                      ${isActive(item.path) ? 'bg-white/30 text-white shadow-md' : 'text-white/80 hover:bg-white/10 hover:text-white'}
+                    `}
                   >
-                    <div className="flex items-center">
-                      {item.icon}
-                      {isSidebarOpen && <span className="ml-3">{item.title}</span>}
+                    <div className="flex items-center gap-3">
+                      <span className="transition-transform duration-200 group-hover:scale-110">
+                        {item.icon}
+                      </span>
+                      {isSidebarOpen && <span className="font-medium text-base tracking-wide">{item.title}</span>}
                     </div>
                     {isSidebarOpen && (
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform ${
-                          expandedMenus[item.title] ? 'rotate-180' : ''
-                        }`}
+                        className={`h-4 w-4 ml-2 transition-transform duration-200 ${expandedMenus[item.title] ? 'rotate-180' : ''}`}
                       />
                     )}
                   </button>
                   {isSidebarOpen && expandedMenus[item.title] && (
-                    <div className="pl-10 space-y-1">
+                    <div className="pl-8 space-y-1 border-l border-white/10 ml-2">
                       {item.submenu.map((subItem) => (
                         <NavLink
                           key={subItem.path}
                           to={subItem.path}
                           className={({ isActive }) =>
-                            `block p-2 rounded-md transition-colors ${
-                              isActive 
-                                ? 'bg-white/20 text-white' 
-                                : 'text-white/70 hover:bg-white/10 hover:text-white'
-                            }`
+                            `block px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ml-2
+                              ${isActive ? 'bg-white/30 text-white shadow' : 'text-white/70 hover:bg-white/10 hover:text-white'}`
                           }
                         >
+                          {subItem.icon && <span className="mr-2 align-middle">{subItem.icon}</span>}
                           {subItem.title}
                         </NavLink>
                       ))}
@@ -175,33 +175,31 @@ const DashboardLayout = () => {
                   to={item.path}
                   end={item.exact}
                   className={({ isActive }) =>
-                    `flex items-center p-3 rounded-md transition-colors ${
-                      isActive 
-                        ? 'bg-white/20 text-white' 
-                        : 'text-white/80 hover:bg-white/10'
-                    }`
+                    `flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 font-medium text-base tracking-wide
+                      ${isActive ? 'bg-white/30 text-white shadow-md' : 'text-white/80 hover:bg-white/10 hover:text-white'}`
                   }
                 >
-                  {item.icon}
-                  {isSidebarOpen && <span className="ml-3">{item.title}</span>}
+                  <span className="transition-transform duration-200 group-hover:scale-110">
+                    {item.icon}
+                  </span>
+                  {isSidebarOpen && <span>{item.title}</span>}
                 </NavLink>
               )}
             </div>
           ))}
         </nav>
 
-        <div className="absolute bottom-0 w-full border-t border-white/10 p-4">
+        <div className="absolute bottom-0 w-full border-t border-white/10 p-4 bg-[#2B4465]/90 backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Avatar>
-                <AvatarImage src="" />
-                <AvatarFallback className="bg-white/10 text-white">
-                  <User className="h-5 w-5" />
+                <AvatarFallback className="bg-[#2B4465] text-white shadow-lg">
+                  <UserCircle className="h-8 w-8" />
                 </AvatarFallback>
               </Avatar>
               {isSidebarOpen && (
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-white">Admin</p>
+                  <p className="text-sm font-semibold text-white">Admin</p>
                   <p className="text-xs text-white/70">admin@empresa.com</p>
                 </div>
               )}
@@ -209,7 +207,7 @@ const DashboardLayout = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="text-white hover:bg-white/10"
+              className="text-white hover:bg-white/10 transition-all duration-200"
               onClick={handleLogout}
             >
               <LogOut className="h-5 w-5" />

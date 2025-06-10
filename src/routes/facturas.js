@@ -4,7 +4,8 @@ import {
   getFacturaById,
   createFactura,
   updateFactura,
-  deleteFactura
+  deleteFactura,
+  importFacturas
 } from '../controllers/FacturaController.js';
 
 const router = express.Router();
@@ -12,6 +13,7 @@ const router = express.Router();
 router.get('/', getAllFacturas);
 router.get('/:id', getFacturaById);
 router.post('/', createFactura);
+router.post('/import', importFacturas);
 router.put('/:id', updateFactura);
 router.delete('/:id', deleteFactura);
 

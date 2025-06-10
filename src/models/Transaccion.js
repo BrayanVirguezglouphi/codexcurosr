@@ -7,52 +7,77 @@ const Transaccion = sequelize.define('Transaccion', {
     primaryKey: true,
     autoIncrement: true
   },
+  id_cuenta: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  id_tipotransaccion: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
   fecha_transaccion: {
     type: DataTypes.DATE,
     allowNull: false
   },
-  tipo_transaccion: {
-    type: DataTypes.ENUM('INGRESO', 'EGRESO', 'TRANSFERENCIA'),
-    allowNull: false
+  titulo_transaccion: {
+    type: DataTypes.STRING(255),
+    allowNull: true
   },
-  monto: {
+  id_moneda_transaccion: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  valor_total_transaccion: {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false
   },
-  descripcion: {
+  trm_moneda_base: {
+    type: DataTypes.DECIMAL(15, 6),
+    allowNull: true
+  },
+  observacion: {
     type: DataTypes.STRING(500),
     allowNull: true
   },
-  categoria: {
-    type: DataTypes.STRING(100),
-    allowNull: false
-  },
-  estado: {
-    type: DataTypes.ENUM('PENDIENTE', 'COMPLETADA', 'ANULADA'),
-    allowNull: false,
-    defaultValue: 'PENDIENTE'
-  },
-  cuenta_origen: {
-    type: DataTypes.STRING(100),
-    allowNull: false
-  },
-  cuenta_destino: {
-    type: DataTypes.STRING(100),
-    allowNull: true
-  },
-  referencia: {
-    type: DataTypes.STRING(100),
-    allowNull: true
-  },
-  comprobante_url: {
+  url_soporte_adjunto: {
     type: DataTypes.STRING(500),
+    allowNull: true
+  },
+  registro_auxiliar: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true
+  },
+  registro_validado: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true
+  },
+  id_etiqueta_contable: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  id_tercero: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  id_cuenta_destino_transf: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  aplica_retencion: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true
+  },
+  aplica_impuestos: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true
+  },
+  id_concepto: {
+    type: DataTypes.INTEGER,
     allowNull: true
   }
 }, {
   tableName: 'adcot_transacciones',
-  timestamps: true,
-  createdAt: 'fecha_creacion',
-  updatedAt: 'fecha_actualizacion'
+  timestamps: false
 });
 
 export default Transaccion; 

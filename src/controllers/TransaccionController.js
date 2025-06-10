@@ -1,11 +1,41 @@
 import Transaccion from '../models/Transaccion.js';
+import Cuenta from '../models/Cuenta.js';
+import TipoTransaccion from '../models/TipoTransaccion.js';
+import Moneda from '../models/Moneda.js';
+import EtiquetaContable from '../models/EtiquetaContable.js';
+import Tercero from '../models/Tercero.js';
+import Concepto from '../models/Concepto.js';
 
 export const getAllTransacciones = async (req, res) => {
   try {
     const transacciones = await Transaccion.findAll({
+      include: [
+        { model: Cuenta, as: 'cuenta', attributes: ['titulo_cuenta'] },
+        { model: Cuenta, as: 'cuentaDestino', attributes: ['titulo_cuenta'] },
+        { model: TipoTransaccion, as: 'tipoTransaccion', attributes: ['tipo_transaccion'] },
+        { model: Moneda, as: 'moneda', attributes: ['nombre_moneda'] },
+        { model: EtiquetaContable, as: 'etiquetaContable', attributes: ['etiqueta_contable'] },
+        { model: Tercero, as: 'tercero', attributes: ['primer_nombre', 'primer_apellido', 'razon_social'] },
+        { model: Concepto, as: 'concepto', attributes: ['concepto_dian'] }
+      ],
       order: [['fecha_transaccion', 'DESC']]
     });
-    res.json(transacciones);
+    const transaccionesProcesadas = transacciones.map(t => {
+      const tercero = t.tercero;
+      let nombre_tercero = null;
+      if (tercero) {
+        if (tercero.razon_social) {
+          nombre_tercero = tercero.razon_social;
+        } else if (tercero.primer_nombre || tercero.primer_apellido) {
+          nombre_tercero = `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim();
+        }
+      }
+      return {
+        ...t.toJSON(),
+        nombre_tercero: nombre_tercero || '-'
+      };
+    });
+    res.json(transaccionesProcesadas);
   } catch (error) {
     console.error('Error al obtener transacciones:', error);
     res.status(500).json({ message: error.message });
@@ -31,9 +61,9 @@ export const createTransaccion = async (req, res) => {
     console.log('Datos recibidos:', req.body);
     
     // Validar campos requeridos
-    const camposRequeridos = ['fecha_transaccion', 'tipo_transaccion', 'monto', 'categoria', 'cuenta_origen'];
+    const camposRequeridos = ['id_cuenta', 'id_tipotransaccion', 'fecha_transaccion', 'valor_total_transaccion'];
     for (const campo of camposRequeridos) {
-      if (!req.body[campo]) {
+      if (req.body[campo] === undefined || req.body[campo] === null || req.body[campo] === '') {
         return res.status(400).json({ 
           message: `El campo ${campo} es requerido`,
           field: campo
@@ -41,19 +71,11 @@ export const createTransaccion = async (req, res) => {
       }
     }
 
-    // Validar que el monto sea positivo
-    if (parseFloat(req.body.monto) <= 0) {
+    // Validar que el valor_total_transaccion sea positivo
+    if (parseFloat(req.body.valor_total_transaccion) <= 0) {
       return res.status(400).json({
-        message: 'El monto debe ser mayor que 0',
-        field: 'monto'
-      });
-    }
-
-    // Si es una transferencia, validar cuenta destino
-    if (req.body.tipo_transaccion === 'TRANSFERENCIA' && !req.body.cuenta_destino) {
-      return res.status(400).json({
-        message: 'La cuenta destino es requerida para transferencias',
-        field: 'cuenta_destino'
+        message: 'El valor total de la transacción debe ser mayor que 0',
+        field: 'valor_total_transaccion'
       });
     }
 
@@ -88,19 +110,11 @@ export const updateTransaccion = async (req, res) => {
       return res.status(404).json({ message: 'Transacción no encontrada' });
     }
 
-    // Validar que el monto sea positivo si se está actualizando
-    if (req.body.monto && parseFloat(req.body.monto) <= 0) {
+    // Validar que el valor_total_transaccion sea positivo si se está actualizando
+    if (req.body.valor_total_transaccion && parseFloat(req.body.valor_total_transaccion) <= 0) {
       return res.status(400).json({
-        message: 'El monto debe ser mayor que 0',
-        field: 'monto'
-      });
-    }
-
-    // Validar cuenta destino para transferencias
-    if (req.body.tipo_transaccion === 'TRANSFERENCIA' && !req.body.cuenta_destino) {
-      return res.status(400).json({
-        message: 'La cuenta destino es requerida para transferencias',
-        field: 'cuenta_destino'
+        message: 'El valor total de la transacción debe ser mayor que 0',
+        field: 'valor_total_transaccion'
       });
     }
 
@@ -119,11 +133,10 @@ export const deleteTransaccion = async (req, res) => {
       return res.status(404).json({ message: 'Transacción no encontrada' });
     }
 
-    // En lugar de eliminar, marcar como ANULADA
-    await transaccion.update({ estado: 'ANULADA' });
-    res.json({ message: 'Transacción anulada correctamente' });
+    await transaccion.destroy();
+    res.json({ message: 'Transacción eliminada correctamente' });
   } catch (error) {
-    console.error('Error al anular transacción:', error);
+    console.error('Error al eliminar transacción:', error);
     res.status(500).json({ message: error.message });
   }
 }; 

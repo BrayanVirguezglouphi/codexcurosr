@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronRight,
   Settings,
-  CreditCard
+  CreditCard,
+  Zap
 } from 'lucide-react';
 
 const menuItems = [
@@ -39,10 +40,12 @@ const menuItems = [
     icon: <DollarSign className="h-5 w-5" />,
     items: [
       { name: 'Facturas', path: '/contabilidad/facturas', icon: <FileText className="h-4 w-4" /> },
+      
       { name: 'Transacciones', path: '/contabilidad/transacciones', icon: <CreditCard className="h-4 w-4" /> },
       { name: 'Contratos', path: '/contabilidad/contratos', icon: <Receipt className="h-4 w-4" /> },
       { name: 'Línea de Servicios', path: '/contabilidad/servicios', icon: <FileText className="h-4 w-4" /> },
       { name: 'Impuestos', path: '/contabilidad/impuestos', icon: <PiggyBank className="h-4 w-4" /> },
+      { name: 'Clasificaciones Contables', path: '/contabilidad/clasificaciones-contables', icon: <Target className="h-4 w-4" /> },
       { name: 'Terceros', path: '/contabilidad/terceros', icon: <Users className="h-4 w-4" /> },
     ]
   },
@@ -51,7 +54,6 @@ const menuItems = [
     path: '/rrhh',
     icon: <Briefcase className="h-5 w-5" />,
     items: [
-      { name: 'Contratos', path: '/rrhh/contratos', icon: <FileText className="h-4 w-4" /> },
       { name: 'Contratos RRHH', path: '/rrhh/contratos-rrhh', icon: <FileText className="h-4 w-4" /> },
       { name: 'Cargos y funciones', path: '/rrhh/cargos', icon: <UserCog className="h-4 w-4" /> },
       { name: 'Capacitaciones y Skills', path: '/rrhh/capacitaciones', icon: <Calendar className="h-4 w-4" /> },
@@ -81,7 +83,9 @@ const Sidebar = () => {
     <div className="fixed left-0 top-0 h-screen w-64 flex flex-col bg-[#1e3a8a]">
       {/* Logo section */}
       <div className="p-4 border-b border-white/10">
-        <img src="/logo.png" alt="Logo" className="h-8" />
+        <div className="h-20 flex items-center justify-center">
+          <h1 className="text-white text-xl font-bold">GLOUPHI</h1>
+        </div>
       </div>
 
       {/* Menu section */}
@@ -133,14 +137,13 @@ const Sidebar = () => {
       {/* User profile section */}
       <div className="border-t border-white/10 p-4">
         <div className="flex items-center gap-3">
-          <img 
-            src="/avatar.png" 
-            alt="Profile" 
-            className="h-8 w-8 rounded-full bg-white/10"
-          />
-          <span className="text-sm font-medium text-white">
-            Brayan Virguez
-          </span>
+          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+            <span className="text-white text-sm font-medium">U</span>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-white">Usuario</p>
+            <p className="text-xs text-white/70">Administrador</p>
+          </div>
         </div>
       </div>
     </div>
