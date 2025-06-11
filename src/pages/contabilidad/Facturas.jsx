@@ -23,6 +23,7 @@ import ImportDialog from '@/components/ui/import-dialog';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
+
 import { useToast } from "@/components/ui/use-toast";
 
 const Facturas = () => {
@@ -748,7 +749,7 @@ const Facturas = () => {
   const numeroMasReciente = facturaMasReciente ? facturaMasReciente.numero_factura : '-';
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="w-full max-w-[1800px] mx-auto py-6 overflow-x-auto">
       {/* Widgets */}
       <div className="flex gap-6 mb-8">
         {/* Cantidad de facturas */}
@@ -915,6 +916,8 @@ const Facturas = () => {
             <Upload className="w-4 h-4 mr-2" />
             Importar Excel
           </Button>
+
+
           
           <Button onClick={() => setIsCrearDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -1086,8 +1089,20 @@ const Facturas = () => {
         onOpenChange={setIsImportDialogOpen}
         onImport={handleImport}
         loading={isImporting}
-        tableName="facturas"
-        templateColumns={['numero_factura', 'estatus_factura', 'id_contrato', 'fecha_radicado', 'fecha_estimada_pago', 'id_moneda', 'subtotal_facturado_moneda', 'id_tax', 'valor_tax', 'observaciones_factura']}
+        entityName="facturas"
+        columns={templateColumns}
+        templateData={[{
+          'Número': 'FAC-2024-001',
+          'Estado': 'PENDIENTE',
+          'ID Contrato': '1',
+          'Fecha Radicado': '2024-01-15',
+          'Fecha Est. Pago': '2024-02-15',
+          'ID Moneda': '1',
+          'Subtotal': '1000000',
+          'ID Tax': '1',
+          'IVA': '190000',
+          'Observaciones': 'Observaciones de la factura'
+        }]}
       />
     </div>
   );

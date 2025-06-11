@@ -6,7 +6,7 @@ import ConceptosTransaccionesView from './clasificaciones-contables/ConceptosTra
 
 const ClasificacionesContables = () => {
   return (
-    <div className="container mx-auto py-6">
+    <div className="w-full max-w-[1800px] mx-auto py-6 overflow-x-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Clasificaciones Contables</h1>
         <p className="text-gray-600 mt-1">Gestiona los centros de costos, etiquetas contables y conceptos de transacciones</p>

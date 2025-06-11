@@ -577,7 +577,7 @@ const LineasServicios = () => {
   const tipoMasReciente = servicioMasReciente?.tipo_servicio ? getTipoServicioLabel(servicioMasReciente.tipo_servicio) : '-';
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="w-full max-w-[1800px] mx-auto py-6 overflow-x-auto">
       {/* Widgets */}
       <div className="flex gap-6 mb-8">
         {/* Cantidad de servicios */}

@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, ArrowUpDown, BarChart2, Users, Building, Eye, FilterX, X, Grid3X3, Save, RotateCcw, Download, Upload } from 'lucide-react';
+
 import CrearTerceroDialog from './terceros/CrearTerceroDialog';
 import EditarTerceroDialog from './terceros/EditarTerceroDialog';
 import VerTerceroDialog from './terceros/VerTerceroDialog';
@@ -72,6 +73,61 @@ const Terceros = () => {
     { key: 'observaciones', label: 'Observaciones' }
   ];
 
+  // Configuración de columnas para plantilla Excel (sin campos auto-incrementales)
+  const templateColumns = availableColumns
+    .filter(col => col.key !== 'id_tercero' && col.key !== 'nombre_completo') // Excluir campos calculados/auto-incrementales
+    .map(col => ({
+      ...col,
+      example: getTerceroExampleValue(col.key)
+    }));
+
+  // Función para obtener valores de ejemplo para la plantilla
+  function getTerceroExampleValue(columnKey) {
+    switch (columnKey) {
+      case 'tipo_personalidad':
+        return 'NATURAL';
+      case 'tipo_documento':
+        return 'CC';
+      case 'numero_documento':
+        return '12345678';
+      case 'dv':
+        return '9';
+      case 'tipo_relacion':
+        return 'CLIENTE';
+      case 'telefono':
+        return '3001234567';
+      case 'email':
+        return 'ejemplo@email.com';
+      case 'direccion':
+        return 'Calle 123 # 45-67';
+      case 'municipio_ciudad':
+        return 'Bogotá';
+      case 'departamento_region':
+        return 'Cundinamarca';
+      case 'pais':
+        return 'Colombia';
+      case 'primer_nombre':
+        return 'Juan';
+      case 'otros_nombres':
+        return 'Carlos';
+      case 'primer_apellido':
+        return 'Pérez';
+      case 'segundo_apellido':
+        return 'García';
+      case 'razon_social':
+        return 'Empresa S.A.S.';
+      case 'observaciones':
+        return 'Observaciones del tercero';
+      default:
+        return 'Ejemplo';
+    }
+  }
+
+  // Debug: Log de templateColumns cuando cambie
+  useEffect(() => {
+    console.log('🔧 Debug templateColumns en Terceros:', templateColumns);
+  }, [templateColumns]);
+
   // Inicializar columnas visibles por defecto
   useEffect(() => {
     const defaultColumns = {};
@@ -105,12 +161,18 @@ const Terceros = () => {
   // Función de exportación
   const handleExport = async (exportType) => {
     try {
+      console.log('🔄 Iniciando exportación de terceros...');
+      
       const dataToExport = exportType === 'filtered' ? processedTerceros : terceros;
       const fileName = `terceros-${new Date().toISOString().split('T')[0]}`;
+      
+      console.log(`📊 Exportando ${dataToExport.length} terceros`);
       
       // Importación dinámica de XLSX y file-saver
       const XLSX = await import('xlsx');
       const { saveAs } = await import('file-saver');
+      
+      console.log('✅ Librerías Excel cargadas correctamente');
       
       // Formatear datos para exportación
       const formattedData = dataToExport.map(tercero => ({
@@ -135,6 +197,8 @@ const Terceros = () => {
         'Observaciones': tercero.observaciones || ''
       }));
       
+      console.log('📝 Datos formateados para Excel:', formattedData.length, 'filas');
+      
       // Crear libro de trabajo
       const worksheet = XLSX.utils.json_to_sheet(formattedData);
       const workbook = XLSX.utils.book_new();
@@ -143,13 +207,23 @@ const Terceros = () => {
       // Generar archivo y descargar
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      console.log('📁 Archivo Excel creado:', {
+        tamaño: blob.size,
+        tipo: blob.type,
+        nombre: `${fileName}.xlsx`
+      });
+      
       saveAs(blob, `${fileName}.xlsx`);
+      
+      console.log('✅ Exportación completada exitosamente');
       
       setIsExportDialogOpen(false);
       toastImport.success(`${dataToExport.length} registros exportados exitosamente`);
     } catch (error) {
-      console.error('Error al exportar:', error);
-      toastImport.error('Error al exportar los datos');
+      console.error('❌ Error al exportar terceros:', error);
+      console.error('Stack trace:', error.stack);
+      toastImport.error(`Error al exportar los datos: ${error.message}`);
     }
   };
 
@@ -774,6 +848,8 @@ const Terceros = () => {
             <Upload className="w-4 h-4 mr-2" />
             Importar Excel
           </Button>
+
+
           
           <ColumnSelector
             availableColumns={availableColumns}
@@ -1026,26 +1102,27 @@ const Terceros = () => {
         onOpenChange={setIsImportDialogOpen}
         onImport={handleImport}
         loading={isImporting}
-        tableName="terceros"
-        templateColumns={[
-          'numero_documento',
-          'tipo_relacion', 
-          'tipo_personalidad',
-          'tipo_documento',
-          'dv',
-          'primer_nombre',
-          'otros_nombres',
-          'primer_apellido',
-          'segundo_apellido',
-          'razon_social',
-          'telefono',
-          'email',
-          'direccion',
-          'municipio_ciudad',
-          'departamento_region',
-          'pais',
-          'observaciones'
-        ]}
+        entityName="terceros"
+        columns={templateColumns}
+        templateData={[{
+          'Tipo Personalidad': 'NATURAL',
+          'Tipo Documento': 'CC',
+          'Número Documento': '12345678',
+          'DV': '9',
+          'Tipo Relación': 'CLIENTE',
+          'Teléfono': '3001234567',
+          'Email': 'ejemplo@email.com',
+          'Dirección': 'Calle 123 # 45-67',
+          'Ciudad': 'Bogotá',
+          'Departamento': 'Cundinamarca',
+          'País': 'Colombia',
+          'Primer Nombre': 'Juan',
+          'Otros Nombres': 'Carlos',
+          'Primer Apellido': 'Pérez',
+          'Segundo Apellido': 'García',
+          'Razón Social': 'Empresa S.A.S.',
+          'Observaciones': 'Observaciones del tercero'
+        }]}
       />
     </div>
   );

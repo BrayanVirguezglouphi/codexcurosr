@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, X, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import TemplateDownloader from './template-downloader';
 
 const ImportDialog = ({ 
   open, 
@@ -79,84 +80,7 @@ const ImportDialog = ({
     }
   };
 
-  // Descargar plantilla
-  const downloadTemplate = async () => {
-    try {
-      const { default: XLSX } = await import('xlsx');
-      const { saveAs } = await import('file-saver');
 
-      let templateDataToUse = [];
-
-      if (finalTemplateData.length > 0) {
-        // Usar templateData proporcionado
-        templateDataToUse = finalTemplateData;
-      } else if (finalColumns.length > 0) {
-        // Crear datos de ejemplo basados en columns
-        const exampleRow = {};
-        finalColumns.forEach(col => {
-          exampleRow[col.key] = getExampleValue(col.key, col.label);
-        });
-        templateDataToUse = [exampleRow];
-      } else {
-        // Fallback básico
-        templateDataToUse = [{ 'Columna1': 'Ejemplo1', 'Columna2': 'Ejemplo2' }];
-      }
-
-      // Crear libro de Excel
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(templateDataToUse);
-
-      // Ajustar ancho de columnas
-      const colKeys = Object.keys(templateDataToUse[0] || {});
-      const columnWidths = colKeys.map(col => ({
-        wch: Math.max(col.length, 15)
-      }));
-      ws['!cols'] = columnWidths;
-      
-      XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
-      
-      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/octet-stream' });
-      
-      saveAs(blob, `plantilla_${displayName.replace(/\s+/g, '_').toLowerCase()}.xlsx`);
-      
-      toast({
-        title: "Éxito",
-        description: `Plantilla descargada correctamente`,
-      });
-    } catch (error) {
-      console.error('Error al descargar plantilla:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo descargar la plantilla",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Función para obtener valores de ejemplo
-  const getExampleValue = (columnKey, columnLabel) => {
-    const key = (columnKey || columnLabel || '').toLowerCase();
-    
-    if (key.includes('fecha')) {
-      return '2024-01-15';
-    } else if (key.includes('numero') || key.includes('código') || key.includes('codigo')) {
-      return 'ABC-001';
-    } else if (key.includes('estado') || key.includes('estatus')) {
-      return 'ACTIVO';
-    } else if (key.includes('id')) {
-      return '1';
-    } else if (key.includes('valor') || key.includes('monto') || key.includes('precio')) {
-      return '1000000';
-    } else if (key.includes('descripcion') || key.includes('observacion')) {
-      return 'Descripción de ejemplo';
-    } else if (key.includes('nombre')) {
-      return 'Ejemplo Nombre';
-    } else if (key.includes('tipo')) {
-      return 'Tipo Ejemplo';
-    }
-    return 'Ejemplo';
-  };
 
   const handleCancel = () => {
     closeDialog();
@@ -269,15 +193,11 @@ const ImportDialog = ({
                     Descarga nuestra plantilla con el formato correcto
                   </p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={downloadTemplate}
-                  className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Plantilla
-                </Button>
+                <TemplateDownloader
+                  templateData={finalTemplateData}
+                  columns={finalColumns}
+                  entityName={displayName}
+                />
               </div>
             </div>
           )}

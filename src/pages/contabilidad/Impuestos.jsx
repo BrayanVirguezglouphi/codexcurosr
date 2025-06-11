@@ -575,7 +575,7 @@ const Impuestos = () => {
   const tituloMasReciente = impuestoMasReciente ? impuestoMasReciente.titulo_impuesto : '-';
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="w-full max-w-[1800px] mx-auto py-6 overflow-x-auto">
       {/* Widgets */}
       <div className="flex gap-6 mb-8">
         {/* Cantidad de impuestos */}

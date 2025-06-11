@@ -195,11 +195,26 @@ const ExcelImportExport = ({
   // Descargar plantilla Excel
   const downloadTemplate = () => {
     try {
+      console.log('🔄 Iniciando descarga de plantilla...');
+      console.log('Columnas para plantilla:', columnsForTemplate);
+
+      // Verificar que tenemos columnas
+      if (!columnsForTemplate || columnsForTemplate.length === 0) {
+        throw new Error('No hay columnas definidas para la plantilla');
+      }
+
       // Crear datos de ejemplo
       const templateData = columnsForTemplate.reduce((acc, col) => {
         acc[col.label] = col.example || 'Ejemplo';
         return acc;
       }, {});
+
+      console.log('Datos de plantilla:', templateData);
+
+      // Verificar que XLSX está disponible
+      if (typeof XLSX === 'undefined') {
+        throw new Error('Librería XLSX no está disponible');
+      }
 
       // Crear hoja con headers solamente
       const ws = XLSX.utils.json_to_sheet([templateData]);
@@ -216,17 +231,31 @@ const ExcelImportExport = ({
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       
+      console.log('Archivo Excel creado:', {
+        tamaño: blob.size,
+        tipo: blob.type,
+        nombre: `plantilla_${filename}.xlsx`
+      });
+
+      // Verificar que saveAs está disponible
+      if (typeof saveAs === 'undefined') {
+        throw new Error('Función saveAs no está disponible');
+      }
+
       saveAs(blob, `plantilla_${filename}.xlsx`);
+      
+      console.log('✅ Plantilla descargada exitosamente');
       
       toast({
         title: "Éxito",
         description: `Plantilla descargada: plantilla_${filename}.xlsx`,
       });
     } catch (error) {
-      console.error('Error al crear plantilla:', error);
+      console.error('❌ Error al crear plantilla:', error);
+      console.error('Stack trace:', error.stack);
       toast({
         title: "Error",
-        description: "No se pudo crear la plantilla",
+        description: `No se pudo crear la plantilla: ${error.message}`,
         variant: "destructive",
       });
     }
