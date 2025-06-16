@@ -8,7 +8,7 @@ export default function handler(req, res) {
   
   res.status(200).json({
     success: true,
-    message: 'API funciona correctamente en Vercel',
+    message: 'API funciona correctamente en Vercel - v2',
     timestamp: new Date().toISOString(),
     environment: {
       vercel: process.env.VERCEL === '1',
