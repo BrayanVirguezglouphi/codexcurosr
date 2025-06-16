@@ -141,7 +141,7 @@ const Terceros = () => {
   // Cargar terceros
   const cargarTerceros = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/terceros');
+      const response = await fetch('/api/terceros');
       const data = await response.json();
       setTerceros(data);
     } catch (error) {
@@ -329,7 +329,7 @@ const Terceros = () => {
           }
 
           // Enviar al backend
-          const response = await fetch('http://localhost:5000/api/terceros/bulk-create', {
+          const response = await fetch('/api/terceros/bulk-create', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -365,7 +365,7 @@ const Terceros = () => {
   const eliminarTercero = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este tercero?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/terceros/${id}`, {
+        const response = await fetch(`/api/terceros/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -692,7 +692,7 @@ const Terceros = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`http://localhost:5000/api/terceros/${terceroId}`, {
+      const response = await fetch(`/api/terceros/${terceroId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -735,7 +735,7 @@ const Terceros = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(terceroId => {
         const changes = editedTerceros[terceroId];
-        return fetch(`http://localhost:5000/api/terceros/${terceroId}`, {
+        return fetch(`/api/terceros/${terceroId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

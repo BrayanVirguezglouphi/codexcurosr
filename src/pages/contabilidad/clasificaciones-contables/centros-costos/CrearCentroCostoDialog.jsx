@@ -45,7 +45,7 @@ const CrearCentroCostoDialog = ({ open, onClose, onCentroCostoCreado }) => {
   // Cargar centros macro existentes
   const cargarCentrosMacroExistentes = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/centros-costos');
+      const response = await fetch('/api/centros-costos');
       const data = await response.json();
       
       // Extraer centros macro únicos (no vacíos)
@@ -92,7 +92,7 @@ const CrearCentroCostoDialog = ({ open, onClose, onCentroCostoCreado }) => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/centros-costos', {
+      const response = await fetch('/api/centros-costos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

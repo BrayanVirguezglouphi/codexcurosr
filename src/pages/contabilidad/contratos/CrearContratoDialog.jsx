@@ -171,9 +171,9 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
     setLoading(true);
     try {
       const [tercerosRes, monedasRes, taxesRes] = await Promise.all([
-        fetch('http://localhost:5000/api/catalogos/terceros'),
-        fetch('http://localhost:5000/api/catalogos/monedas'),
-        fetch('http://localhost:5000/api/catalogos/taxes')
+        fetch('/api/catalogos/terceros'),
+        fetch('/api/catalogos/monedas'),
+        fetch('/api/catalogos/taxes')
       ]);
       
       setTerceros(await tercerosRes.json());
@@ -204,7 +204,7 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
         fecha_final_servicio: data.fecha_final_servicio ? new Date(data.fecha_final_servicio).toISOString().split('T')[0] : null
       };
 
-      const response = await fetch('http://localhost:5000/api/contratos', {
+      const response = await fetch('/api/contratos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),

@@ -25,9 +25,9 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
   useEffect(() => {
     if (open) {
       Promise.all([
-        fetch('http://localhost:5000/api/catalogos/contratos').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/monedas').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/taxes').then(r => r.json())
+        fetch('/api/catalogos/contratos').then(r => r.json()),
+        fetch('/api/catalogos/monedas').then(r => r.json()),
+        fetch('/api/catalogos/taxes').then(r => r.json())
       ]).then(([contratosData, monedasData, taxesData]) => {
         setContratos(contratosData);
         setMonedas(monedasData);
@@ -70,7 +70,7 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
         valor_tax: data.valor_tax ? parseFloat(data.valor_tax) : null
       };
       
-      const response = await fetch(`http://localhost:5000/api/facturas/${factura.id_factura}`, {
+      const response = await fetch(`/api/facturas/${factura.id_factura}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),

@@ -79,7 +79,7 @@ const Impuestos = () => {
   // Cargar impuestos
   const cargarImpuestos = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/impuestos');
+      const response = await fetch('/api/impuestos');
       const data = await response.json();
       setImpuestos(data);
     } catch (error) {
@@ -213,7 +213,7 @@ const Impuestos = () => {
           }
 
           // Enviar al backend
-          const response = await fetch('http://localhost:5000/api/impuestos/bulk-create', {
+          const response = await fetch('/api/impuestos/bulk-create', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -249,7 +249,7 @@ const Impuestos = () => {
   const eliminarImpuesto = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este impuesto?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/impuestos/${id}`, {
+        const response = await fetch(`/api/impuestos/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -487,7 +487,7 @@ const Impuestos = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`http://localhost:5000/api/impuestos/${impuestoId}`, {
+      const response = await fetch(`/api/impuestos/${impuestoId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -530,7 +530,7 @@ const Impuestos = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(impuestoId => {
         const changes = editedImpuestos[impuestoId];
-        return fetch(`http://localhost:5000/api/impuestos/${impuestoId}`, {
+        return fetch(`/api/impuestos/${impuestoId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

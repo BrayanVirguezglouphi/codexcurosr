@@ -73,7 +73,7 @@ const EtiquetasContablesView = () => {
   // Cargar etiquetas contables
   const cargarEtiquetasContables = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/etiquetas-contables');
+      const response = await fetch('/api/etiquetas-contables');
       const data = await response.json();
       setEtiquetasContables(data);
     } catch (error) {
@@ -93,7 +93,7 @@ const EtiquetasContablesView = () => {
   const eliminarEtiquetaContable = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar esta etiqueta contable?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/etiquetas-contables/${id}`, {
+        const response = await fetch(`/api/etiquetas-contables/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -281,7 +281,7 @@ const EtiquetasContablesView = () => {
       setPendingChanges(prev => new Set([...prev, etiquetaId]));
 
       // Hacer la actualización en el servidor
-      const response = await fetch(`http://localhost:5000/api/etiquetas-contables/${etiquetaId}`, {
+      const response = await fetch(`/api/etiquetas-contables/${etiquetaId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: newValue })
@@ -316,7 +316,7 @@ const EtiquetasContablesView = () => {
       const editedData = editedEtiquetas[etiquetaId];
       if (editedData) {
         updates.push(
-          fetch(`http://localhost:5000/api/etiquetas-contables/${etiquetaId}`, {
+          fetch(`/api/etiquetas-contables/${etiquetaId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editedData)
@@ -442,7 +442,7 @@ const EtiquetasContablesView = () => {
       }
 
       // Enviar al backend
-      const response = await fetch('http://localhost:5000/api/etiquetas-contables/bulk-create', {
+      const response = await fetch('/api/etiquetas-contables/bulk-create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

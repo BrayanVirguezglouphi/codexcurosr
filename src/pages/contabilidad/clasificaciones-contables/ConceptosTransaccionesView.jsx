@@ -73,8 +73,8 @@ const ConceptosTransaccionesView = () => {
   const cargarConceptosTransacciones = async () => {
     try {
       const [conceptosResponse, tiposResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/conceptos-transacciones'),
-        fetch('http://localhost:5000/api/tipos-transaccion')
+        fetch('/api/conceptos-transacciones'),
+        fetch('/api/tipos-transaccion')
       ]);
       
       const conceptos = await conceptosResponse.json();
@@ -110,7 +110,7 @@ const ConceptosTransaccionesView = () => {
   const eliminarConceptoTransaccion = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este concepto de transacción?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/conceptos-transacciones/${id}`, {
+        const response = await fetch(`/api/conceptos-transacciones/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -330,7 +330,7 @@ const ConceptosTransaccionesView = () => {
       setPendingChanges(prev => new Set([...prev, conceptoId]));
 
       // Hacer la actualización en el servidor
-      const response = await fetch(`http://localhost:5000/api/conceptos-transacciones/${conceptoId}`, {
+      const response = await fetch(`/api/conceptos-transacciones/${conceptoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: finalValue })
@@ -365,7 +365,7 @@ const ConceptosTransaccionesView = () => {
       const editedData = editedConceptos[conceptoId];
       if (editedData) {
         updates.push(
-          fetch(`http://localhost:5000/api/conceptos-transacciones/${conceptoId}`, {
+          fetch(`/api/conceptos-transacciones/${conceptoId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editedData)
@@ -502,7 +502,7 @@ const ConceptosTransaccionesView = () => {
       }
 
       // Enviar al backend
-      const response = await fetch('http://localhost:5000/api/conceptos-transacciones/bulk-create', {
+      const response = await fetch('/api/conceptos-transacciones/bulk-create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -264,7 +264,7 @@ const LineasServicios = () => {
           }
 
           // Enviar al backend
-          const response = await fetch('http://localhost:5000/api/lineas-servicios/bulk-create', {
+          const response = await fetch('/api/lineas-servicios/bulk-create', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -299,7 +299,7 @@ const LineasServicios = () => {
   // Cargar líneas de servicios
   const cargarLineasServicios = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/lineas-servicios');
+      const response = await fetch('/api/lineas-servicios');
       const data = await response.json();
       setLineasServicios(data);
     } catch (error) {
@@ -319,7 +319,7 @@ const LineasServicios = () => {
   const eliminarLineaServicio = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar esta línea de servicio?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/lineas-servicios/${id}`, {
+        const response = await fetch(`/api/lineas-servicios/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -489,7 +489,7 @@ const LineasServicios = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`http://localhost:5000/api/lineas-servicios/${lineaServicioId}`, {
+      const response = await fetch(`/api/lineas-servicios/${lineaServicioId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -532,7 +532,7 @@ const LineasServicios = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(lineaServicioId => {
         const changes = editedLineasServicios[lineaServicioId];
-        return fetch(`http://localhost:5000/api/lineas-servicios/${lineaServicioId}`, {
+        return fetch(`/api/lineas-servicios/${lineaServicioId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

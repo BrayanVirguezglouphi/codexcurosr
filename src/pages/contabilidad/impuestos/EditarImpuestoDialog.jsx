@@ -184,7 +184,7 @@ const EditarImpuestoDialog = ({ open, onClose, impuesto, onImpuestoActualizado }
         fecha_final_impuesto: data.fecha_final_impuesto ? new Date(data.fecha_final_impuesto).toISOString().split('T')[0] : null,
       };
 
-      const response = await fetch(`http://localhost:5000/api/impuestos/${impuesto.id_tax}`, {
+      const response = await fetch(`/api/impuestos/${impuesto.id_tax}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),

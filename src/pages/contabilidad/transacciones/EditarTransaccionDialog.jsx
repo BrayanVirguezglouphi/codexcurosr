@@ -154,12 +154,12 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
   useEffect(() => {
     if (open) {
       Promise.all([
-        fetch('http://localhost:5000/api/catalogos/cuentas').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/tipos-transaccion').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/monedas').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/etiquetas-contables').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/terceros').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/conceptos').then(r => r.json())
+        fetch('/api/catalogos/cuentas').then(r => r.json()),
+        fetch('/api/catalogos/tipos-transaccion').then(r => r.json()),
+        fetch('/api/catalogos/monedas').then(r => r.json()),
+        fetch('/api/catalogos/etiquetas-contables').then(r => r.json()),
+        fetch('/api/catalogos/terceros').then(r => r.json()),
+        fetch('/api/catalogos/conceptos').then(r => r.json())
       ]).then(([cuentasData, tiposData, monedasData, etiquetasData, tercerosData, conceptosData]) => {
         setCuentas(cuentasData);
         setTiposTransaccion(tiposData);
@@ -208,7 +208,7 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         trm_moneda_base: data.trm_moneda_base ? parseFloat(data.trm_moneda_base) : null,
       };
 
-      const response = await fetch(`http://localhost:5000/api/transacciones/${transaccion.id_transaccion}`, {
+      const response = await fetch('/api/transacciones', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

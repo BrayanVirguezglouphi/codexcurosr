@@ -151,9 +151,9 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
   useEffect(() => {
     if (open) {
       Promise.all([
-        fetch('http://localhost:5000/api/catalogos/contratos').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/monedas').then(r => r.json()),
-        fetch('http://localhost:5000/api/catalogos/taxes').then(r => r.json())
+        fetch('/api/catalogos/contratos').then(r => r.json()),
+        fetch('/api/catalogos/monedas').then(r => r.json()),
+        fetch('/api/catalogos/taxes').then(r => r.json())
       ]).then(([contratosData, monedasData, taxesData]) => {
         setContratos(contratosData);
         setMonedas(monedasData);
@@ -193,7 +193,7 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
       
       delete formattedData.id_factura;
       
-      const response = await fetch('http://localhost:5000/api/facturas', {
+      const response = await fetch('/api/facturas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),

@@ -149,7 +149,7 @@ const CrearLineaServicioDialog = ({ open, onClose, onLineaServicioCreada }) => {
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch('http://localhost:5000/api/lineas-servicios', {
+      const response = await fetch('/api/lineas-servicios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "node src/server.js",
-    "start": "npm run dev"
+    "start": "npm run dev",
+    "web": "node config-manager.js switch web && npm run build"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

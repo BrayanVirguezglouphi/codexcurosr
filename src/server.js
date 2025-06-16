@@ -53,8 +53,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Algo salió mal!' });
 });
 
-const PORT = process.env.PORT || 5000;
+// Para desarrollo local, arrancar el servidor
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-}); 
+// Para Vercel (producción), exportar la app
+export default app; 

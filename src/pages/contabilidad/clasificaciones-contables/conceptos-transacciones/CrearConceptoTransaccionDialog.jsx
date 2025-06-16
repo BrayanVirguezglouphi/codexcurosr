@@ -158,7 +158,7 @@ const CrearConceptoTransaccionDialog = ({ open, onOpenChange, onConceptoCreado }
     const cargarDatos = async () => {
       if (open) {
         try {
-          const response = await fetch('http://localhost:5000/api/tipos-transaccion');
+          const response = await fetch('/api/tipos-transaccion');
           const tipos = await response.json();
           setTiposTransaccion(tipos);
         } catch (error) {
@@ -178,7 +178,7 @@ const CrearConceptoTransaccionDialog = ({ open, onOpenChange, onConceptoCreado }
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/conceptos-transacciones', {
+      const response = await fetch('/api/conceptos-transacciones', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

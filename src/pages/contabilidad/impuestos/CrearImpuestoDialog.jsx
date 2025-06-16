@@ -178,7 +178,7 @@ const CrearImpuestoDialog = ({ open, onClose, onImpuestoCreado }) => {
         fecha_final_impuesto: data.fecha_final_impuesto ? new Date(data.fecha_final_impuesto).toISOString().split('T')[0] : null,
       };
 
-      const response = await fetch('http://localhost:5000/api/impuestos', {
+      const response = await fetch('/api/impuestos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),

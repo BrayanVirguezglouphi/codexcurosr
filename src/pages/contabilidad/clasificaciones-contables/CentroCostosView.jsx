@@ -72,7 +72,7 @@ const CentroCostosView = () => {
   // Cargar centros de costos
   const cargarCentrosCostos = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/centros-costos');
+      const response = await fetch('/api/centros-costos');
       const data = await response.json();
       setCentrosCostos(data);
     } catch (error) {
@@ -92,7 +92,7 @@ const CentroCostosView = () => {
   const eliminarCentroCosto = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este centro de costo?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/centros-costos/${id}`, {
+        const response = await fetch(`/api/centros-costos/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -284,7 +284,7 @@ const CentroCostosView = () => {
 
     // Actualizar inmediatamente en la base de datos
     try {
-      const response = await fetch(`http://localhost:5000/api/centros-costos/${centroCostoId}`, {
+      const response = await fetch(`/api/centros-costos/${centroCostoId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -324,7 +324,7 @@ const CentroCostosView = () => {
       const editedData = editedCentrosCostos[centroCostoId];
       if (editedData) {
         updates.push(
-          fetch(`http://localhost:5000/api/centros-costos/${centroCostoId}`, {
+          fetch(`/api/centros-costos/${centroCostoId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editedData)
@@ -455,7 +455,7 @@ const CentroCostosView = () => {
       }
 
       // Enviar al backend
-      const response = await fetch('http://localhost:5000/api/centros-costos/bulk-create', {
+      const response = await fetch('/api/centros-costos/bulk-create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
