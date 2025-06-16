@@ -150,10 +150,10 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
     setLoading(true);
     try {
       const [contratoRes, tercerosRes, monedasRes, taxesRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/contratos/${contratoId}`),
-        fetch('http://localhost:5000/api/catalogos/terceros'),
-        fetch('http://localhost:5000/api/catalogos/monedas'),
-        fetch('http://localhost:5000/api/catalogos/taxes')
+        fetch(`/api/contratos/${contratoId}`),
+        fetch('/api/catalogos/terceros'),
+        fetch('/api/catalogos/monedas'),
+        fetch('/api/catalogos/taxes')
       ]);
 
       const contrato = await contratoRes.json();
@@ -199,7 +199,7 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
         fecha_final_servicio: data.fecha_final_servicio ? new Date(data.fecha_final_servicio).toISOString().split('T')[0] : null
       };
 
-      const response = await fetch(`http://localhost:5000/api/contratos/${contratoId}`, {
+      const response = await fetch(`/api/contratos/${contratoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
