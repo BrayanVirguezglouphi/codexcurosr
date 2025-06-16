@@ -1,7 +1,6 @@
-// Versión híbrida optimizada para Vercel - CON base de datos optimizada
+// Versión simplificada para Vercel - Evita timeouts
 import express from 'express';
 import cors from 'cors';
-import { testConnection } from '../src/config/database.js';
 
 const app = express();
 
@@ -11,85 +10,13 @@ app.use(cors());
 // Middleware para parsear JSON
 app.use(express.json());
 
-// Variables globales para control de inicialización
-let dbInitialized = false;
-let initializationPromise = null;
-let appInitialized = false;
+console.log('🚀 API iniciada en Vercel - Modo simplificado');
+console.log('Variables disponibles:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- VERCEL:', process.env.VERCEL);
+console.log('- DB_HOST:', process.env.DB_HOST ? 'Configurado' : 'No configurado');
 
-// Función de inicialización inteligente
-const initializeApp = async () => {
-  if (appInitialized) return true;
-  
-  if (initializationPromise) {
-    return await initializationPromise;
-  }
-
-  initializationPromise = (async () => {
-    try {
-      console.log('🚀 Iniciando aplicación híbrida en Vercel...');
-      console.log('Variables de entorno:');
-      console.log('- NODE_ENV:', process.env.NODE_ENV);
-      console.log('- VERCEL:', process.env.VERCEL);
-      console.log('- DB_HOST:', process.env.DB_HOST ? 'Configurado' : 'No configurado');
-
-      // Intentar conexión a base de datos
-      console.log('🔄 Probando conexión a Railway...');
-      const dbConnected = await testConnection();
-      
-      if (dbConnected) {
-        console.log('✅ Base de datos conectada - Importando módulos completos...');
-        
-        // Importación dinámica para evitar timeout en inicialización
-        const { default: setupRelationships } = await import('../src/models/relationships.js');
-        const { default: facturasRoutes } = await import('../src/routes/facturas.js');
-        const { default: transaccionesRoutes } = await import('../src/routes/transacciones.js');
-        const { default: tercerosRoutes } = await import('../src/routes/terceros.js');
-        const { default: contratosRoutes } = await import('../src/routes/contratos.js');
-        const { default: catalogosRouter } = await import('../src/routes/catalogos.js');
-        
-        // Configurar relaciones
-        setupRelationships();
-        
-        // Configurar rutas de base de datos
-        app.use('/api/facturas', facturasRoutes);
-        app.use('/api/transacciones', transaccionesRoutes);
-        app.use('/api/terceros', tercerosRoutes);
-        app.use('/api/contratos', contratosRoutes);
-        app.use('/api/catalogos', catalogosRouter);
-        
-        console.log('✅ Aplicación completa inicializada con base de datos');
-        dbInitialized = true;
-      } else {
-        console.log('⚠️ Base de datos no disponible - Modo solo rutas básicas');
-        dbInitialized = false;
-      }
-      
-      appInitialized = true;
-      return true;
-      
-    } catch (error) {
-      console.error('❌ Error en inicialización:', error.message);
-      dbInitialized = false;
-      appInitialized = true; // Continuar sin DB
-      return false;
-    }
-  })();
-
-  return await initializationPromise;
-};
-
-// Middleware de inicialización inteligente
-app.use(async (req, res, next) => {
-  try {
-    await initializeApp();
-    next();
-  } catch (error) {
-    console.error('❌ Error en middleware de inicialización:', error);
-    next(); // Continuar sin DB
-  }
-});
-
-// RUTAS DE DIAGNÓSTICO (siempre disponibles)
+// RUTAS BÁSICAS (sin inicialización compleja)
 app.get('/api/test', (req, res) => {
   console.log('✅ Ruta /api/test ejecutada correctamente');
   res.json({
@@ -99,9 +26,7 @@ app.get('/api/test', (req, res) => {
     environment: {
       vercel: process.env.VERCEL === '1',
       nodeEnv: process.env.NODE_ENV,
-      hasDbHost: !!process.env.DB_HOST,
-      dbInitialized,
-      appInitialized
+      hasDbHost: !!process.env.DB_HOST
     },
     request: {
       method: req.method,
@@ -110,21 +35,9 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', (req, res) => {
   console.log('✅ Ruta /api/health ejecutada correctamente');
   
-  let dbStatus = 'unknown';
-  try {
-    if (dbInitialized) {
-      dbStatus = 'connected';
-    } else {
-      const testResult = await testConnection();
-      dbStatus = testResult ? 'available' : 'unavailable';
-    }
-  } catch (error) {
-    dbStatus = 'error';
-  }
-
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -133,21 +46,90 @@ app.get('/api/health', async (req, res) => {
     platform: 'Vercel',
     database: {
       host: process.env.DB_HOST,
-      status: dbStatus,
-      initialized: dbInitialized
-    },
-    app: {
-      initialized: appInitialized,
-      hasFullFunctionality: dbInitialized
+      status: 'testing...',
+      note: 'Conexión se prueba bajo demanda'
     }
   });
 });
 
-// RUTAS FALLBACK (cuando DB no está disponible)
-app.get('/api/transacciones', (req, res) => {
-  if (!dbInitialized) {
-    console.log('⚠️ Ruta /api/transacciones - Modo fallback (sin DB)');
-    return res.json({
+// RUTA DE CONEXIÓN A DB (se ejecuta solo cuando se llama)
+app.get('/api/db-test', async (req, res) => {
+  console.log('🔄 Probando conexión a base de datos bajo demanda...');
+  
+  try {
+    // Importar dinámicamente solo cuando se necesita
+    const { testConnection } = await import('../src/config/database.js');
+    
+    // Timeout más corto para prueba
+    const dbConnected = await Promise.race([
+      testConnection(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout de 3 segundos')), 3000)
+      )
+    ]);
+    
+    res.json({
+      success: true,
+      database: {
+        connected: dbConnected,
+        host: process.env.DB_HOST,
+        message: dbConnected ? 'Conexión exitosa' : 'Conexión falló'
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error probando DB:', error.message);
+    res.json({
+      success: false,
+      database: {
+        connected: false,
+        error: error.message,
+        host: process.env.DB_HOST
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// RUTA DE TRANSACCIONES CON CARGA BAJO DEMANDA
+app.get('/api/transacciones', async (req, res) => {
+  console.log('🔄 Cargando transacciones bajo demanda...');
+  
+  try {
+    // Intentar cargar módulos de base de datos dinámicamente
+    const { testConnection } = await import('../src/config/database.js');
+    
+    const dbConnected = await Promise.race([
+      testConnection(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout DB')), 3000)
+      )
+    ]);
+    
+    if (dbConnected) {
+      console.log('✅ DB conectada - Cargando controlador real...');
+      
+      // Importar controlador real
+      const { default: TransaccionController } = await import('../src/controllers/TransaccionController.js');
+      const { default: setupRelationships } = await import('../src/models/relationships.js');
+      
+      // Configurar relaciones solo para esta request
+      setupRelationships();
+      
+      // Ejecutar controlador real
+      const controller = new TransaccionController();
+      await controller.obtenerTransacciones(req, res);
+      
+    } else {
+      throw new Error('Base de datos no disponible');
+    }
+    
+  } catch (error) {
+    console.log('⚠️ Error con DB, usando modo fallback:', error.message);
+    
+    // Modo fallback
+    res.json({
       success: true,
       message: 'Endpoint de transacciones en modo fallback',
       note: 'Base de datos no disponible, mostrando datos de prueba',
@@ -159,28 +141,21 @@ app.get('/api/transacciones', (req, res) => {
         }
       ],
       total: 1,
-      fallback: true
+      fallback: true,
+      error: error.message
     });
   }
-  
-  // Si llegamos aquí, la DB está inicializada y la ruta real se manejará automáticamente
-  console.log('✅ Ruta /api/transacciones - Redirigiendo a controlador real');
-  res.status(503).json({
-    error: 'Ruta manejada por controlador de base de datos',
-    message: 'Esta respuesta no debería verse si la DB está funcionando'
-  });
 });
 
-// Manejo de errores mejorado
+// Manejo de errores simplificado
 app.use((err, req, res, next) => {
-  console.error('❌ Error en aplicación híbrida:', err.message);
+  console.error('❌ Error en aplicación:', err.message);
   console.error('Stack:', err.stack);
   
   res.status(500).json({ 
     error: 'Error interno del servidor',
     message: err.message,
     timestamp: new Date().toISOString(),
-    dbAvailable: dbInitialized,
     path: req.path
   });
 });
@@ -196,13 +171,8 @@ app.use('*', (req, res) => {
     availableEndpoints: [
       '/api/health',
       '/api/test',
-      ...(dbInitialized ? [
-        '/api/facturas',
-        '/api/transacciones',
-        '/api/terceros',
-        '/api/contratos',
-        '/api/catalogos'
-      ] : ['/api/transacciones (modo fallback)'])
+      '/api/db-test',
+      '/api/transacciones'
     ]
   });
 });
