@@ -26,3 +26,4 @@ logs
 # Directorios de construcción
 dist/
 build/ 
+.vercel
