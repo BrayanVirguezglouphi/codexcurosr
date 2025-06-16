@@ -9,7 +9,16 @@
     "preview": "vite preview",
     "server": "node src/server.js",
     "start": "npm run dev",
-    "web": "node config-manager.js switch web && npm run build"
+    "web": "node config-manager.js switch web && npm run build",
+    "vercel-build": "vite build",
+    "env:dev": "node config-manager.js switch dev",
+    "env:prod": "node config-manager.js switch prod",
+    "env:web": "node config-manager.js switch web",
+    "env:test": "node config-manager.js switch test",
+    "env:show": "node config-manager.js show",
+    "env:list": "node config-manager.js list",
+    "dev:full": "npm run env:dev && npm run server & npm run dev",
+    "deploy:vercel": "npm run env:web && npm run build && vercel --prod"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -44,6 +53,7 @@
     "lucide-react": "^0.285.0",
     "moment": "^2.30.1",
     "mssql": "^11.0.1",
+    "node-fetch": "^3.3.2",
     "node-forge": "^1.3.1",
     "pg": "^8.16.0",
     "react": "^18.2.0",

@@ -1,13 +1,37 @@
 {
   "version": 2,
+  "env": {
+    "NODE_ENV": "production",
+    "DB_HOST": "nozomi.proxy.rlwy.net",
+    "DB_PORT": "36062",
+    "DB_NAME": "railway",
+    "DB_USER": "postgres",
+    "DB_PASSWORD": "NbAgEaAyMkpekkPXOeMPTHDEbKIcNwpw",
+    "DB_SSL": "true",
+    "VERCEL": "1"
+  },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node"
+    }
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "src/server.js"
+      "dest": "/api/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/index.html"
+      "dest": "/dist/$1"
     }
-  ]
+  ],
+  "outputDirectory": "dist"
 } 
