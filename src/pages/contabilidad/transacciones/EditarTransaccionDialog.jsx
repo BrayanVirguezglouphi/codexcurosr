@@ -208,7 +208,7 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         trm_moneda_base: data.trm_moneda_base ? parseFloat(data.trm_moneda_base) : null,
       };
 
-      const response = await fetch('/api/transacciones', {
+      const response = await fetch(`/api/transacciones/${transaccion.id_transaccion}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

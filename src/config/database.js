@@ -1,10 +1,17 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
 
-// Cargar variables de entorno
-dotenv.config();
+// Solo cargar dotenv si no estamos en Vercel
+if (process.env.VERCEL !== '1') {
+  dotenv.config();
+}
 
 console.log('Iniciando configuración de la base de datos...');
+console.log('Variables de entorno disponibles:');
+console.log('DB_HOST:', process.env.DB_HOST);
+console.log('DB_NAME:', process.env.DB_NAME);
+console.log('DB_USER:', process.env.DB_USER);
+console.log('VERCEL:', process.env.VERCEL);
 
 // Configuración de conexión con variables de entorno
 const dbConfig = {
@@ -12,7 +19,7 @@ const dbConfig = {
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '12345',
   host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
+  port: parseInt(process.env.DB_PORT) || 5432,
   dialect: 'postgres'
 };
 
@@ -22,16 +29,19 @@ console.log(`   Database: ${dbConfig.database}`);
 console.log(`   User: ${dbConfig.username}`);
 console.log(`   Password: ${'*'.repeat(dbConfig.password.length)}`);
 
+// Configuración especial para Vercel (funciones serverless)
+const isVercel = process.env.VERCEL === '1';
+
 const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.password, {
   host: dbConfig.host,
   port: dbConfig.port,
   dialect: dbConfig.dialect,
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  logging: false, // Desactivar logging en producción para funciones serverless
   pool: {
-    max: 10,        // Máximo de conexiones simultáneas
+    max: isVercel ? 3 : 10,        // Menos conexiones en Vercel
     min: 0,         // Mínimo de conexiones
-    acquire: 30000, // Tiempo máximo para obtener conexión (30 seg)
-    idle: 10000     // Tiempo máximo de inactividad (10 seg)
+    acquire: isVercel ? 10000 : 30000, // Timeout más corto en Vercel
+    idle: isVercel ? 5000 : 10000     // Liberar conexiones más rápido en Vercel
   },
   dialectOptions: {
     // Para conexiones SSL si es necesario
@@ -39,12 +49,12 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
       require: true,
       rejectUnauthorized: false
     } : false,
-    // Timeout de conexión
-    connectTimeout: 30000
+    // Timeout de conexión más corto para serverless
+    connectTimeout: isVercel ? 10000 : 30000
   },
   // Reintentos de conexión
   retry: {
-    max: 3
+    max: isVercel ? 1 : 3
   }
 });
 
@@ -68,7 +78,9 @@ export const testConnection = async () => {
   }
 };
 
-// Probar conexión al cargar el módulo
-testConnection();
+// Solo probar conexión automáticamente si no estamos en Vercel
+if (process.env.VERCEL !== '1') {
+  testConnection();
+}
 
 export default sequelize; 

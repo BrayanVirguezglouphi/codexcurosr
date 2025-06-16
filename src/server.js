@@ -27,8 +27,31 @@ app.use(cors());
 // Middleware para parsear JSON
 app.use(express.json());
 
+// Log de variables de entorno en Vercel para debugging
+if (process.env.VERCEL === '1') {
+  console.log('🌐 Ejecutándose en Vercel');
+  console.log('Variables de entorno:');
+  console.log('- DB_HOST:', process.env.DB_HOST);
+  console.log('- DB_NAME:', process.env.DB_NAME);
+  console.log('- DB_USER:', process.env.DB_USER);
+  console.log('- DB_SSL:', process.env.DB_SSL);
+}
+
 // Servir archivos estáticos
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Ruta de salud para verificar que el servidor funciona
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    database: {
+      host: process.env.DB_HOST,
+      name: process.env.DB_NAME
+    }
+  });
+});
 
 // Configurar rutas
 app.use('/api/facturas', facturasRoutes);
@@ -47,17 +70,31 @@ app.use('/api/catalogos', catalogosRouter);
 // Establecer las relaciones entre modelos
 setupRelationships();
 
-// Manejo de errores
+// Manejo de errores mejorado para Vercel
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Algo salió mal!' });
+  console.error('Error en la aplicación:', err.message);
+  console.error('Stack trace:', err.stack);
+  
+  // Respuesta más detallada para debugging en Vercel
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isVercel = process.env.VERCEL === '1';
+  
+  res.status(500).json({ 
+    message: 'Error interno del servidor',
+    error: isDevelopment || isVercel ? err.message : 'Algo salió mal!',
+    timestamp: new Date().toISOString(),
+    path: req.path
+  });
 });
 
 // Para desarrollo local, arrancar el servidor
-if (process.env.NODE_ENV !== 'production') {
+// Solo NO arrancar si estamos específicamente en Vercel
+if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
+    console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`VERCEL: ${process.env.VERCEL}`);
   });
 }
 

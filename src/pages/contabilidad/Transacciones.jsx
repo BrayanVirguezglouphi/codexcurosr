@@ -72,23 +72,67 @@ const Transacciones = () => {
     setVisibleColumns(defaultColumns);
   }, []);
 
-  // Cargar transacciones
-  const cargarTransacciones = async () => {
+  // Cargar transacciones con retry
+  const cargarTransacciones = async (retryCount = 0) => {
+    const maxRetries = 3;
     try {
+      console.log(`🔄 Cargando transacciones... (intento ${retryCount + 1}/${maxRetries + 1})`);
       const response = await fetch('/api/transacciones');
-      const data = await response.json();
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
+      console.log('📡 Content-Type:', response.headers.get('content-type'));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const responseText = await response.text();
+      console.log('📝 Raw response length:', responseText.length);
+      console.log('📝 Raw response start:', responseText.substring(0, 100));
+      
+      // Verificar si la respuesta parece ser HTML
+      if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+        console.error('❌ La respuesta es HTML en lugar de JSON');
+        console.error('📝 HTML Response:', responseText.substring(0, 500));
+        throw new Error('El servidor devolvió HTML en lugar de JSON. Posible problema de proxy o cache.');
+      }
+      
+      const data = JSON.parse(responseText);
+      console.log('✅ Parsed data:', data.length, 'transacciones');
       setTransacciones(data);
     } catch (error) {
-      console.error('Error al cargar transacciones:', error);
+      console.error(`❌ Error al cargar transacciones (intento ${retryCount + 1}):`, error);
+      
+      // Si el error es por HTML en lugar de JSON y tenemos reintentos disponibles
+      if (error.message.includes('HTML') && retryCount < maxRetries) {
+        console.log(`🔄 Reintentando en 1 segundo... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => {
+          cargarTransacciones(retryCount + 1);
+        }, 1000);
+        return;
+      }
+      
+      // Si es un error de parsing JSON y tenemos reintentos disponibles
+      if (error.message.includes('Unexpected token') && retryCount < maxRetries) {
+        console.log(`🔄 Reintentando en 1 segundo... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => {
+          cargarTransacciones(retryCount + 1);
+        }, 1000);
+        return;
+      }
+      
       toast({
         title: "Error",
-        description: "No se pudieron cargar las transacciones",
+        description: `No se pudieron cargar las transacciones: ${error.message}`,
         variant: "destructive",
       });
     }
   };
 
   useEffect(() => {
+    console.log('🚀 Componente Transacciones montado, cargando datos...');
     cargarTransacciones();
   }, []);
 
@@ -96,20 +140,28 @@ const Transacciones = () => {
   const eliminarTransaccion = async (id) => {
     if (window.confirm('¿Está seguro de que desea anular esta transacción?')) {
       try {
+        console.log('🗑️ Eliminando transacción:', id);
         const response = await fetch(`/api/transacciones/${id}`, {
           method: 'DELETE',
         });
-        if (response.ok) {
-          toast({
-            title: "Éxito",
-            description: "Transacción anulada correctamente",
-          });
-          cargarTransacciones();
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Delete error:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
+        
+        console.log('✅ Transacción eliminada correctamente');
+        toast({
+          title: "Éxito",
+          description: "Transacción anulada correctamente",
+        });
+        cargarTransacciones();
       } catch (error) {
+        console.error('❌ Error al eliminar transacción:', error);
         toast({
           title: "Error",
-          description: "No se pudo anular la transacción",
+          description: `No se pudo anular la transacción: ${error.message}`,
           variant: "destructive",
         });
       }
@@ -543,6 +595,7 @@ const Transacciones = () => {
     setPendingChanges(prev => new Set([...prev, transaccionId]));
 
     try {
+      console.log('💾 Guardando cambio en celda:', { transaccionId, field, newValue });
       const updatedData = { [field]: newValue };
       const response = await fetch(`/api/transacciones/${transaccionId}`, {
         method: 'PUT',
@@ -552,30 +605,47 @@ const Transacciones = () => {
         body: JSON.stringify(updatedData),
       });
 
-      if (response.ok) {
-        setTransacciones(prev => prev.map(t => 
-          t.id_transaccion === transaccionId 
-            ? { ...t, [field]: newValue }
-            : t
-        ));
+      console.log('📡 PUT Response status:', response.status);
+      console.log('📡 PUT Content-Type:', response.headers.get('content-type'));
 
-        setPendingChanges(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(transaccionId);
-          return newSet;
-        });
-
-        toast({
-          title: "Cambio guardado",
-          description: `Campo ${field} actualizado correctamente`,
-        });
-      } else {
-        throw new Error('Error al actualizar');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ PUT Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+
+      const responseText = await response.text();
+      console.log('📝 PUT Raw response:', responseText.substring(0, 200));
+      
+      // Verificar si es JSON válido
+      try {
+        const responseData = JSON.parse(responseText);
+        console.log('✅ PUT Parsed response:', responseData);
+      } catch (jsonError) {
+        console.warn('⚠️ PUT Response no es JSON válido:', jsonError);
+      }
+
+      setTransacciones(prev => prev.map(t => 
+        t.id_transaccion === transaccionId 
+          ? { ...t, [field]: newValue }
+          : t
+      ));
+
+      setPendingChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(transaccionId);
+        return newSet;
+      });
+
+      toast({
+        title: "Cambio guardado",
+        description: `Campo ${field} actualizado correctamente`,
+      });
     } catch (error) {
+      console.error('❌ Error en handleCellSave:', error);
       toast({
         title: "Error",
-        description: "No se pudo guardar el cambio",
+        description: `No se pudo guardar el cambio: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -585,19 +655,31 @@ const Transacciones = () => {
     if (pendingChanges.size === 0) return;
 
     try {
-      const updatePromises = Array.from(pendingChanges).map(transaccionId => {
+      console.log('💾 Guardando todos los cambios pendientes:', pendingChanges.size);
+      const updatePromises = Array.from(pendingChanges).map(async (transaccionId) => {
         const changes = editedTransacciones[transaccionId];
-        return fetch(`/api/transacciones/${transaccionId}`, {
+        console.log('💾 Actualizando transacción:', transaccionId, changes);
+        
+        const response = await fetch(`/api/transacciones/${transaccionId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(changes),
         });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Bulk update error:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        return response;
       });
 
       await Promise.all(updatePromises);
       
+      console.log('✅ Todos los cambios guardados, recargando datos...');
       await cargarTransacciones();
       
       setEditedTransacciones({});
@@ -608,9 +690,10 @@ const Transacciones = () => {
         description: `${pendingChanges.size} cambios guardados correctamente`,
       });
     } catch (error) {
+      console.error('❌ Error en saveAllPendingChanges:', error);
       toast({
         title: "Error",
-        description: "Error al guardar algunos cambios",
+        description: `Error al guardar algunos cambios: ${error.message}`,
         variant: "destructive",
       });
     }
