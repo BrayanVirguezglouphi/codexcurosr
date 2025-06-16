@@ -43,7 +43,7 @@ const EditarEtiquetaContableDialog = ({ open, onOpenChange, etiqueta, onEtiqueta
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/etiquetas-contables/${etiqueta.id_etiqueta_contable}`, {
+      const response = await fetch(`/api/etiquetas-contables/${etiqueta.id_etiqueta_contable}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

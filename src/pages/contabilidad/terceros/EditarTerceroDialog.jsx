@@ -184,7 +184,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/terceros/${tercero.id_tercero}`, {
+      const response = await fetch(`/api/terceros/${tercero.id_tercero}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

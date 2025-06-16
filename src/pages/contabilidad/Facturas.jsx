@@ -79,7 +79,7 @@ const Facturas = () => {
   // Cargar facturas
   const cargarFacturas = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/facturas');
+      const response = await fetch('/api/facturas');
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
@@ -264,7 +264,7 @@ const Facturas = () => {
       });
 
       // Enviar datos al servidor
-      const response = await fetch('http://localhost:5000/api/facturas/import', {
+      const response = await fetch('/api/facturas/import', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -319,7 +319,7 @@ const Facturas = () => {
       console.log('Datos limpiados para enviar:', cleanedData);
       console.log('JSON que se enviará:', JSON.stringify({ facturas: cleanedData }, null, 2));
 
-      const response = await fetch('http://localhost:5000/api/facturas/import', {
+      const response = await fetch('/api/facturas/import', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -383,7 +383,7 @@ const Facturas = () => {
   const eliminarFactura = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar esta factura?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/facturas/${id}`, {
+        const response = await fetch(`/api/facturas/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -657,7 +657,7 @@ const Facturas = () => {
     // Actualizar inmediatamente en la base de datos
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`http://localhost:5000/api/facturas/${facturaId}`, {
+      const response = await fetch(`/api/facturas/${facturaId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -702,7 +702,7 @@ const Facturas = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(facturaId => {
         const changes = editedFacturas[facturaId];
-        return fetch(`http://localhost:5000/api/facturas/${facturaId}`, {
+        return fetch(`/api/facturas/${facturaId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
