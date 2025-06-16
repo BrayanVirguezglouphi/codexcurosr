@@ -105,23 +105,34 @@ export const createTransaccion = async (req, res) => {
 
 export const updateTransaccion = async (req, res) => {
   try {
+    console.log('🔄 UPDATE - ID:', req.params.id);
+    console.log('🔄 UPDATE - Datos recibidos:', req.body);
+    
     const transaccion = await Transaccion.findByPk(req.params.id);
     if (!transaccion) {
+      console.log('❌ UPDATE - Transacción no encontrada:', req.params.id);
       return res.status(404).json({ message: 'Transacción no encontrada' });
     }
 
+    console.log('✅ UPDATE - Transacción encontrada:', transaccion.id_transaccion);
+
     // Validar que el valor_total_transaccion sea positivo si se está actualizando
     if (req.body.valor_total_transaccion && parseFloat(req.body.valor_total_transaccion) <= 0) {
+      console.log('❌ UPDATE - Valor inválido:', req.body.valor_total_transaccion);
       return res.status(400).json({
         message: 'El valor total de la transacción debe ser mayor que 0',
         field: 'valor_total_transaccion'
       });
     }
 
+    console.log('🔄 UPDATE - Actualizando transacción...');
     await transaccion.update(req.body);
+    console.log('✅ UPDATE - Transacción actualizada correctamente');
+    console.log('📤 UPDATE - Enviando respuesta:', transaccion.toJSON());
+    
     res.json(transaccion);
   } catch (error) {
-    console.error('Error al actualizar transacción:', error);
+    console.error('❌ UPDATE - Error al actualizar transacción:', error);
     res.status(400).json({ message: error.message });
   }
 };
