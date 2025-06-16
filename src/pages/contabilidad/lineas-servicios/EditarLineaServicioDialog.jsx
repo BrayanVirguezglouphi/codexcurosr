@@ -150,7 +150,7 @@ const EditarLineaServicioDialog = ({ open, onClose, lineaServicio, onLineaServic
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/lineas-servicios/${lineaServicio.id_servicio}`, {
+      const response = await fetch(`/api/lineas-servicios/${lineaServicio.id_servicio}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

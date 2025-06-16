@@ -97,7 +97,7 @@ const Contratos = () => {
   const cargarContratos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/contratos');
+      const response = await fetch('/api/contratos');
       const data = await response.json();
       setContratos(data);
     } catch (error) {
@@ -111,7 +111,7 @@ const Contratos = () => {
   const handleEliminar = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este contrato?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/contratos/${id}`, {
+        const response = await fetch(`/api/contratos/${id}`, {
           method: 'DELETE'
         });
         
@@ -568,7 +568,7 @@ const Contratos = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`http://localhost:5000/api/contratos/${contratoId}`, {
+      const response = await fetch(`/api/contratos/${contratoId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -611,7 +611,7 @@ const Contratos = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(contratoId => {
         const changes = editedContratos[contratoId];
-        return fetch(`http://localhost:5000/api/contratos/${contratoId}`, {
+        return fetch(`/api/contratos/${contratoId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

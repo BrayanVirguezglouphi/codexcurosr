@@ -75,7 +75,7 @@ const Transacciones = () => {
   // Cargar transacciones
   const cargarTransacciones = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/transacciones');
+      const response = await fetch('/api/transacciones');
       const data = await response.json();
       setTransacciones(data);
     } catch (error) {
@@ -96,7 +96,7 @@ const Transacciones = () => {
   const eliminarTransaccion = async (id) => {
     if (window.confirm('¿Está seguro de que desea anular esta transacción?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/transacciones/${id}`, {
+        const response = await fetch(`/api/transacciones/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -544,7 +544,7 @@ const Transacciones = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`http://localhost:5000/api/transacciones/${transaccionId}`, {
+      const response = await fetch(`/api/transacciones/${transaccionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -587,7 +587,7 @@ const Transacciones = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(transaccionId => {
         const changes = editedTransacciones[transaccionId];
-        return fetch(`http://localhost:5000/api/transacciones/${transaccionId}`, {
+        return fetch(`/api/transacciones/${transaccionId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

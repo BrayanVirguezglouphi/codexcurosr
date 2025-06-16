@@ -34,7 +34,7 @@ const CrearEtiquetaContableDialog = ({ open, onOpenChange, onEtiquetaCreada }) =
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/etiquetas-contables', {
+      const response = await fetch('/api/etiquetas-contables', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
