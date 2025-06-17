@@ -37,16 +37,24 @@ let htmlContent = `
 const server = http.createServer((req, res) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     
-    if (req.url === '/health') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+    // Responder a cualquier tipo de health check
+    if (req.url === '/health' || req.url === '/' && req.method === 'GET') {
+        res.writeHead(200, { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        });
         res.end(JSON.stringify({
             status: 'OK',
             timestamp: new Date().toISOString(),
             port: PORT,
-            message: 'Servidor simple funcionando correctamente'
+            message: 'Servidor simple funcionando correctamente',
+            uptime: process.uptime()
         }));
     } else {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.writeHead(200, { 
+            'Content-Type': 'text/html',
+            'Access-Control-Allow-Origin': '*'
+        });
         res.end(htmlContent);
     }
 });
@@ -54,7 +62,13 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor simple corriendo en puerto ${PORT}`);
     console.log(`⏰ Iniciado: ${new Date().toISOString()}`);
+    console.log(`🌐 Escuchando en todas las interfaces (0.0.0.0:${PORT})`);
 });
+
+// Log cada 5 segundos para debugging
+setInterval(() => {
+    console.log(`💓 Servidor activo - ${new Date().toISOString()}`);
+}, 5000);
 
 // Manejar cierre graceful
 process.on('SIGTERM', () => {
