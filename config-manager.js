@@ -64,21 +64,25 @@ const configs = {
     LOG_LEVEL: 'warn'
   },
 
-  web: {
+
+
+  gcp: {
     NODE_ENV: 'production',
-    DB_HOST: 'nozomi.proxy.rlwy.net',
-    DB_PORT: '36062',
+    DB_HOST: '35.238.111.59',  // IP de Cloud SQL
+    DB_PORT: '5432',
     DB_NAME: 'railway',
     DB_USER: 'postgres',
-    DB_PASSWORD: 'NbAgEaAyMkpekkPXOeMPTHDEbKIcNwpw',
+    DB_PASSWORD: 'ProsDatabase2024!',  // Contraseña de Cloud SQL
     DB_SSL: 'true',
     DIAN_AMBIENTE: 'PRODUCCION',
     DIAN_URL_ENVIO: 'https://vpfe.dian.gov.co/WcfDianCustomerServices.svc',
     DIAN_URL_CONSULTA: 'https://catalogo-vpfe.dian.gov.co/Document/FindDocument',
-    API_PORT: '3000',
+    API_PORT: '8080',  // Cloud Run usa puerto 8080
     LOG_LEVEL: 'info',
-    VERCEL_URL: 'https://tu-app.vercel.app',
-    CORS_ORIGIN: 'https://tu-app.vercel.app'
+    CLOUD_RUN_URL: 'https://pros-app-pcpcxb6r5a-uc.a.run.app',  // URL real de Cloud Run
+    CORS_ORIGIN: 'https://pros-app-pcpcxb6r5a-uc.a.run.app',
+    K_SERVICE: 'pros-app',  // Identificador de Cloud Run
+    GOOGLE_CLOUD_PROJECT: 'pros-sistema-empresarial'
   }
 };
 
@@ -150,7 +154,7 @@ function main() {
   switch (command) {
     case 'switch':
       if (!environment) {
-        console.error('❌ Especifica el ambiente: dev, prod, testing, web');
+        console.error('❌ Especifica el ambiente: dev, prod, testing, gcp');
         return;
       }
       
@@ -161,7 +165,8 @@ function main() {
         'production': 'production',
         'test': 'testing',
         'testing': 'testing',
-        'web': 'web'
+        'gcp': 'gcp',
+        'cloud': 'gcp'
       };
       
       const targetEnv = envMap[environment.toLowerCase()];
@@ -187,14 +192,14 @@ function main() {
       console.log('  node config-manager.js switch dev     # Cambiar a desarrollo');
       console.log('  node config-manager.js switch prod    # Cambiar a producción');
       console.log('  node config-manager.js switch test    # Cambiar a testing');
-      console.log('  node config-manager.js switch web     # Cambiar a producción web');
+      console.log('  node config-manager.js switch gcp     # Cambiar a Google Cloud Platform');
       console.log('  node config-manager.js show           # Ver configuración actual');
       console.log('  node config-manager.js list           # Listar ambientes');
       console.log('');
       console.log('También puedes usar los scripts de package.json:');
       console.log('  npm run dev                           # Modo desarrollo');
-      console.log('  npm run prod                          # Modo producción');
-      console.log('  npm run web                           # Modo producción web');
+      console.log('  npm run env:prod                      # Modo producción');
+      console.log('  npm run env:gcp                       # Modo Google Cloud Platform');
   }
 }
 

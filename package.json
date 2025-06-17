@@ -9,7 +9,22 @@
     "preview": "vite preview",
     "server": "node src/server.js",
     "start": "npm run dev",
-    "web": "node config-manager.js switch web && npm run build"
+    "build:prod": "npm run env:gcp && npm run build",
+    "env:dev": "node config-manager.js switch dev",
+    "env:prod": "node config-manager.js switch prod",
+
+    "env:gcp": "node config-manager.js switch gcp",
+    "env:test": "node config-manager.js switch test",
+    "env:show": "node config-manager.js show",
+    "env:list": "node config-manager.js list",
+    "dev:full": "npm run env:dev && npm run server & npm run dev",
+
+    "deploy:gcp": "chmod +x ./scripts/deploy-gcp.sh && ./scripts/deploy-gcp.sh",
+    "gcp:build": "gcloud builds submit --tag gcr.io/pros-sistema-empresarial/pros-app .",
+    "gcp:deploy": "gcloud run deploy pros-app --image gcr.io/pros-sistema-empresarial/pros-app --region us-central1 --platform managed --allow-unauthenticated",
+    "db:init": "node scripts/init-cloud-database.js",
+    "db:reset": "node scripts/init-cloud-database.js",
+    "db:tables": "node scripts/create-tables-only.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -44,6 +59,7 @@
     "lucide-react": "^0.285.0",
     "moment": "^2.30.1",
     "mssql": "^11.0.1",
+    "node-fetch": "^3.3.2",
     "node-forge": "^1.3.1",
     "pg": "^8.16.0",
     "react": "^18.2.0",

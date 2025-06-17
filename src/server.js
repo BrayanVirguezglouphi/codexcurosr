@@ -15,17 +15,50 @@ import tiposTransaccionRoutes from './routes/tiposTransaccion.js';
 
 import setupRelationships from './models/relationships.js';
 import catalogosRouter from './routes/catalogos.js';
+import { testConnection } from './config/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Inicializar conexión de base de datos para Vercel
+let dbInitialized = false;
+const initializeDatabase = async () => {
+  if (!dbInitialized) {
+    console.log('🔄 Inicializando base de datos para Vercel...');
+    const connected = await testConnection();
+    if (connected) {
+      setupRelationships();
+      dbInitialized = true;
+      console.log('✅ Base de datos inicializada correctamente en Vercel');
+    }
+    return connected;
+  }
+  return true;
+};
+
 // Configurar CORS
 app.use(cors());
 
 // Middleware para parsear JSON
 app.use(express.json());
+
+// Middleware para inicializar base de datos en Vercel
+if (process.env.VERCEL === '1') {
+  app.use(async (req, res, next) => {
+    try {
+      await initializeDatabase();
+      next();
+    } catch (error) {
+      console.error('❌ Error inicializando base de datos:', error);
+      res.status(500).json({ 
+        error: 'Error de conexión a base de datos',
+        message: 'No se pudo conectar a la base de datos'
+      });
+    }
+  });
+}
 
 // Log de variables de entorno en Vercel para debugging
 if (process.env.VERCEL === '1') {
@@ -37,20 +70,37 @@ if (process.env.VERCEL === '1') {
   console.log('- DB_SSL:', process.env.DB_SSL);
 }
 
-// Servir archivos estáticos
-app.use(express.static(path.join(__dirname, '../public')));
+// Servir archivos estáticos del build de producción
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // Ruta de salud para verificar que el servidor funciona
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    database: {
-      host: process.env.DB_HOST,
-      name: process.env.DB_NAME
-    }
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbConnected = await initializeDatabase();
+    res.json({ 
+      status: 'OK', 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      isVercel: process.env.VERCEL === '1',
+      database: {
+        host: process.env.DB_HOST,
+        name: process.env.DB_NAME,
+        connected: dbConnected,
+        initialized: dbInitialized
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      database: {
+        host: process.env.DB_HOST,
+        name: process.env.DB_NAME,
+        connected: false
+      }
+    });
+  }
 });
 
 // Configurar rutas
@@ -67,8 +117,11 @@ app.use('/api/tipos-transaccion', tiposTransaccionRoutes);
 
 app.use('/api/catalogos', catalogosRouter);
 
-// Establecer las relaciones entre modelos
-setupRelationships();
+// Ruta catch-all para servir la aplicación React
+// Esto debe ir DESPUÉS de todas las rutas API
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
 
 // Manejo de errores mejorado para Vercel
 app.use((err, req, res, next) => {
@@ -90,11 +143,13 @@ app.use((err, req, res, next) => {
 // Para desarrollo local, arrancar el servidor
 // Solo NO arrancar si estamos específicamente en Vercel
 if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 5000;
+  // Cloud Run usa puerto 8080 por defecto
+  const PORT = process.env.PORT || (process.env.CLOUD_RUN_URL ? 8080 : 5000);
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
     console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`VERCEL: ${process.env.VERCEL}`);
+    console.log(`CLOUD_RUN_URL: ${process.env.CLOUD_RUN_URL}`);
   });
 }
 
