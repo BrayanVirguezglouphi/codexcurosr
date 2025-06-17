@@ -1,8 +1,8 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
 
-// Solo cargar dotenv si no estamos en Vercel
-if (process.env.VERCEL !== '1') {
+// Cargar variables de entorno (excepto en producción Cloud Run)
+if (!process.env.K_SERVICE) {
   dotenv.config();
 }
 
@@ -11,7 +11,7 @@ console.log('Variables de entorno disponibles:');
 console.log('DB_HOST:', process.env.DB_HOST);
 console.log('DB_NAME:', process.env.DB_NAME);
 console.log('DB_USER:', process.env.DB_USER);
-console.log('VERCEL:', process.env.VERCEL);
+console.log('CLOUD_RUN:', process.env.K_SERVICE || 'No');
 
 // Configuración de conexión con variables de entorno
 const dbConfig = {
@@ -29,8 +29,8 @@ console.log(`   Database: ${dbConfig.database}`);
 console.log(`   User: ${dbConfig.username}`);
 console.log(`   Password: ${'*'.repeat(dbConfig.password.length)}`);
 
-// Configuración especial para Vercel (funciones serverless)
-const isVercel = process.env.VERCEL === '1';
+// Configuración especial para Cloud Run (stateless containers)
+const isCloudRun = process.env.K_SERVICE ? true : false;
 
 const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.password, {
   host: dbConfig.host,
@@ -38,10 +38,10 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
   dialect: dbConfig.dialect,
   logging: false, // Desactivar logging en producción para funciones serverless
   pool: {
-    max: isVercel ? 3 : 10,        // Menos conexiones en Vercel
+    max: isCloudRun ? 5 : 10,        // Menos conexiones en Cloud Run
     min: 0,         // Mínimo de conexiones
-    acquire: isVercel ? 10000 : 30000, // Timeout más corto en Vercel
-    idle: isVercel ? 5000 : 10000     // Liberar conexiones más rápido en Vercel
+    acquire: isCloudRun ? 15000 : 30000, // Timeout más corto en Cloud Run
+    idle: isCloudRun ? 10000 : 10000     // Liberar conexiones más rápido en Cloud Run
   },
   dialectOptions: {
     // Para conexiones SSL si es necesario
@@ -49,12 +49,12 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
       require: true,
       rejectUnauthorized: false
     } : false,
-    // Timeout de conexión más corto para serverless
-    connectTimeout: isVercel ? 10000 : 30000
+    // Timeout de conexión más corto para containers
+    connectTimeout: isCloudRun ? 15000 : 30000
   },
   // Reintentos de conexión
   retry: {
-    max: isVercel ? 1 : 3
+    max: isCloudRun ? 2 : 3
   }
 });
 
@@ -78,8 +78,8 @@ export const testConnection = async () => {
   }
 };
 
-// Solo probar conexión automáticamente si no estamos en Vercel
-if (process.env.VERCEL !== '1') {
+// Solo probar conexión automáticamente si no estamos en Cloud Run
+if (!process.env.K_SERVICE) {
   testConnection();
 }
 

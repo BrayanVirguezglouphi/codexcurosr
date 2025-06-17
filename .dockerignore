@@ -1,0 +1,82 @@
+# Node.js
+node_modules
+npm-debug.log*
+
+# Build outputs
+dist
+build
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Vite build cache
+.vite
+
+# Development files
+*.md
+README*
+DOCUMENTATION*
+INSTRUCCIONES*
+VERIFICACION*
+SOLUCION*
+
+# Git
+.git
+.gitignore
+
+# IDEs
+.vscode
+.idea
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Test files
+test*
+*.test.js
+*.spec.js
+
+# Railway/Vercel specific
+railway.toml
+vercel.json
+
+# Scripts de desarrollo
+scripts/migrate-*
+debug-*
+verificar-*
+test-*
+
+# XML y archivos de prueba
+*.xml
+xmls-facturas-electronicas/
+*.csv
+
+# Archivos temporales
+temp/
+tmp/ 

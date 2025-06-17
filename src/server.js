@@ -70,8 +70,8 @@ if (process.env.VERCEL === '1') {
   console.log('- DB_SSL:', process.env.DB_SSL);
 }
 
-// Servir archivos estáticos
-app.use(express.static(path.join(__dirname, '../public')));
+// Servir archivos estáticos del build de producción
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // Ruta de salud para verificar que el servidor funciona
 app.get('/api/health', async (req, res) => {
@@ -117,6 +117,12 @@ app.use('/api/tipos-transaccion', tiposTransaccionRoutes);
 
 app.use('/api/catalogos', catalogosRouter);
 
+// Ruta catch-all para servir la aplicación React
+// Esto debe ir DESPUÉS de todas las rutas API
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 // Manejo de errores mejorado para Vercel
 app.use((err, req, res, next) => {
   console.error('Error en la aplicación:', err.message);
@@ -137,11 +143,13 @@ app.use((err, req, res, next) => {
 // Para desarrollo local, arrancar el servidor
 // Solo NO arrancar si estamos específicamente en Vercel
 if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 5000;
+  // Cloud Run usa puerto 8080 por defecto
+  const PORT = process.env.PORT || (process.env.CLOUD_RUN_URL ? 8080 : 5000);
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
     console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`VERCEL: ${process.env.VERCEL}`);
+    console.log(`CLOUD_RUN_URL: ${process.env.CLOUD_RUN_URL}`);
   });
 }
 
