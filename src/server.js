@@ -44,6 +44,21 @@ app.use(cors());
 // Middleware para parsear JSON
 app.use(express.json());
 
+// Middleware para inicializar base de datos bajo demanda
+app.use(async (req, res, next) => {
+  try {
+    if (!dbInitialized) {
+      console.log('🔄 Inicializando base de datos bajo demanda...');
+      await initializeDatabase();
+    }
+    next();
+  } catch (error) {
+    console.error('❌ Error inicializando base de datos:', error);
+    // No fallar, continuar sin BD por ahora
+    next();
+  }
+});
+
 // Middleware para inicializar base de datos en Vercel
 if (process.env.VERCEL === '1') {
   app.use(async (req, res, next) => {
@@ -163,18 +178,34 @@ const startServer = async () => {
   try {
     console.log('🚀 Iniciando servidor...');
     console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`PORT: ${PORT}`);
     console.log(`VERCEL: ${process.env.VERCEL}`);
     console.log(`K_SERVICE: ${process.env.K_SERVICE}`); // Cloud Run indicator
     
-    // Inicializar base de datos
-    await initializeDatabase();
+    // NO inicializar base de datos al arrancar para evitar timeout
+    // La base de datos se inicializará en el primer request
+    console.log('⏭️ Base de datos se inicializará en el primer request');
     
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
       console.log(`🌐 Listo para recibir conexiones`);
     });
+
+    // Timeout para el servidor
+    server.timeout = 60000; // 60 segundos
+    
+    // Manejar señales de cierre
+    process.on('SIGTERM', () => {
+      console.log('📡 Recibido SIGTERM, cerrando servidor...');
+      server.close(() => {
+        console.log('🔒 Servidor cerrado correctamente');
+        process.exit(0);
+      });
+    });
+
   } catch (error) {
     console.error('❌ Error al iniciar servidor:', error);
+    console.error('Stack:', error.stack);
     process.exit(1);
   }
 };
