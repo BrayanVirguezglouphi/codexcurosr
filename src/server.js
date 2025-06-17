@@ -15,7 +15,7 @@ import tiposTransaccionRoutes from './routes/tiposTransaccion.js';
 
 import setupRelationships from './models/relationships.js';
 import catalogosRouter from './routes/catalogos.js';
-import { testConnection } from './config/database.js';
+import { testConnection } from './config/database-gcp.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
