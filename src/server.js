@@ -120,7 +120,21 @@ app.use('/api/catalogos', catalogosRouter);
 // Ruta catch-all para servir la aplicación React
 // Esto debe ir DESPUÉS de todas las rutas API
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+  try {
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error sirviendo index.html:', err);
+        res.status(500).send('Error interno del servidor');
+      }
+    });
+  } catch (error) {
+    console.error('Error en catch-all route:', error);
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      message: 'No se pudo servir la aplicación'
+    });
+  }
 });
 
 // Manejo de errores mejorado para Vercel
