@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Empresarial - TEST</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            color: #fff;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .status-card {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #00ff88;
+        }
+        
+        .status-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00ff88;
+        }
+        
+        .status-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .test-buttons {
+            margin: 30px 0;
+        }
+        
+        .test-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px 0 rgba(236, 116, 149, 0.75);
+            transition: all 0.3s ease;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px 0 rgba(236, 116, 149, 0.9);
+        }
+        
+        .timestamp {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Sistema Empresarial</h1>
+        <p style="font-size: 1.2em; margin-bottom: 30px;">
+            Plataforma integrada de gestión empresarial en Google Cloud
+        </p>
+        
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-title">🌐 Servidor</div>
+                <div class="status-value">ACTIVO</div>
+            </div>
+            <div class="status-card">
+                <div class="status-title">🔌 Puerto</div>
+                <div class="status-value">8080</div>
+            </div>
+            <div class="status-card">
+                <div class="status-title">🏭 Ambiente</div>
+                <div class="status-value">PROD</div>
+            </div>
+            <div class="status-card">
+                <div class="status-title">💾 Base de Datos</div>
+                <div class="status-value">Cloud SQL</div>
+            </div>
+        </div>
+        
+        <div class="test-buttons">
+            <button class="test-btn" onclick="window.location.href='/api/health'">
+                🔍 Health Check
+            </button>
+            <button class="test-btn" onclick="window.location.href='/api/facturas'">
+                📄 Test API
+            </button>
+            <button class="test-btn" onclick="window.location.href='/api/transacciones'">
+                💰 Transacciones
+            </button>
+        </div>
+        
+        <div class="timestamp">
+            ⏰ Desplegado: <span id="timestamp"></span><br>
+            🎯 Proyecto: PROS Sistema Empresarial<br>
+            ✅ STATUS: Página de prueba funcionando correctamente
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString('es-ES');
+    </script>
+</body>
+</html> 

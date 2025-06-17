@@ -132,15 +132,28 @@ app.use('/api/tipos-transaccion', tiposTransaccionRoutes);
 
 app.use('/api/catalogos', catalogosRouter);
 
-// Ruta catch-all para servir la aplicación React
+// Ruta catch-all para servir la página de prueba
 // Esto debe ir DESPUÉS de todas las rutas API
 app.get('*', (req, res) => {
   try {
-    const indexPath = path.join(__dirname, '../dist/index.html');
-    res.sendFile(indexPath, (err) => {
+    // Primero intentar servir la página de prueba
+    const testIndexPath = path.join(__dirname, '../test-index.html');
+    res.sendFile(testIndexPath, (err) => {
       if (err) {
-        console.error('Error sirviendo index.html:', err);
-        res.status(500).send('Error interno del servidor');
+        console.error('Error sirviendo test-index.html:', err);
+        // Si falla, intentar con el index normal
+        const indexPath = path.join(__dirname, '../dist/index.html');
+        res.sendFile(indexPath, (err2) => {
+          if (err2) {
+            console.error('Error sirviendo index.html:', err2);
+            res.status(500).send(`
+              <h1>🚨 Error del Servidor</h1>
+              <p>No se pudo cargar la aplicación</p>
+              <p>Error: ${err2.message}</p>
+              <a href="/api/health">🔍 Verificar Health Check</a>
+            `);
+          }
+        });
       }
     });
   } catch (error) {
