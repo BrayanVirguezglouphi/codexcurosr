@@ -22,16 +22,16 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Inicializar conexión de base de datos para Vercel
+// Inicializar conexión de base de datos
 let dbInitialized = false;
 const initializeDatabase = async () => {
   if (!dbInitialized) {
-    console.log('🔄 Inicializando base de datos para Vercel...');
+    console.log('🔄 Inicializando base de datos...');
     const connected = await testConnection();
     if (connected) {
       setupRelationships();
       dbInitialized = true;
-      console.log('✅ Base de datos inicializada correctamente en Vercel');
+      console.log('✅ Base de datos inicializada correctamente');
     }
     return connected;
   }
@@ -140,17 +140,34 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Para desarrollo local, arrancar el servidor
-// Solo NO arrancar si estamos específicamente en Vercel
-if (!process.env.VERCEL) {
-  // Cloud Run usa puerto 8080 por defecto
-  const PORT = process.env.PORT || (process.env.CLOUD_RUN_URL ? 8080 : 5000);
-  app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
+// Inicializar el servidor para Cloud Run y desarrollo local
+// Cloud Run usa puerto 8080 por defecto
+const PORT = process.env.PORT || 8080;
+
+// Inicializar base de datos al arrancar (para Cloud Run)
+const startServer = async () => {
+  try {
+    console.log('🚀 Iniciando servidor...');
     console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`VERCEL: ${process.env.VERCEL}`);
-    console.log(`CLOUD_RUN_URL: ${process.env.CLOUD_RUN_URL}`);
-  });
+    console.log(`K_SERVICE: ${process.env.K_SERVICE}`); // Cloud Run indicator
+    
+    // Inicializar base de datos
+    await initializeDatabase();
+    
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
+      console.log(`🌐 Listo para recibir conexiones`);
+    });
+  } catch (error) {
+    console.error('❌ Error al iniciar servidor:', error);
+    process.exit(1);
+  }
+};
+
+// Solo NO arrancar si estamos específicamente en Vercel
+if (!process.env.VERCEL) {
+  startServer();
 }
 
 // Para Vercel (producción), exportar la app
