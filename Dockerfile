@@ -18,9 +18,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# Copia build y servidor
+# Copia build y servidor completo
 COPY --from=build /app/dist ./dist
-COPY src/server.js ./src/server.js
+COPY src/ ./src/
 
 EXPOSE 8080
 
