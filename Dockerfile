@@ -7,11 +7,17 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Instalar dependencias (incluyendo dev dependencies para el build)
+RUN npm ci
 
 # Copiar código fuente
 COPY . .
+
+# Construir la aplicación frontend
+RUN npm run build
+
+# Eliminar dev dependencies para reducir tamaño
+RUN npm prune --production
 
 # Crear directorio para logs
 RUN mkdir -p /app/logs

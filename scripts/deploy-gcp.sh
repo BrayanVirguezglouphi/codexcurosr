@@ -31,7 +31,7 @@ print_error() {
 
 # Verificar argumentos
 ENV=${1:-prod}
-PROJECT_ID="pros-sistema-empresarial"
+PROJECT_ID="inner-root-463214-j1"
 
 print_step "Iniciando despliegue a Google Cloud Platform"
 echo "Entorno: $ENV"

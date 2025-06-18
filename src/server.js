@@ -15,23 +15,23 @@ import tiposTransaccionRoutes from './routes/tiposTransaccion.js';
 
 import setupRelationships from './models/relationships.js';
 import catalogosRouter from './routes/catalogos.js';
-import { testConnection } from './config/database.js';
+import { testConnection } from './config/database-gcp.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Inicializar conexión de base de datos para Vercel
+// Inicializar conexión de base de datos
 let dbInitialized = false;
 const initializeDatabase = async () => {
   if (!dbInitialized) {
-    console.log('🔄 Inicializando base de datos para Vercel...');
+    console.log('🔄 Inicializando base de datos...');
     const connected = await testConnection();
     if (connected) {
       setupRelationships();
       dbInitialized = true;
-      console.log('✅ Base de datos inicializada correctamente en Vercel');
+      console.log('✅ Base de datos inicializada correctamente');
     }
     return connected;
   }
@@ -43,6 +43,21 @@ app.use(cors());
 
 // Middleware para parsear JSON
 app.use(express.json());
+
+// Middleware para inicializar base de datos bajo demanda
+app.use(async (req, res, next) => {
+  try {
+    if (!dbInitialized) {
+      console.log('🔄 Inicializando base de datos bajo demanda...');
+      await initializeDatabase();
+    }
+    next();
+  } catch (error) {
+    console.error('❌ Error inicializando base de datos:', error);
+    // No fallar, continuar sin BD por ahora
+    next();
+  }
+});
 
 // Middleware para inicializar base de datos en Vercel
 if (process.env.VERCEL === '1') {
@@ -117,10 +132,37 @@ app.use('/api/tipos-transaccion', tiposTransaccionRoutes);
 
 app.use('/api/catalogos', catalogosRouter);
 
-// Ruta catch-all para servir la aplicación React
+// Ruta catch-all para servir la página de prueba
 // Esto debe ir DESPUÉS de todas las rutas API
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+  try {
+    // Primero intentar servir la página de prueba
+    const testIndexPath = path.join(__dirname, '../test-index.html');
+    res.sendFile(testIndexPath, (err) => {
+      if (err) {
+        console.error('Error sirviendo test-index.html:', err);
+        // Si falla, intentar con el index normal
+        const indexPath = path.join(__dirname, '../dist/index.html');
+        res.sendFile(indexPath, (err2) => {
+          if (err2) {
+            console.error('Error sirviendo index.html:', err2);
+            res.status(500).send(`
+              <h1>🚨 Error del Servidor</h1>
+              <p>No se pudo cargar la aplicación</p>
+              <p>Error: ${err2.message}</p>
+              <a href="/api/health">🔍 Verificar Health Check</a>
+            `);
+          }
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error en catch-all route:', error);
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      message: 'No se pudo servir la aplicación'
+    });
+  }
 });
 
 // Manejo de errores mejorado para Vercel
@@ -140,17 +182,50 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Para desarrollo local, arrancar el servidor
+// Inicializar el servidor para Cloud Run y desarrollo local
+// Cloud Run usa puerto 8080 por defecto
+const PORT = process.env.PORT || 8080;
+
+// Inicializar base de datos al arrancar (para Cloud Run)
+const startServer = async () => {
+  try {
+    console.log('🚀 Iniciando servidor...');
+    console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`PORT: ${PORT}`);
+    console.log(`VERCEL: ${process.env.VERCEL}`);
+    console.log(`K_SERVICE: ${process.env.K_SERVICE}`); // Cloud Run indicator
+    
+    // NO inicializar base de datos al arrancar para evitar timeout
+    // La base de datos se inicializará en el primer request
+    console.log('⏭️ Base de datos se inicializará en el primer request');
+    
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
+      console.log(`🌐 Listo para recibir conexiones`);
+    });
+
+    // Timeout para el servidor
+    server.timeout = 60000; // 60 segundos
+    
+    // Manejar señales de cierre
+    process.on('SIGTERM', () => {
+      console.log('📡 Recibido SIGTERM, cerrando servidor...');
+      server.close(() => {
+        console.log('🔒 Servidor cerrado correctamente');
+        process.exit(0);
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Error al iniciar servidor:', error);
+    console.error('Stack:', error.stack);
+    process.exit(1);
+  }
+};
+
 // Solo NO arrancar si estamos específicamente en Vercel
 if (!process.env.VERCEL) {
-  // Cloud Run usa puerto 8080 por defecto
-  const PORT = process.env.PORT || (process.env.CLOUD_RUN_URL ? 8080 : 5000);
-  app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
-    console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
-    console.log(`VERCEL: ${process.env.VERCEL}`);
-    console.log(`CLOUD_RUN_URL: ${process.env.CLOUD_RUN_URL}`);
-  });
+  startServer();
 }
 
 // Para Vercel (producción), exportar la app
