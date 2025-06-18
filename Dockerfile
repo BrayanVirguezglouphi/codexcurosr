@@ -24,4 +24,4 @@ COPY src/ ./src/
 
 EXPOSE 8080
 
-CMD ["node", "src/server.js"]
+CMD ["node", "--no-warnings", "src/server.js"]
