@@ -184,9 +184,8 @@ const CrearTerceroDialog = ({ open, onClose, onTerceroCreado }) => {
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch('/api/terceros', {
+      const response = await apiCall('/api/terceros', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 

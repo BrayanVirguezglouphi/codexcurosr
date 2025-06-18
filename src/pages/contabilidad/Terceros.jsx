@@ -330,11 +330,8 @@ const Terceros = () => {
           }
 
           // Enviar al backend
-          const response = await fetch('/api/terceros/bulk-create', {
+          const response = await apiCall('/api/terceros/bulk-create', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
             body: JSON.stringify({ terceros: nuevosTerceros }),
           });
 
@@ -366,7 +363,7 @@ const Terceros = () => {
   const eliminarTercero = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este tercero?')) {
       try {
-        const response = await fetch(`/api/terceros/${id}`, {
+        const response = await apiCall(`/api/terceros/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -693,11 +690,8 @@ const Terceros = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`/api/terceros/${terceroId}`, {
+      const response = await apiCall(`/api/terceros/${terceroId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updatedData),
       });
 
