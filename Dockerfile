@@ -53,6 +53,7 @@ RUN echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf && \
     echo '[program:node]' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo 'command=node src/server.js' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo 'directory=/app' >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo 'environment=BACKEND_PORT=3000,NODE_ENV=production' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf
 
@@ -64,5 +65,5 @@ ENV NODE_ENV=production
 ENV PORT=8080
 ENV BACKEND_PORT=3000
 
-# Comando para iniciar supervisor (con ajuste de puerto para Cloud Run)
-CMD ["sh", "-c", "sed -i 's/listen 80;/listen 8080;/' /etc/nginx/nginx.conf && sed -i 's/localhost:8080/localhost:3000/' /etc/nginx/nginx.conf && sed -i 's/command=node src\\/server.js/command=BACKEND_PORT=3000 node src\\/server.js/' /etc/supervisor/conf.d/supervisord.conf && /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"] 
+# Comando para iniciar supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"] 
