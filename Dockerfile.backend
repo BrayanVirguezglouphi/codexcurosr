@@ -13,8 +13,8 @@ RUN npm ci --only=production
 # Instalar pg específicamente
 RUN npm install pg
 
-# Copiar servidor backend completo
-COPY backend-server-full.cjs ./backend-server.cjs
+# Copiar servidor backend corregido
+COPY backend-server-fixed.cjs ./backend-server.cjs
 
 # Exponer puerto 8080
 EXPOSE 8080
