@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// import facturasRoutes from './routes/facturas.js';
-// import transaccionesRoutes from './routes/transacciones.js';
+import facturasRoutes from './routes/facturas.js';
+import transaccionesRoutes from './routes/transacciones.js';
 // import impuestosRoutes from './routes/impuestos.js';
 // import tercerosRoutes from './routes/terceros.js';
 // import contratosRoutes from './routes/contratos.js';
@@ -85,9 +85,6 @@ if (process.env.VERCEL === '1') {
   console.log('- DB_SSL:', process.env.DB_SSL);
 }
 
-// Servir archivos estáticos del build de producción
-app.use(express.static(path.join(__dirname, '../dist')));
-
 // Ruta de salud para verificar que el servidor funciona
 app.get('/api/health', async (req, res) => {
   try {
@@ -119,8 +116,8 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Configurar rutas (temporalmente comentadas para debugging)
-// app.use('/api/facturas', facturasRoutes);
-// app.use('/api/transacciones', transaccionesRoutes);
+app.use('/api/facturas', facturasRoutes);
+app.use('/api/transacciones', transaccionesRoutes);
 // app.use('/api/impuestos', impuestosRoutes);
 // app.use('/api/terceros', tercerosRoutes);
 // app.use('/api/contratos', contratosRoutes);
@@ -132,9 +129,12 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/catalogos', catalogosRouter);
 
+// Servir archivos estáticos del build de producción DESPUÉS de las rutas API
+app.use(express.static(path.join(__dirname, '../dist')));
+
 // Ruta catch-all para servir la página de prueba
 // Esto debe ir DESPUÉS de todas las rutas API
-app.get('*', (req, res) => {
+app.use((req, res) => {
   try {
     // Primero intentar servir la página de prueba
     const testIndexPath = path.join(__dirname, '../test-index.html');

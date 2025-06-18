@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/database.js';
+import sequelize from '../config/database-gcp.js';
 
 const Factura = sequelize.define('Factura', {
   id_factura: {

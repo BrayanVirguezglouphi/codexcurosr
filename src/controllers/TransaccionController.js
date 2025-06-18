@@ -8,36 +8,15 @@ import Concepto from '../models/Concepto.js';
 
 export const getAllTransacciones = async (req, res) => {
   try {
+    console.log('🔍 Obteniendo transacciones...');
     const transacciones = await Transaccion.findAll({
-      include: [
-        { model: Cuenta, as: 'cuenta', attributes: ['titulo_cuenta'] },
-        { model: Cuenta, as: 'cuentaDestino', attributes: ['titulo_cuenta'] },
-        { model: TipoTransaccion, as: 'tipoTransaccion', attributes: ['tipo_transaccion'] },
-        { model: Moneda, as: 'moneda', attributes: ['nombre_moneda'] },
-        { model: EtiquetaContable, as: 'etiquetaContable', attributes: ['etiqueta_contable'] },
-        { model: Tercero, as: 'tercero', attributes: ['primer_nombre', 'primer_apellido', 'razon_social'] },
-        { model: Concepto, as: 'concepto', attributes: ['concepto_dian'] }
-      ],
       order: [['fecha_transaccion', 'DESC']]
     });
-    const transaccionesProcesadas = transacciones.map(t => {
-      const tercero = t.tercero;
-      let nombre_tercero = null;
-      if (tercero) {
-        if (tercero.razon_social) {
-          nombre_tercero = tercero.razon_social;
-        } else if (tercero.primer_nombre || tercero.primer_apellido) {
-          nombre_tercero = `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim();
-        }
-      }
-      return {
-        ...t.toJSON(),
-        nombre_tercero: nombre_tercero || '-'
-      };
-    });
-    res.json(transaccionesProcesadas);
+    console.log(`✅ Encontradas ${transacciones.length} transacciones`);
+    res.json(transacciones);
   } catch (error) {
-    console.error('Error al obtener transacciones:', error);
+    console.error('❌ Error al obtener transacciones:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({ message: error.message });
   }
 };
