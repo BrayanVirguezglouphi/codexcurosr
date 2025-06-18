@@ -64,7 +64,7 @@ const Dashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-3xl font-bold tracking-tight">Bienvenidos al sistema desarrollado por Glouphi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Sistema Empresarial ENTER</h1>
         <p className="text-muted-foreground mt-2">
           Gestione todos los aspectos de su empresa desde un solo lugar
         </p>
