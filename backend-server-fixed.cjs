@@ -5,7 +5,7 @@ const { Pool } = require('pg');
 
 // Backend con operaciones CRUD completas - v1.1 (Force deployment)
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8081;
 
 // Middleware básico
 app.use(cors());

@@ -1,7 +1,7 @@
 // Configuración de API para diferentes entornos
 const API_CONFIG = {
   development: {
-    baseURL: 'http://localhost:8080'
+    baseURL: 'http://localhost:8081'
   },
   production: {
     baseURL: 'https://pros-backend-996366858087.us-central1.run.app'
