@@ -68,11 +68,11 @@ const configs = {
 
   gcp: {
     NODE_ENV: 'production',
-    DB_HOST: '35.238.111.59',  // IP de Cloud SQL
+    DB_HOST: '35.238.111.59',  // IP pública de Cloud SQL
     DB_PORT: '5432',
-    DB_NAME: 'railway',
+    DB_NAME: 'SQL_DDL_ADMCOT',  // Base de datos en Cloud SQL
     DB_USER: 'postgres',
-    DB_PASSWORD: 'ProsDatabase2024!',  // Contraseña de Cloud SQL
+    DB_PASSWORD: '123456789',  // Contraseña de Cloud SQL
     DB_SSL: 'true',
     DIAN_AMBIENTE: 'PRODUCCION',
     DIAN_URL_ENVIO: 'https://vpfe.dian.gov.co/WcfDianCustomerServices.svc',
