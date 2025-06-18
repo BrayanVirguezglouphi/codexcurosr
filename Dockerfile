@@ -1,5 +1,5 @@
 # Usar imagen base de Node.js 18
-FROM node:18-alpine as build
+FROM node:18-alpine
 
 # Establecer directorio de trabajo
 WORKDIR /app
@@ -7,29 +7,26 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias (incluyendo dev dependencies para el build)
-RUN npm install
+# Instalar SOLO dependencias de producción
+RUN npm ci --only=production
 
 # Copiar código fuente
 COPY . .
 
-# Construir la aplicación frontend
-RUN npm run build
+# Crear usuario no-root para seguridad
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
 
-# Etapa de producción con Nginx
-FROM nginx:1.25.3-alpine
+# Cambiar ownership de archivos
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
-# Copiar configuración de nginx
-COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
-
-# Copiar archivos build
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Exponer puerto 8080
+# Exponer puerto 8080 (Cloud Run requirement)
 EXPOSE 8080
 
 # Variables de entorno
+ENV NODE_ENV=production
 ENV PORT=8080
 
-# Comando para iniciar nginx en puerto 8080
-CMD ["sh", "-c", "sed -i 's/listen 80;/listen 8080;/' /etc/nginx/nginx.conf && nginx -g 'daemon off;'"] 
+# Comando para iniciar la aplicación Node.js
+CMD ["node", "src/server.js"] 
