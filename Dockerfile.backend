@@ -1,0 +1,24 @@
+# Dockerfile para backend API
+FROM node:18-alpine
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+
+# Instalar solo dependencias de producción
+RUN npm ci --only=production
+
+# Copiar servidor backend que funciona
+COPY backend-server.cjs ./
+
+# Exponer puerto 8080
+EXPOSE 8080
+
+# Variables de entorno
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Comando para iniciar el servidor backend
+CMD ["node", "backend-server.cjs"] 

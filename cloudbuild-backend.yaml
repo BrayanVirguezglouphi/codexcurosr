@@ -1,0 +1,29 @@
+steps:
+  # Build backend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.backend', '-t', 'gcr.io/$PROJECT_ID/pros-backend:$BUILD_ID', '.']
+  
+  # Push backend image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/pros-backend:$BUILD_ID']
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'pros-backend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/pros-backend:$BUILD_ID'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,PORT=8080'
+
+options:
+  logging: CLOUD_LOGGING_ONLY 
