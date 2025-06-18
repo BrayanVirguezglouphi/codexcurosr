@@ -1,5 +1,5 @@
-# Build stage
-FROM node:18-alpine as build
+# Etapa de build
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
@@ -9,19 +9,18 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Production stage — usar solo Node
+# Etapa final de producción
 FROM node:18-alpine
 
 WORKDIR /app
 
+# Copia package.json (con "type": "module") y reinstala dependencias de prod
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# Copiar la carpeta dist (frontend compilado)
+# Copia build y servidor
 COPY --from=build /app/dist ./dist
-
-# Copiar toda la carpeta src (backend completo)
-COPY src/ ./src/
+COPY src/server.js ./src/server.js
 
 EXPOSE 8080
 
