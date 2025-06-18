@@ -1,5 +1,5 @@
 # Usar imagen base de Node.js 18
-FROM node:18-alpine
+FROM node:18-alpine as build
 
 # Establecer directorio de trabajo
 WORKDIR /app
@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependencias (incluyendo dev dependencies para el build)
-RUN npm ci
+RUN npm install
 
 # Copiar código fuente
 COPY . .
@@ -16,18 +16,20 @@ COPY . .
 # Construir la aplicación frontend
 RUN npm run build
 
-# Eliminar dev dependencies para reducir tamaño
-RUN npm prune --production
+# Etapa de producción con Nginx
+FROM nginx:1.25.3-alpine
 
-# Crear directorio para logs
-RUN mkdir -p /app/logs
+# Copiar configuración de nginx
+COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 
-# Exponer puerto
+# Copiar archivos build
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Exponer puerto 8080
 EXPOSE 8080
 
-# Variables de entorno por defecto
-ENV NODE_ENV=production
+# Variables de entorno
 ENV PORT=8080
 
-# Comando para iniciar la aplicación
-CMD ["node", "src/server.js"] 
+# Comando para iniciar nginx en puerto 8080
+CMD ["sh", "-c", "sed -i 's/listen 80;/listen 8080;/' /etc/nginx/nginx.conf && nginx -g 'daemon off;'"] 
