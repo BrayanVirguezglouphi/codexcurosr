@@ -2,16 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import facturasRoutes from './routes/facturas.js';
-import transaccionesRoutes from './routes/transacciones.js';
-import impuestosRoutes from './routes/impuestos.js';
-import tercerosRoutes from './routes/terceros.js';
-import contratosRoutes from './routes/contratos.js';
-import lineasServiciosRoutes from './routes/lineasServicios.js';
-import centrosCostosRoutes from './routes/centrosCostos.js';
-import etiquetasContablesRoutes from './routes/etiquetasContables.js';
-import conceptosTransaccionesRoutes from './routes/conceptosTransacciones.js';
-import tiposTransaccionRoutes from './routes/tiposTransaccion.js';
+// import facturasRoutes from './routes/facturas.js';
+// import transaccionesRoutes from './routes/transacciones.js';
+// import impuestosRoutes from './routes/impuestos.js';
+// import tercerosRoutes from './routes/terceros.js';
+// import contratosRoutes from './routes/contratos.js';
+// import lineasServiciosRoutes from './routes/lineasServicios.js';
+// import centrosCostosRoutes from './routes/centrosCostos.js';
+// import etiquetasContablesRoutes from './routes/etiquetasContables.js';
+// import conceptosTransaccionesRoutes from './routes/conceptosTransacciones.js';
+// import tiposTransaccionRoutes from './routes/tiposTransaccion.js';
 
 import setupRelationships from './models/relationships.js';
 import catalogosRouter from './routes/catalogos.js';
@@ -118,17 +118,17 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Configurar rutas
-app.use('/api/facturas', facturasRoutes);
-app.use('/api/transacciones', transaccionesRoutes);
-app.use('/api/impuestos', impuestosRoutes);
-app.use('/api/terceros', tercerosRoutes);
-app.use('/api/contratos', contratosRoutes);
-app.use('/api/lineas-servicios', lineasServiciosRoutes);
-app.use('/api/centros-costos', centrosCostosRoutes);
-app.use('/api/etiquetas-contables', etiquetasContablesRoutes);
-app.use('/api/conceptos-transacciones', conceptosTransaccionesRoutes);
-app.use('/api/tipos-transaccion', tiposTransaccionRoutes);
+// Configurar rutas (temporalmente comentadas para debugging)
+// app.use('/api/facturas', facturasRoutes);
+// app.use('/api/transacciones', transaccionesRoutes);
+// app.use('/api/impuestos', impuestosRoutes);
+// app.use('/api/terceros', tercerosRoutes);
+// app.use('/api/contratos', contratosRoutes);
+// app.use('/api/lineas-servicios', lineasServiciosRoutes);
+// app.use('/api/centros-costos', centrosCostosRoutes);
+// app.use('/api/etiquetas-contables', etiquetasContablesRoutes);
+// app.use('/api/conceptos-transacciones', conceptosTransaccionesRoutes);
+// app.use('/api/tipos-transaccion', tiposTransaccionRoutes);
 
 app.use('/api/catalogos', catalogosRouter);
 
