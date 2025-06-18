@@ -17,9 +17,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# Copiar solo la carpeta `dist` y `server.js`
+# Copiar la carpeta dist (frontend compilado)
 COPY --from=build /app/dist ./dist
-COPY src/server.js ./src/server.js
+
+# Copiar toda la carpeta src (backend completo)
+COPY src/ ./src/
 
 EXPOSE 8080
 
