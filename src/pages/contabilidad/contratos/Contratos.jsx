@@ -1,1 +1,1 @@
-fetch('/api/contratos') 
+apiCall('/api/contratos') 

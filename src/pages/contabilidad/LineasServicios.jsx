@@ -21,6 +21,7 @@ import ExportDialog from '@/components/ui/export-dialog';
 import ImportDialog from '@/components/ui/import-dialog';
 import { toast as toastImport } from 'react-hot-toast';
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 
 const LineasServicios = () => {
   const [lineasServicios, setLineasServicios] = useState([]);
@@ -299,7 +300,7 @@ const LineasServicios = () => {
   // Cargar líneas de servicios
   const cargarLineasServicios = async () => {
     try {
-      const response = await fetch('/api/lineas-servicios');
+      const response = await apiCall('/api/lineas-servicios');
       const data = await response.json();
       setLineasServicios(data);
     } catch (error) {

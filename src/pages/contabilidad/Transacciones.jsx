@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { api } from '@/config/api';
 import {
   Table,
   TableBody,
@@ -77,7 +78,7 @@ const Transacciones = () => {
     const maxRetries = 3;
     try {
       console.log(`🔄 Cargando transacciones... (intento ${retryCount + 1}/${maxRetries + 1})`);
-      const response = await fetch('/api/transacciones');
+      const response = await api.getTransacciones();
       console.log('📡 Response status:', response.status);
       console.log('📡 Response headers:', response.headers);
       console.log('📡 Content-Type:', response.headers.get('content-type'));
@@ -141,9 +142,7 @@ const Transacciones = () => {
     if (window.confirm('¿Está seguro de que desea anular esta transacción?')) {
       try {
         console.log('🗑️ Eliminando transacción:', id);
-        const response = await fetch(`/api/transacciones/${id}`, {
-          method: 'DELETE',
-        });
+        const response = await api.deleteTransaccion(id);
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -597,13 +596,7 @@ const Transacciones = () => {
     try {
       console.log('💾 Guardando cambio en celda:', { transaccionId, field, newValue });
       const updatedData = { [field]: newValue };
-      const response = await fetch(`/api/transacciones/${transaccionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedData),
-      });
+      const response = await api.updateTransaccion(transaccionId, updatedData);
 
       console.log('📡 PUT Response status:', response.status);
       console.log('📡 PUT Content-Type:', response.headers.get('content-type'));
@@ -660,13 +653,7 @@ const Transacciones = () => {
         const changes = editedTransacciones[transaccionId];
         console.log('💾 Actualizando transacción:', transaccionId, changes);
         
-        const response = await fetch(`/api/transacciones/${transaccionId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(changes),
-        });
+        const response = await api.updateTransaccion(transaccionId, changes);
 
         if (!response.ok) {
           const errorText = await response.text();

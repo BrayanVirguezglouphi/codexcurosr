@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import { useForm } from 'react-hook-form';
 import { FileText, User, Calendar, DollarSign, X } from 'lucide-react';
 
@@ -25,9 +26,9 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
   useEffect(() => {
     if (open) {
       Promise.all([
-        fetch('/api/catalogos/contratos').then(r => r.json()),
-        fetch('/api/catalogos/monedas').then(r => r.json()),
-        fetch('/api/catalogos/taxes').then(r => r.json())
+        apiCall('/api/catalogos/contratos').then(r => r.json()),
+        apiCall('/api/catalogos/monedas').then(r => r.json()),
+        apiCall('/api/catalogos/taxes').then(r => r.json())
       ]).then(([contratosData, monedasData, taxesData]) => {
         setContratos(contratosData);
         setMonedas(monedasData);

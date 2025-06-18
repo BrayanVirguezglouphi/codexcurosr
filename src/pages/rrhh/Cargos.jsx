@@ -34,7 +34,7 @@ const Cargos = () => {
 
   const fetchCargos = async () => {
     try {
-      const response = await fetch('/api/cargos');
+      const response = await apiCall('/api/cargos');
       const data = await response.json();
       setCargos(data);
     } catch (error) {

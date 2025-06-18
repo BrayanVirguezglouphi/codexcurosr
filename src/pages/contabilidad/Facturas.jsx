@@ -25,6 +25,7 @@ import { saveAs } from 'file-saver';
 
 
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 
 const Facturas = () => {
   const [facturas, setFacturas] = useState([]);
@@ -79,7 +80,7 @@ const Facturas = () => {
   // Cargar facturas
   const cargarFacturas = async () => {
     try {
-      const response = await fetch('/api/facturas');
+      const response = await apiCall('/api/facturas');
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }

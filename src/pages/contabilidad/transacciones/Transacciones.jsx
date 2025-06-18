@@ -1,1 +1,1 @@
-fetch('/api/transacciones') 
+apiCall('/api/transacciones') 

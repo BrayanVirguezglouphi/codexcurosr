@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import { useForm } from 'react-hook-form';
 import { 
   FileText, 
@@ -171,9 +172,9 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
     setLoading(true);
     try {
       const [tercerosRes, monedasRes, taxesRes] = await Promise.all([
-        fetch('/api/catalogos/terceros'),
-        fetch('/api/catalogos/monedas'),
-        fetch('/api/catalogos/taxes')
+        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/taxes')
       ]);
       
       setTerceros(await tercerosRes.json());

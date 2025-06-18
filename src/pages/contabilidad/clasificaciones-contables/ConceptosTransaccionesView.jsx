@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Eye, BarChart2, FileText, Code, FilterX, X, Grid3X3, Save, RotateCcw, Target, Download, Upload } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import CrearConceptoTransaccionDialog from './conceptos-transacciones/CrearConceptoTransaccionDialog';
 import EditarConceptoTransaccionDialog from './conceptos-transacciones/EditarConceptoTransaccionDialog';
 import VerConceptoTransaccionDialog from './conceptos-transacciones/VerConceptoTransaccionDialog';
@@ -73,8 +74,8 @@ const ConceptosTransaccionesView = () => {
   const cargarConceptosTransacciones = async () => {
     try {
       const [conceptosResponse, tiposResponse] = await Promise.all([
-        fetch('/api/conceptos-transacciones'),
-        fetch('/api/tipos-transaccion')
+        apiCall('/api/conceptos-transacciones'),
+        apiCall('/api/tipos-transaccion')
       ]);
       
       const conceptos = await conceptosResponse.json();
@@ -365,11 +366,7 @@ const ConceptosTransaccionesView = () => {
       const editedData = editedConceptos[conceptoId];
       if (editedData) {
         updates.push(
-          fetch(`/api/conceptos-transacciones/${conceptoId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editedData)
-          })
+          apiCall('/api/conceptos-transacciones/${conceptoId}', { method: 'PUT', body: JSON.stringify(editedData) })
         );
       }
     }

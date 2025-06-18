@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import { useForm } from 'react-hook-form';
 import { 
   FileText, 
@@ -174,12 +175,12 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
   useEffect(() => {
     if (open) {
       Promise.all([
-        fetch('/api/catalogos/cuentas').then(r => r.json()),
-        fetch('/api/catalogos/tipos-transaccion').then(r => r.json()),
-        fetch('/api/catalogos/monedas').then(r => r.json()),
-        fetch('/api/catalogos/etiquetas-contables').then(r => r.json()),
-        fetch('/api/catalogos/terceros').then(r => r.json()),
-        fetch('/api/catalogos/conceptos').then(r => r.json())
+        apiCall('/api/catalogos/cuentas').then(r => r.json()),
+        apiCall('/api/catalogos/tipos-transaccion').then(r => r.json()),
+        apiCall('/api/catalogos/monedas').then(r => r.json()),
+        apiCall('/api/catalogos/etiquetas-contables').then(r => r.json()),
+        apiCall('/api/catalogos/terceros').then(r => r.json()),
+        apiCall('/api/catalogos/conceptos').then(r => r.json())
       ]).then(([cuentasData, tiposData, monedasData, etiquetasData, tercerosData, conceptosData]) => {
         setCuentas(cuentasData);
         setTiposTransaccion(tiposData);

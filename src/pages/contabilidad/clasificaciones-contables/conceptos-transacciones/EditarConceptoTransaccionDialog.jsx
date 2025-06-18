@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import { useForm } from 'react-hook-form';
 import { 
   Target, 
@@ -158,7 +159,7 @@ const EditarConceptoTransaccionDialog = ({ open, onOpenChange, concepto, onConce
     const cargarDatos = async () => {
       if (open) {
         try {
-          const response = await fetch('/api/tipos-transaccion');
+          const response = await apiCall('/api/tipos-transaccion');
           const tipos = await response.json();
           setTiposTransaccion(tipos);
         } catch (error) {

@@ -22,6 +22,7 @@ import ExportDialog from '@/components/ui/export-dialog';
 import ImportDialog from '@/components/ui/import-dialog';
 import { toast as toastImport } from 'react-hot-toast';
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 
 const Impuestos = () => {
   const [impuestos, setImpuestos] = useState([]);
@@ -79,7 +80,7 @@ const Impuestos = () => {
   // Cargar impuestos
   const cargarImpuestos = async () => {
     try {
-      const response = await fetch('/api/impuestos');
+      const response = await apiCall('/api/impuestos');
       const data = await response.json();
       setImpuestos(data);
     } catch (error) {

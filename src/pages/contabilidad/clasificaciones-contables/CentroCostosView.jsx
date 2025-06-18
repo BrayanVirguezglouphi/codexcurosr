@@ -19,6 +19,7 @@ import Pagination from '@/components/ui/pagination';
 import ExportDialog from '@/components/ui/export-dialog';
 import ImportDialog from '@/components/ui/import-dialog';
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import { toast } from 'react-hot-toast';
 
 const CentroCostosView = () => {
@@ -72,7 +73,7 @@ const CentroCostosView = () => {
   // Cargar centros de costos
   const cargarCentrosCostos = async () => {
     try {
-      const response = await fetch('/api/centros-costos');
+      const response = await apiCall('/api/centros-costos');
       const data = await response.json();
       setCentrosCostos(data);
     } catch (error) {
@@ -324,11 +325,7 @@ const CentroCostosView = () => {
       const editedData = editedCentrosCostos[centroCostoId];
       if (editedData) {
         updates.push(
-          fetch(`/api/centros-costos/${centroCostoId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editedData)
-          })
+          apiCall('/api/centros-costos/${centroCostoId}', { method: 'PUT', body: JSON.stringify(editedData) })
         );
       }
     }

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import {
   Table,
   TableBody,
@@ -141,7 +142,7 @@ const Terceros = () => {
   // Cargar terceros
   const cargarTerceros = async () => {
     try {
-      const response = await fetch('/api/terceros');
+      const response = await apiCall('/api/terceros');
       const data = await response.json();
       setTerceros(data);
     } catch (error) {

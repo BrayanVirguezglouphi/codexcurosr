@@ -26,7 +26,7 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
   const cargarContrato = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/contratos/${contratoId}`);
+      const response = await apiCall('/api/contratos/${contratoId}');
       const data = await response.json();
       setContrato(data);
     } catch (error) {

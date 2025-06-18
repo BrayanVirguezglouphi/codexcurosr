@@ -58,12 +58,12 @@ const ContabilidadDashboard = () => {
           impuestosRes,
           tercerosRes
         ] = await Promise.all([
-          fetch('/api/facturas'),
-          fetch('/api/transacciones'),
-          fetch('/api/contratos'),
-          fetch('/api/lineas-servicios'),
-          fetch('/api/impuestos'),
-          fetch('/api/terceros')
+          apiCall('/api/facturas'),
+          apiCall('/api/transacciones'),
+          apiCall('/api/contratos'),
+          apiCall('/api/lineas-servicios'),
+          apiCall('/api/impuestos'),
+          apiCall('/api/terceros')
         ]);
 
         const [facturas, transacciones, contratos, servicios, impuestos, terceros] = await Promise.all([

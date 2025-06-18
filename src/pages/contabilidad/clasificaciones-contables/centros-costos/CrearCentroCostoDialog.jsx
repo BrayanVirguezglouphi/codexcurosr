@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import { useForm, Controller } from 'react-hook-form';
 import { 
   Building, 
@@ -45,7 +46,7 @@ const CrearCentroCostoDialog = ({ open, onClose, onCentroCostoCreado }) => {
   // Cargar centros macro existentes
   const cargarCentrosMacroExistentes = async () => {
     try {
-      const response = await fetch('/api/centros-costos');
+      const response = await apiCall('/api/centros-costos');
       const data = await response.json();
       
       // Extraer centros macro únicos (no vacíos)

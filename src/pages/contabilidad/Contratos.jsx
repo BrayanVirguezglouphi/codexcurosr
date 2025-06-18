@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import {
   Table,
   TableBody,
@@ -97,7 +98,7 @@ const Contratos = () => {
   const cargarContratos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/contratos');
+      const response = await apiCall('/api/contratos');
       const data = await response.json();
       setContratos(data);
     } catch (error) {
@@ -111,9 +112,7 @@ const Contratos = () => {
   const handleEliminar = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este contrato?')) {
       try {
-        const response = await fetch(`/api/contratos/${id}`, {
-          method: 'DELETE'
-        });
+        const response = await apiCall('/api/contratos/${id}', { method: 'DELETE' });
         
         if (response.ok) {
           toast({ title: "Éxito", description: "Contrato eliminado correctamente" });

@@ -18,7 +18,7 @@ const VerConceptoTransaccionDialog = ({ open, onOpenChange, concepto }) => {
     const cargarTipoTransaccion = async () => {
       if (concepto?.id_tipotransaccion) {
         try {
-          const response = await fetch(`/api/tipos-transaccion/${concepto.id_tipotransaccion}`);
+          const response = await apiCall('/api/tipos-transaccion/${concepto.id_tipotransaccion}');
           const data = await response.json();
           setTipoTransaccion(data);
         } catch (error) {

@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Eye, BarChart2, Tag, Hash, FilterX, X, Grid3X3, Save, RotateCcw, Tags, Download, Upload, List } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import CrearEtiquetaContableDialog from './etiquetas-contables/CrearEtiquetaContableDialog';
 import EditarEtiquetaContableDialog from './etiquetas-contables/EditarEtiquetaContableDialog';
 import VerEtiquetaContableDialog from './etiquetas-contables/VerEtiquetaContableDialog';
@@ -73,7 +74,7 @@ const EtiquetasContablesView = () => {
   // Cargar etiquetas contables
   const cargarEtiquetasContables = async () => {
     try {
-      const response = await fetch('/api/etiquetas-contables');
+      const response = await apiCall('/api/etiquetas-contables');
       const data = await response.json();
       setEtiquetasContables(data);
     } catch (error) {
@@ -316,11 +317,7 @@ const EtiquetasContablesView = () => {
       const editedData = editedEtiquetas[etiquetaId];
       if (editedData) {
         updates.push(
-          fetch(`/api/etiquetas-contables/${etiquetaId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editedData)
-          })
+          apiCall('/api/etiquetas-contables/${etiquetaId}', { method: 'PUT', body: JSON.stringify(editedData) })
         );
       }
     }
