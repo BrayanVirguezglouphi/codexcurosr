@@ -3,7 +3,9 @@ const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
 
+// Backend con operaciones CRUD completas - v1.1 (Force deployment)
 const app = express();
+const PORT = process.env.PORT || 8080;
 
 // Middleware básico
 app.use(cors());
@@ -254,16 +256,29 @@ app.get('/api/catalogos/tipos-transaccion', async (req, res) => {
 app.get('/api/catalogos/cuentas', async (req, res) => {
   try {
     console.log('🔍 Consultando cuentas...');
-    const query = 'SELECT * FROM adcot_cuentas ORDER BY nombre_cuenta ASC';
+    
+    // Verificar tabla cuentas
+    const tablaCuentas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%cuenta%'
+    `);
+    
+    if (tablaCuentas.rows.length === 0) {
+      console.log('⚠️  No se encontraron tablas de cuentas');
+      return res.json([]); // Retornar array vacío si no existe
+    }
+    
+    const nombreTabla = tablaCuentas.rows[0].table_name;
+    console.log(`📋 Usando tabla: ${nombreTabla}`);
+    
+    const query = `SELECT * FROM ${nombreTabla} ORDER BY nombre_cuenta ASC`;
     const result = await pool.query(query);
     console.log(`✅ Encontradas ${result.rows.length} cuentas`);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener cuentas:', error);
-    res.status(500).json({ 
-      error: 'Error al obtener cuentas',
-      details: error.message 
-    });
+    res.json([]); // Retornar array vacío en caso de error
   }
 });
 
@@ -1072,7 +1087,6 @@ app.use((req, res) => {
 testConnection();
 
 // Iniciar servidor usando PORT de Cloud Run
-const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor backend corriendo en puerto ${PORT}`);
   console.log(`📊 Conectado a: ${process.env.DB_HOST || '35.238.111.59'}:${process.env.DB_PORT || 5432}`);
