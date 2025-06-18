@@ -371,18 +371,176 @@ app.get('/api/catalogos/terceros', async (req, res) => {
 app.get('/api/terceros', async (req, res) => {
   try {
     console.log('🔍 Consultando terceros completos...');
-    const query = `
-      SELECT * FROM adcot_terceros_exogenos 
-      ORDER BY razon_social ASC, primer_nombre ASC
-      LIMIT 100
-    `;
+    
+    // Verificar tabla terceros
+    const tablaTerceros = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%tercero%'
+    `);
+    
+    if (tablaTerceros.rows.length === 0) {
+      return res.json([]);
+    }
+    
+    const nombreTabla = tablaTerceros.rows[0].table_name;
+    const query = `SELECT * FROM ${nombreTabla} ORDER BY id_tercero DESC LIMIT 100`;
     const result = await pool.query(query);
     console.log(`✅ Encontrados ${result.rows.length} terceros`);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener terceros:', error);
+    res.json([]);
+  }
+});
+
+// Crear tercero
+app.post('/api/terceros', async (req, res) => {
+  try {
+    console.log('🔍 Creando tercero...');
+    
+    // Verificar tabla terceros
+    const tablaTerceros = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%tercero%'
+    `);
+    
+    if (tablaTerceros.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de terceros no encontrada' });
+    }
+    
+    const nombreTabla = tablaTerceros.rows[0].table_name;
+    
+    // Obtener columnas de la tabla para construir INSERT dinámicamente
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_tercero'
+      ORDER BY ordinal_position
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos' });
+    }
+    
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    const placeholders = camposDelBody.map((_, index) => `$${index + 1}`).join(', ');
+    
+    const query = `
+      INSERT INTO ${nombreTabla} (${camposDelBody.join(', ')})
+      VALUES (${placeholders})
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, valores);
+    console.log('✅ Tercero creado exitosamente');
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al crear tercero:', error);
     res.status(500).json({ 
-      error: 'Error al obtener terceros',
+      error: 'Error al crear tercero',
+      details: error.message 
+    });
+  }
+});
+
+// Actualizar tercero
+app.put('/api/terceros/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Actualizando tercero ID: ${id}...`);
+    
+    // Verificar tabla terceros
+    const tablaTerceros = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%tercero%'
+    `);
+    
+    if (tablaTerceros.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de terceros no encontrada' });
+    }
+    
+    const nombreTabla = tablaTerceros.rows[0].table_name;
+    
+    // Obtener columnas de la tabla
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_tercero'
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos para actualizar' });
+    }
+    
+    const setClause = camposDelBody.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    
+    const query = `
+      UPDATE ${nombreTabla} 
+      SET ${setClause}
+      WHERE id_tercero = $${camposDelBody.length + 1}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [...valores, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tercero no encontrado' });
+    }
+    
+    console.log('✅ Tercero actualizado exitosamente');
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al actualizar tercero:', error);
+    res.status(500).json({ 
+      error: 'Error al actualizar tercero',
+      details: error.message 
+    });
+  }
+});
+
+// Eliminar tercero
+app.delete('/api/terceros/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Eliminando tercero ID: ${id}...`);
+    
+    // Verificar tabla terceros
+    const tablaTerceros = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%tercero%'
+    `);
+    
+    if (tablaTerceros.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de terceros no encontrada' });
+    }
+    
+    const nombreTabla = tablaTerceros.rows[0].table_name;
+    const query = `DELETE FROM ${nombreTabla} WHERE id_tercero = $1 RETURNING *`;
+    const result = await pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tercero no encontrado' });
+    }
+    
+    console.log('✅ Tercero eliminado exitosamente');
+    res.json({ message: 'Tercero eliminado', tercero: result.rows[0] });
+  } catch (error) {
+    console.error('❌ Error al eliminar tercero:', error);
+    res.status(500).json({ 
+      error: 'Error al eliminar tercero',
       details: error.message 
     });
   }
@@ -511,6 +669,157 @@ app.get('/api/contratos', async (req, res) => {
   }
 });
 
+// Crear contrato
+app.post('/api/contratos', async (req, res) => {
+  try {
+    console.log('🔍 Creando contrato...');
+    
+    // Verificar tabla contratos
+    const tablaContratos = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%contrato%'
+    `);
+    
+    if (tablaContratos.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de contratos no encontrada' });
+    }
+    
+    const nombreTabla = tablaContratos.rows[0].table_name;
+    
+    // Obtener columnas de la tabla
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_contrato'
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos' });
+    }
+    
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    const placeholders = camposDelBody.map((_, index) => `$${index + 1}`).join(', ');
+    
+    const query = `
+      INSERT INTO ${nombreTabla} (${camposDelBody.join(', ')})
+      VALUES (${placeholders})
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, valores);
+    console.log('✅ Contrato creado exitosamente');
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al crear contrato:', error);
+    res.status(500).json({ 
+      error: 'Error al crear contrato',
+      details: error.message 
+    });
+  }
+});
+
+// Actualizar contrato
+app.put('/api/contratos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Actualizando contrato ID: ${id}...`);
+    
+    // Verificar tabla contratos
+    const tablaContratos = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%contrato%'
+    `);
+    
+    if (tablaContratos.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de contratos no encontrada' });
+    }
+    
+    const nombreTabla = tablaContratos.rows[0].table_name;
+    
+    // Obtener columnas de la tabla
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_contrato'
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos para actualizar' });
+    }
+    
+    const setClause = camposDelBody.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    
+    const query = `
+      UPDATE ${nombreTabla} 
+      SET ${setClause}
+      WHERE id_contrato = $${camposDelBody.length + 1}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [...valores, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Contrato no encontrado' });
+    }
+    
+    console.log('✅ Contrato actualizado exitosamente');
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al actualizar contrato:', error);
+    res.status(500).json({ 
+      error: 'Error al actualizar contrato',
+      details: error.message 
+    });
+  }
+});
+
+// Eliminar contrato
+app.delete('/api/contratos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Eliminando contrato ID: ${id}...`);
+    
+    // Verificar tabla contratos
+    const tablaContratos = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%contrato%'
+    `);
+    
+    if (tablaContratos.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de contratos no encontrada' });
+    }
+    
+    const nombreTabla = tablaContratos.rows[0].table_name;
+    const query = `DELETE FROM ${nombreTabla} WHERE id_contrato = $1 RETURNING *`;
+    const result = await pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Contrato no encontrado' });
+    }
+    
+    console.log('✅ Contrato eliminado exitosamente');
+    res.json({ message: 'Contrato eliminado', contrato: result.rows[0] });
+  } catch (error) {
+    console.error('❌ Error al eliminar contrato:', error);
+    res.status(500).json({ 
+      error: 'Error al eliminar contrato',
+      details: error.message 
+    });
+  }
+});
+
 // 13. Ruta de facturas - VERIFICAR ESTRUCTURA
 app.get('/api/facturas', async (req, res) => {
   try {
@@ -541,6 +850,157 @@ app.get('/api/facturas', async (req, res) => {
     console.error('❌ Error al obtener facturas:', error);
     res.status(500).json({ 
       error: 'Error al obtener facturas',
+      details: error.message 
+    });
+  }
+});
+
+// Crear factura
+app.post('/api/facturas', async (req, res) => {
+  try {
+    console.log('🔍 Creando factura...');
+    
+    // Verificar tabla facturas
+    const tablaFacturas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%factura%'
+    `);
+    
+    if (tablaFacturas.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de facturas no encontrada' });
+    }
+    
+    const nombreTabla = tablaFacturas.rows[0].table_name;
+    
+    // Obtener columnas de la tabla
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_factura'
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos' });
+    }
+    
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    const placeholders = camposDelBody.map((_, index) => `$${index + 1}`).join(', ');
+    
+    const query = `
+      INSERT INTO ${nombreTabla} (${camposDelBody.join(', ')})
+      VALUES (${placeholders})
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, valores);
+    console.log('✅ Factura creada exitosamente');
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al crear factura:', error);
+    res.status(500).json({ 
+      error: 'Error al crear factura',
+      details: error.message 
+    });
+  }
+});
+
+// Actualizar factura
+app.put('/api/facturas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Actualizando factura ID: ${id}...`);
+    
+    // Verificar tabla facturas
+    const tablaFacturas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%factura%'
+    `);
+    
+    if (tablaFacturas.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de facturas no encontrada' });
+    }
+    
+    const nombreTabla = tablaFacturas.rows[0].table_name;
+    
+    // Obtener columnas de la tabla
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_factura'
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos para actualizar' });
+    }
+    
+    const setClause = camposDelBody.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    
+    const query = `
+      UPDATE ${nombreTabla} 
+      SET ${setClause}
+      WHERE id_factura = $${camposDelBody.length + 1}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [...valores, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Factura no encontrada' });
+    }
+    
+    console.log('✅ Factura actualizada exitosamente');
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al actualizar factura:', error);
+    res.status(500).json({ 
+      error: 'Error al actualizar factura',
+      details: error.message 
+    });
+  }
+});
+
+// Eliminar factura
+app.delete('/api/facturas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Eliminando factura ID: ${id}...`);
+    
+    // Verificar tabla facturas
+    const tablaFacturas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%factura%'
+    `);
+    
+    if (tablaFacturas.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de facturas no encontrada' });
+    }
+    
+    const nombreTabla = tablaFacturas.rows[0].table_name;
+    const query = `DELETE FROM ${nombreTabla} WHERE id_factura = $1 RETURNING *`;
+    const result = await pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Factura no encontrada' });
+    }
+    
+    console.log('✅ Factura eliminada exitosamente');
+    res.json({ message: 'Factura eliminada', factura: result.rows[0] });
+  } catch (error) {
+    console.error('❌ Error al eliminar factura:', error);
+    res.status(500).json({ 
+      error: 'Error al eliminar factura',
       details: error.message 
     });
   }
