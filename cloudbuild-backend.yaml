@@ -23,7 +23,7 @@ steps:
       - '--port'
       - '8080'
       - '--set-env-vars'
-      - 'NODE_ENV=production,PORT=8080'
+      - 'NODE_ENV=production,DB_HOST=35.238.111.59,DB_PORT=5432,DB_NAME=SQL_DDL_ADMCOT,DB_USER=postgres,DB_PASSWORD=123456789'
 
 options:
   logging: CLOUD_LOGGING_ONLY 

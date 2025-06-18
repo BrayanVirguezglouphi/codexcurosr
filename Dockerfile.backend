@@ -18,7 +18,6 @@ EXPOSE 8080
 
 # Variables de entorno
 ENV NODE_ENV=production
-ENV PORT=8080
 
 # Comando para iniciar el servidor backend
 CMD ["node", "backend-server.cjs"] 

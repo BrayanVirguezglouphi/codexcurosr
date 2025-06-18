@@ -12,8 +12,9 @@ app.use(express.json());
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'Servidor simple funcionando',
-    timestamp: new Date().toISOString()
+    message: 'Servidor backend funcionando',
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 8080
   });
 });
 
@@ -34,8 +35,8 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// Iniciar servidor
+// Iniciar servidor usando PORT de Cloud Run
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor simple corriendo en puerto ${PORT}`);
+  console.log(`🚀 Servidor backend corriendo en puerto ${PORT}`);
 }); 
