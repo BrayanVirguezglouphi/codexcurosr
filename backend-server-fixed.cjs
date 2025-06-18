@@ -67,7 +67,7 @@ app.get('/api/transacciones', async (req, res) => {
         t.aplica_retencion,
         t.aplica_impuestos,
         tt.tipo_transaccion,
-        c.titulo_cuenta
+        c.nombre_cuenta
       FROM adcot_transacciones t
       LEFT JOIN adcot_tipo_transaccion tt ON t.id_tipotransaccion = tt.id_tipotransaccion
       LEFT JOIN adcot_cuentas c ON t.id_cuenta = c.id_cuenta
@@ -94,7 +94,7 @@ app.get('/api/transacciones', async (req, res) => {
         tipo_transaccion: row.tipo_transaccion
       },
       cuenta: {
-        titulo_cuenta: row.titulo_cuenta
+        nombre_cuenta: row.nombre_cuenta
       }
     }));
     
