@@ -1,4 +1,4 @@
-# Dockerfile para backend API
+# Dockerfile para backend API con PostgreSQL
 FROM node:18-alpine
 
 # Establecer directorio de trabajo
@@ -7,11 +7,14 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar solo dependencias de producción
+# Instalar dependencias de producción (incluyendo pg para PostgreSQL)
 RUN npm ci --only=production
 
-# Copiar servidor backend que funciona
-COPY backend-server.cjs ./
+# Instalar pg específicamente
+RUN npm install pg
+
+# Copiar servidor backend completo
+COPY backend-server-full.cjs ./backend-server.cjs
 
 # Exponer puerto 8080
 EXPOSE 8080
