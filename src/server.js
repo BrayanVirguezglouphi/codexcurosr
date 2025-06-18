@@ -183,8 +183,9 @@ app.use((err, req, res, next) => {
 });
 
 // Inicializar el servidor para Cloud Run y desarrollo local
-// Cloud Run usa puerto 8080 por defecto
-const PORT = process.env.PORT || 8080;
+// En contenedor Docker: backend usa puerto 3000, nginx usa 8080
+// En desarrollo local: usa puerto 8080 directamente
+const PORT = process.env.BACKEND_PORT || process.env.PORT || 8080;
 
 // Inicializar base de datos al arrancar (para Cloud Run)
 const startServer = async () => {
