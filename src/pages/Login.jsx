@@ -17,7 +17,7 @@ const Login = () => {
       localStorage.setItem('user', JSON.stringify({ username: formData.username }));
       toast({
         title: "Inicio de sesión exitoso",
-        description: "Bienvenido al sistema",
+        description: "Bienvenidos al sistema desarrollado por Glouphi",
       });
       navigate('/');
     }
