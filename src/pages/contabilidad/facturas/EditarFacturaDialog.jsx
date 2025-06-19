@@ -25,19 +25,18 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
 
   useEffect(() => {
     if (open) {
+      console.log('🔄 Cargando catálogos en EditarFactura...');
       Promise.all([
-        apiCall('/api/catalogos/contratos').then(r => r.json()),
-        apiCall('/api/catalogos/monedas').then(r => r.json()),
-        apiCall('/api/catalogos/taxes').then(r => r.json())
+        apiCall('/api/catalogos/contratos'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/taxes')
       ]).then(([contratosData, monedasData, taxesData]) => {
-        console.log('Contratos cargados:', contratosData);
-        console.log('Monedas cargadas:', monedasData);
-        console.log('Taxes cargados:', taxesData);
+        console.log('✅ Catálogos cargados en EditarFactura:', { contratos: contratosData.length, monedas: monedasData.length, taxes: taxesData.length });
         setContratos(contratosData);
         setMonedas(monedasData);
         setTaxes(taxesData);
       }).catch(error => {
-        console.error('Error cargando catálogos:', error);
+        console.error('❌ Error cargando catálogos en EditarFactura:', error);
         toast({
           title: "Error",
           description: "No se pudieron cargar los catálogos",
@@ -70,32 +69,48 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
 
   const onSubmit = async (data) => {
     try {
+      console.log('📝 Datos del formulario antes de formatear:', data);
+      
       const formattedData = {
-        ...data,
+        numero_factura: data.numero_factura || '',
+        estatus_factura: data.estatus_factura || 'PENDIENTE',
         id_contrato: data.id_contrato ? parseInt(data.id_contrato) : null,
         id_moneda: data.id_moneda ? parseInt(data.id_moneda) : null,
         id_tax: data.id_tax ? parseInt(data.id_tax) : null,
         fecha_radicado: data.fecha_radicado ? new Date(data.fecha_radicado).toISOString().split('T')[0] : null,
         fecha_estimada_pago: data.fecha_estimada_pago ? new Date(data.fecha_estimada_pago).toISOString().split('T')[0] : null,
-        subtotal_facturado_moneda: parseFloat(data.subtotal_facturado_moneda),
-        valor_tax: data.valor_tax ? parseFloat(data.valor_tax) : null
+        subtotal_facturado_moneda: data.subtotal_facturado_moneda ? parseFloat(data.subtotal_facturado_moneda) : 0,
+        valor_tax: data.valor_tax ? parseFloat(data.valor_tax) : null,
+        observaciones_factura: (data.observaciones_factura || '').trim()
       };
+      
+      console.log('📤 Datos formateados para enviar:', formattedData);
       
       const response = await apiCall(`/api/facturas/${factura.id_factura}`, {
         method: 'PUT',
-        body: JSON.stringify(formattedData),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formattedData)
       });
       
-      if (response.ok) {
+      console.log('📨 Respuesta recibida:', response);
+      
+      if (response && response.success !== false) {
         toast({ title: "Éxito", description: "Factura actualizada correctamente" });
         onFacturaActualizada();
         onClose();
         reset();
       } else {
-        throw new Error('Error al actualizar la factura');
+        throw new Error(response?.message || 'Error al actualizar la factura');
       }
     } catch (error) {
-      toast({ title: "Error", description: "No se pudo actualizar la factura", variant: "destructive" });
+      console.error('❌ Error en onSubmit:', error);
+      toast({ 
+        title: "Error", 
+        description: `No se pudo actualizar la factura: ${error.message}`, 
+        variant: "destructive" 
+      });
     }
   };
 

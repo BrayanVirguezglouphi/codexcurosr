@@ -22,23 +22,77 @@ const getEnvironment = () => {
 const currentEnv = getEnvironment();
 const apiConfig = API_CONFIG[currentEnv];
 
+console.log('🌍 Entorno detectado:', currentEnv);
+console.log('🔗 API Base URL:', apiConfig.baseURL);
+
 // Función helper para hacer llamadas a la API
 export const apiCall = async (endpoint, options = {}) => {
   const url = `${apiConfig.baseURL}${endpoint}`;
   
+  // Obtener token de autenticación si existe
+  const token = localStorage.getItem('authToken');
+  
+  console.log('📡 API Call:', {
+    url,
+    method: options.method || 'GET',
+    hasToken: !!token,
+    tokenPreview: token ? `${token.substring(0, 20)}...` : 'sin token'
+  });
+  
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers
     },
     ...options
   };
 
+  console.log('📡 Request options:', {
+    method: defaultOptions.method || 'GET',
+    headers: defaultOptions.headers,
+    hasBody: !!defaultOptions.body
+  });
+
   try {
+    console.log('🚀 Enviando petición...');
     const response = await fetch(url, defaultOptions);
+    
+    console.log('📨 Respuesta recibida:', {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type'),
+      ok: response.ok
+    });
+    
+    // Si es una respuesta JSON, parsearla automáticamente
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      const data = await response.json();
+      console.log('✅ JSON parseado exitosamente:', Array.isArray(data) ? `Array[${data.length}]` : typeof data);
+      
+      // Si hay error de autenticación, limpiar token
+      if (response.status === 401 || response.status === 403) {
+        console.warn('🔒 Error de autenticación, limpiando token...');
+        localStorage.removeItem('authToken');
+        // Opcional: redirigir al login
+        if (window.location.pathname !== '/login') {
+          console.log('🔄 Redirigiendo al login...');
+          window.location.href = '/login';
+        }
+      }
+      
+      return data;
+    }
+    
+    console.log('📄 Respuesta no JSON, devolviendo response object');
     return response;
   } catch (error) {
-    console.error(`Error en API call a ${url}:`, error);
+    console.error(`❌ Error en API call a ${url}:`, error);
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     throw error;
   }
 };

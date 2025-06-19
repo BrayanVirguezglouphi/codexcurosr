@@ -45,6 +45,10 @@ const Transacciones = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   
+  // Estados para catálogos
+  const [cuentas, setCuentas] = useState([]);
+  const [tiposTransaccion, setTiposTransaccion] = useState([]);
+  
   const { toast } = useToast();
 
   // Definir columnas disponibles
@@ -53,8 +57,8 @@ const Transacciones = () => {
     { key: 'fecha_transaccion', label: 'Fecha', required: true },
     { key: 'titulo_transaccion', label: 'Título', required: true },
     { key: 'valor_total_transaccion', label: 'Monto', required: true },
-    { key: 'tipoTransaccion.tipo_transaccion', label: 'Tipo' },
-    { key: 'cuenta.titulo_cuenta', label: 'Cuenta Origen' },
+    { key: 'id_tipotransaccion', label: 'Tipo' },
+    { key: 'id_cuenta', label: 'Cuenta Origen' },
     { key: 'registro_validado', label: 'Estado' },
     { key: 'observacion', label: 'Observación' },
     { key: 'trm_moneda_base', label: 'TRM' },
@@ -68,62 +72,76 @@ const Transacciones = () => {
     const defaultColumns = {};
     availableColumns.forEach(col => {
       // Mostrar solo las columnas principales por defecto
-      defaultColumns[col.key] = ['id_transaccion', 'fecha_transaccion', 'titulo_transaccion', 'valor_total_transaccion', 'tipoTransaccion.tipo_transaccion', 'cuenta.titulo_cuenta', 'registro_validado'].includes(col.key);
+      defaultColumns[col.key] = ['id_transaccion', 'fecha_transaccion', 'titulo_transaccion', 'valor_total_transaccion', 'id_tipotransaccion', 'id_cuenta', 'registro_validado'].includes(col.key);
     });
     setVisibleColumns(defaultColumns);
   }, []);
 
-  // Cargar transacciones con retry
-  const cargarTransacciones = async (retryCount = 0) => {
-    const maxRetries = 3;
+  // Cargar catálogos
+  const cargarCatalogos = async () => {
     try {
-      console.log(`🔄 Cargando transacciones... (intento ${retryCount + 1}/${maxRetries + 1})`);
-      const response = await api.getTransacciones();
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', response.headers);
-      console.log('📡 Content-Type:', response.headers.get('content-type'));
+      console.log('🔄 Cargando catálogos...');
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
+      const [cuentasData, tiposData] = await Promise.all([
+        api.getCuentas(),
+        api.getTiposTransaccion()
+      ]);
       
-      const responseText = await response.text();
-      console.log('📝 Raw response length:', responseText.length);
-      console.log('📝 Raw response start:', responseText.substring(0, 100));
+      setCuentas(Array.isArray(cuentasData) ? cuentasData : []);
+      setTiposTransaccion(Array.isArray(tiposData) ? tiposData : []);
       
-      // Verificar si la respuesta parece ser HTML
-      if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-        console.error('❌ La respuesta es HTML en lugar de JSON');
-        console.error('📝 HTML Response:', responseText.substring(0, 500));
-        throw new Error('El servidor devolvió HTML en lugar de JSON. Posible problema de proxy o cache.');
-      }
-      
-      const data = JSON.parse(responseText);
-      console.log('✅ Parsed data:', data.length, 'transacciones');
-      setTransacciones(data);
+      console.log('✅ Catálogos cargados:', {
+        cuentas: Array.isArray(cuentasData) ? cuentasData.length : 0,
+        tipos: Array.isArray(tiposData) ? tiposData.length : 0
+      });
     } catch (error) {
-      console.error(`❌ Error al cargar transacciones (intento ${retryCount + 1}):`, error);
+      console.error('❌ Error al cargar catálogos:', error);
+      setCuentas([]);
+      setTiposTransaccion([]);
+    }
+  };
+
+  // Obtener nombre del tipo de transacción
+  const getNombreTipoTransaccion = (id) => {
+    const tipo = tiposTransaccion.find(t => t.id_tipotransaccion === id);
+    return tipo ? tipo.tipo_transaccion : `ID: ${id}`;
+  };
+
+  // Obtener nombre de la cuenta
+  const getNombreCuenta = (id) => {
+    const cuenta = cuentas.find(c => c.id_cuenta === id);
+    return cuenta ? (cuenta.titulo_cuenta || cuenta.nombre_cuenta || `ID: ${id}`) : `ID: ${id}`;
+  };
+
+  // Cargar transacciones
+  const cargarTransacciones = async () => {
+    try {
+      console.log('🔄 Cargando transacciones...');
+      const data = await api.getTransacciones();
       
-      // Si el error es por HTML en lugar de JSON y tenemos reintentos disponibles
-      if (error.message.includes('HTML') && retryCount < maxRetries) {
-        console.log(`🔄 Reintentando en 1 segundo... (${retryCount + 1}/${maxRetries})`);
-        setTimeout(() => {
-          cargarTransacciones(retryCount + 1);
-        }, 1000);
-        return;
+      console.log('📊 Respuesta recibida:', {
+        type: typeof data,
+        isArray: Array.isArray(data),
+        length: Array.isArray(data) ? data.length : 'N/A',
+        sample: Array.isArray(data) && data.length > 0 ? data[0] : 'Sin datos'
+      });
+      
+      // Asegurar que data es un array
+      if (Array.isArray(data)) {
+        setTransacciones(data);
+        console.log('✅ Transacciones cargadas exitosamente:', data.length);
+      } else {
+        console.error('❌ La respuesta no es un array:', data);
+        setTransacciones([]);
+        toast({
+          title: "Error",
+          description: "Formato de datos incorrecto del servidor",
+          variant: "destructive",
+        });
       }
-      
-      // Si es un error de parsing JSON y tenemos reintentos disponibles
-      if (error.message.includes('Unexpected token') && retryCount < maxRetries) {
-        console.log(`🔄 Reintentando en 1 segundo... (${retryCount + 1}/${maxRetries})`);
-        setTimeout(() => {
-          cargarTransacciones(retryCount + 1);
-        }, 1000);
-        return;
-      }
-      
+    } catch (error) {
+      console.error('❌ Error al cargar transacciones:', error);
+      setTransacciones([]);
       toast({
         title: "Error",
         description: `No se pudieron cargar las transacciones: ${error.message}`,
@@ -134,6 +152,7 @@ const Transacciones = () => {
 
   useEffect(() => {
     console.log('🚀 Componente Transacciones montado, cargando datos...');
+    cargarCatalogos();
     cargarTransacciones();
   }, []);
 
@@ -142,13 +161,7 @@ const Transacciones = () => {
     if (window.confirm('¿Está seguro de que desea anular esta transacción?')) {
       try {
         console.log('🗑️ Eliminando transacción:', id);
-        const response = await api.deleteTransaccion(id);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Delete error:', errorText);
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
+        await api.deleteTransaccion(id);
         
         console.log('✅ Transacción eliminada correctamente');
         toast({
@@ -211,6 +224,10 @@ const Transacciones = () => {
       case 'aplica_retencion':
       case 'aplica_impuestos':
         return value ? 'Sí' : 'No';
+      case 'id_tipotransaccion':
+        return getNombreTipoTransaccion(value);
+      case 'id_cuenta':
+        return getNombreCuenta(value);
       default:
         return value || '-';
     }
@@ -757,8 +774,8 @@ const Transacciones = () => {
                     'fecha_transaccion': 'Fecha',
                     'titulo_transaccion': 'Título',
                     'valor_total_transaccion': 'Monto',
-                    'tipoTransaccion.tipo_transaccion': 'Tipo',
-                    'cuenta.titulo_cuenta': 'Cuenta',
+                    'id_tipotransaccion': 'Tipo',
+                    'id_cuenta': 'Cuenta',
                     'registro_validado': 'Estado',
                     'observacion': 'Observación'
                   };
@@ -953,7 +970,33 @@ const Transacciones = () => {
                         size="icon"
                         className="border-gray-400 hover:bg-gray-100"
                         onClick={() => {
-                          setTransaccionVista(transaccion);
+                          console.log('🚨 TRANSACCIÓN ORIGINAL:', JSON.stringify(transaccion, null, 2));
+                          
+                          // Crear copia corregida de la transacción con todos los IDs
+                          const transaccionCorregida = {
+                            ...transaccion,
+                            // Asegurar que todos los IDs estén disponibles
+                            id_cuenta: transaccion.id_cuenta || null,
+                            id_tipotransaccion: transaccion.id_tipotransaccion || null,
+                            id_moneda_transaccion: transaccion.id_moneda_transaccion || null,
+                            id_tercero: transaccion.id_tercero || null,
+                            id_etiqueta_contable: transaccion.id_etiqueta_contable || null,
+                            id_concepto: transaccion.id_concepto || null,
+                            id_cuenta_destino_transf: transaccion.id_cuenta_destino_transf || null
+                          };
+                          
+                          console.log('🚨 TRANSACCIÓN CORREGIDA:', JSON.stringify(transaccionCorregida, null, 2));
+                          console.log('🚨 IDs FINALES:', {
+                            id_cuenta: transaccionCorregida.id_cuenta,
+                            id_tipotransaccion: transaccionCorregida.id_tipotransaccion,
+                            id_moneda_transaccion: transaccionCorregida.id_moneda_transaccion,
+                            id_tercero: transaccionCorregida.id_tercero,
+                            id_etiqueta_contable: transaccionCorregida.id_etiqueta_contable,
+                            id_concepto: transaccionCorregida.id_concepto,
+                            id_cuenta_destino_transf: transaccionCorregida.id_cuenta_destino_transf
+                          });
+                          
+                          setTransaccionVista(transaccionCorregida);
                           setIsVerDialogOpen(true);
                         }}
                       >

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiCall } from '@/config/api';
 import { 
   ExternalLink, 
   Calendar, 
@@ -16,6 +17,9 @@ import {
 const VerContratoDialog = ({ open, onClose, contratoId }) => {
   const [contrato, setContrato] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [terceros, setTerceros] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [impuestos, setImpuestos] = useState([]);
 
   useEffect(() => {
     if (open && contratoId) {
@@ -26,14 +30,65 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
   const cargarContrato = async () => {
     setLoading(true);
     try {
-      const response = await apiCall('/api/contratos/${contratoId}');
-      const data = await response.json();
-      setContrato(data);
+      // Cargar el contrato y los catálogos en paralelo
+      const [contratoRes, tercerosRes, monedasRes, impuestosRes] = await Promise.all([
+        apiCall(`/api/contratos/${contratoId}`),
+        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/taxes')
+      ]);
+
+      const contratoData = await contratoRes.json();
+      const tercerosData = await tercerosRes.json();
+      const monedasData = await monedasRes.json();
+      const impuestosData = await impuestosRes.json();
+
+      setContrato(contratoData);
+      setTerceros(Array.isArray(tercerosData) ? tercerosData : []);
+      setMonedas(Array.isArray(monedasData) ? monedasData : []);
+      setImpuestos(Array.isArray(impuestosData) ? impuestosData : []);
     } catch (error) {
       console.error('Error al cargar contrato:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Funciones auxiliares para obtener nombres legibles
+  const getNombreTercero = (id) => {
+    if (!id) return 'No asignado';
+    const tercero = terceros.find(t => t.id_tercero === id);
+    if (!tercero) return `ID: ${id}`;
+    
+    return tercero.razon_social || 
+           `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim() || 
+           `Tercero ${id}`;
+  };
+
+  const getDocumentoTercero = (id) => {
+    if (!id) return 'No disponible';
+    const tercero = terceros.find(t => t.id_tercero === id);
+    if (!tercero) return 'No disponible';
+    
+    return tercero.numero_documento ? 
+      `${tercero.numero_documento} (${tercero.tipo_personalidad || 'N/A'})` : 
+      'No disponible';
+  };
+
+  const getNombreMoneda = (id) => {
+    if (!id) return 'No especificada';
+    const moneda = monedas.find(m => m.id_moneda === id);
+    if (!moneda) return `ID: ${id}`;
+    
+    return `${moneda.codigo_iso || 'N/A'} - ${moneda.nombre_moneda || 'Sin nombre'}`;
+  };
+
+  const getNombreImpuesto = (id) => {
+    if (!id) return 'No especificado';
+    const impuesto = impuestos.find(i => i.id_tax === id);
+    if (!impuesto) return `ID: ${id}`;
+    
+    return impuesto.titulo_impuesto || 'Sin nombre';
   };
 
   const formatearFecha = (fecha) => {
@@ -74,6 +129,10 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Cargando Contrato</DialogTitle>
+            <DialogDescription>Por favor espere mientras se cargan los datos del contrato</DialogDescription>
+          </DialogHeader>
           <div className="flex justify-center py-8">
             <div className="text-sm text-gray-500">Cargando contrato...</div>
           </div>
@@ -98,9 +157,9 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
               <DialogTitle className="text-xl font-bold text-gray-900">
                 Detalles del Contrato
               </DialogTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <DialogDescription className="text-sm text-gray-600 mt-1">
                 Contrato #{contrato.id_contrato} - {contrato.numero_contrato_os || 'Sin número'}
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -140,19 +199,13 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Cliente/Tercero</p>
                 <p className="text-sm text-gray-900">
-                  {contrato.tercero ? 
-                    (contrato.tercero.razon_social || 
-                     `${contrato.tercero.primer_nombre || ''} ${contrato.tercero.primer_apellido || ''}`.trim() || 
-                     'Sin nombre') 
-                    : 'No asignado'}
+                  {getNombreTercero(contrato.id_tercero)}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Documento del Tercero</p>
                 <p className="text-sm text-gray-900">
-                  {contrato.tercero?.numero_documento ? 
-                    `${contrato.tercero.numero_documento} (${contrato.tercero.tipo_personalidad || 'N/A'})` 
-                    : 'No disponible'}
+                  {getDocumentoTercero(contrato.id_tercero)}
                 </p>
               </div>
             </div>
@@ -236,17 +289,13 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-gray-600">Moneda de Cotización</p>
                   <p className="text-sm text-gray-900">
-                    {contrato.moneda ? 
-                      `${contrato.moneda.nombre_moneda} (${contrato.moneda.simbolo || 'N/A'})` 
-                      : 'No especificada'}
+                    {getNombreMoneda(contrato.id_moneda_cotizacion)}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-gray-600">Impuesto/Tax</p>
                   <p className="text-sm text-gray-900">
-                    {contrato.tax ? 
-                      contrato.tax.titulo_impuesto 
-                      : 'No especificado'}
+                    {getNombreImpuesto(contrato.id_tax)}
                   </p>
                 </div>
               </div>

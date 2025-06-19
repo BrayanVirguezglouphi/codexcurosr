@@ -2,10 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // Backend con operaciones CRUD completas - v1.1 (Force deployment)
 const app = express();
 const PORT = process.env.PORT || 8081;
+
+// Configuración JWT
+const JWT_SECRET = process.env.JWT_SECRET || 'tu_clave_secreta_super_segura_2025';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 // Middleware básico
 app.use(cors());
@@ -34,6 +40,246 @@ const testConnection = async () => {
     return false;
   }
 };
+
+// Middleware de autenticación JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de acceso requerido' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// ENDPOINTS DE AUTENTICACIÓN
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    console.log('🔐 Intento de login para:', email);
+
+    if (!email || !password) {
+      return res.status(400).json({ 
+        error: 'Email y contraseña son requeridos' 
+      });
+    }
+
+    // Buscar usuario por email
+    const query = 'SELECT * FROM "Users" WHERE email = $1';
+    const result = await pool.query(query, [email]);
+
+    if (result.rows.length === 0) {
+      console.log('❌ Usuario no encontrado:', email);
+      return res.status(401).json({ 
+        error: 'Credenciales inválidas' 
+      });
+    }
+
+    const user = result.rows[0];
+    console.log('👤 Usuario encontrado:', { id: user.id, email: user.email, role: user.role });
+
+    // Verificar contraseña
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    if (!passwordMatch) {
+      console.log('❌ Contraseña incorrecta para:', email);
+      return res.status(401).json({ 
+        error: 'Credenciales inválidas' 
+      });
+    }
+
+    // Generar JWT token
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+    console.log('✅ Login exitoso para:', email);
+
+    // Actualizar fecha de último acceso
+    await pool.query(
+      'UPDATE "Users" SET "updatedAt" = NOW() WHERE id = $1',
+      [user.id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Login exitoso',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en login:', error);
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      details: error.message 
+    });
+  }
+});
+
+// Verificar token endpoint
+app.get('/api/auth/verify', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    user: req.user
+  });
+});
+
+// Logout endpoint (opcional - principalmente para limpiar del lado del cliente)
+app.post('/api/auth/logout', authenticateToken, (req, res) => {
+  console.log('🚪 Logout para usuario:', req.user.email);
+  res.json({
+    success: true,
+    message: 'Logout exitoso'
+  });
+});
+
+// Endpoint para obtener perfil de usuario
+app.get('/api/auth/profile', authenticateToken, async (req, res) => {
+  try {
+    const query = 'SELECT id, name, email, role, "createdAt", "updatedAt" FROM "Users" WHERE id = $1';
+    const result = await pool.query(query, [req.user.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('❌ Error al obtener perfil:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener perfil',
+      details: error.message 
+    });
+  }
+});
+
+// ENDPOINT PARA CREAR USUARIOS (SOLO ADMIN)
+app.post('/api/auth/register', authenticateToken, async (req, res) => {
+  try {
+    // Verificar que el usuario sea admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        error: 'Solo los administradores pueden crear usuarios' 
+      });
+    }
+
+    const { name, email, password, role = 'user' } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ 
+        error: 'Nombre, email y contraseña son requeridos' 
+      });
+    }
+
+    // Verificar si el email ya existe
+    const existingUser = await pool.query('SELECT id FROM "Users" WHERE email = $1', [email]);
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ 
+        error: 'El email ya está registrado' 
+      });
+    }
+
+    // Hashear contraseña
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Crear usuario
+    const query = `
+      INSERT INTO "Users" (name, email, password, role, "createdAt", "updatedAt")
+      VALUES ($1, $2, $3, $4, NOW(), NOW())
+      RETURNING id, name, email, role, "createdAt", "updatedAt"
+    `;
+
+    const result = await pool.query(query, [name, email, hashedPassword, role]);
+    const newUser = result.rows[0];
+
+    console.log('✅ Usuario creado exitosamente:', { id: newUser.id, email: newUser.email });
+
+    res.status(201).json({
+      success: true,
+      message: 'Usuario creado exitosamente',
+      user: newUser
+    });
+
+  } catch (error) {
+    console.error('❌ Error al crear usuario:', error);
+    res.status(500).json({ 
+      error: 'Error al crear usuario',
+      details: error.message 
+    });
+  }
+});
+
+// Función auxiliar para obtener la tabla de contratos correcta
+async function getTablaContratos() {
+  try {
+    // Buscar específicamente adcot_contratos_clientes primero
+    let tablaContratos = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'adcot_contratos_clientes'
+    `);
+
+    console.log(`📋 Tabla específica adcot_contratos_clientes encontrada: ${tablaContratos.rows.length > 0 ? 'SÍ' : 'NO'}`);
+    
+    if (tablaContratos.rows.length > 0) {
+      console.log(`📊 Usando tabla preferida: adcot_contratos_clientes`);
+      return 'adcot_contratos_clientes';
+    }
+    
+    // Si no existe, buscar otras tablas de contratos
+    tablaContratos = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%contrato%'
+      ORDER BY table_name
+    `);
+    
+    console.log(`📋 Tablas de contratos encontradas:`, tablaContratos.rows);
+    
+    if (tablaContratos.rows.length === 0) {
+      throw new Error('No se encontró tabla de contratos');
+    }
+    
+    // Si hay múltiples tablas, preferir adcot_contratos_clientes
+    const tablaPreferida = tablaContratos.rows.find(t => t.table_name === 'adcot_contratos_clientes');
+    const nombreTabla = tablaPreferida ? tablaPreferida.table_name : tablaContratos.rows[0].table_name;
+    
+    console.log(`📊 Usando tabla: ${nombreTabla}`);
+    return nombreTabla;
+  } catch (error) {
+    console.error('❌ Error en getTablaContratos:', error);
+    throw error;
+  }
+}
 
 // Ruta de health check con estado de BD
 app.get('/api/health', async (req, res) => {
@@ -99,6 +345,14 @@ app.get('/api/transacciones', async (req, res) => {
         t.registro_auxiliar,
         t.aplica_retencion,
         t.aplica_impuestos,
+        t.url_soporte_adjunto,
+        t.id_cuenta,
+        t.id_tipotransaccion,
+        t.id_moneda_transaccion,
+        t.id_etiqueta_contable,
+        t.id_tercero,
+        t.id_cuenta_destino_transf,
+        t.id_concepto,
         tt.tipo_transaccion,
         c.nombre_cuenta
       FROM adcot_transacciones t
@@ -110,8 +364,24 @@ app.get('/api/transacciones', async (req, res) => {
     
     const result = await pool.query(query);
     console.log(`✅ Encontradas ${result.rows.length} transacciones`);
+    console.log('📋 Primera transacción RAW:', result.rows[0]);
+    console.log('📋 Columnas disponibles:', result.rows[0] ? Object.keys(result.rows[0]) : 'Sin datos');
     
-    // Formatear datos para el frontend
+    // LOG DETALLADO: Verificar IDs específicos de la transacción #2
+    const transaccion2 = result.rows.find(t => t.id_transaccion === 2);
+    if (transaccion2) {
+      console.log('🚨 TRANSACCIÓN #2 RAW:', {
+        id_cuenta: transaccion2.id_cuenta,
+        id_tipotransaccion: transaccion2.id_tipotransaccion,
+        id_moneda_transaccion: transaccion2.id_moneda_transaccion,
+        id_etiqueta_contable: transaccion2.id_etiqueta_contable,
+        id_tercero: transaccion2.id_tercero,
+        id_cuenta_destino_transf: transaccion2.id_cuenta_destino_transf,
+        id_concepto: transaccion2.id_concepto
+      });
+    }
+    
+    // Formatear datos para el frontend - incluir TODOS los IDs para el modo vista
     const transacciones = result.rows.map(row => ({
       id_transaccion: row.id_transaccion,
       fecha_transaccion: row.fecha_transaccion,
@@ -123,6 +393,19 @@ app.get('/api/transacciones', async (req, res) => {
       registro_auxiliar: row.registro_auxiliar,
       aplica_retencion: row.aplica_retencion,
       aplica_impuestos: row.aplica_impuestos,
+      url_soporte_adjunto: row.url_soporte_adjunto,
+      // IDs necesarios para el modo vista - manejar null correctamente
+      id_cuenta: row.id_cuenta || null,
+      id_tipotransaccion: row.id_tipotransaccion || null,
+      id_moneda_transaccion: row.id_moneda_transaccion || null,
+      id_etiqueta_contable: row.id_etiqueta_contable || null,
+      id_tercero: row.id_tercero || null,
+      id_cuenta_destino_transf: row.id_cuenta_destino_transf || null,
+      id_concepto: row.id_concepto || null,
+      // Campos directos para la tabla
+      tipo_transaccion: row.tipo_transaccion,
+      nombre_cuenta: row.nombre_cuenta,
+      // Mantener compatibilidad con tabla (estructurado para compatibilidad)
       tipoTransaccion: {
         tipo_transaccion: row.tipo_transaccion
       },
@@ -130,6 +413,20 @@ app.get('/api/transacciones', async (req, res) => {
         nombre_cuenta: row.nombre_cuenta
       }
     }));
+    
+    // LOG DETALLADO: Verificar transacción #2 formateada
+    const transaccion2Formateada = transacciones.find(t => t.id_transaccion === 2);
+    if (transaccion2Formateada) {
+      console.log('🚨 TRANSACCIÓN #2 FORMATEADA PARA FRONTEND:', {
+        id_cuenta: transaccion2Formateada.id_cuenta,
+        id_tipotransaccion: transaccion2Formateada.id_tipotransaccion,
+        id_moneda_transaccion: transaccion2Formateada.id_moneda_transaccion,
+        id_etiqueta_contable: transaccion2Formateada.id_etiqueta_contable,
+        id_tercero: transaccion2Formateada.id_tercero,
+        id_cuenta_destino_transf: transaccion2Formateada.id_cuenta_destino_transf,
+        id_concepto: transaccion2Formateada.id_concepto
+      });
+    }
     
     res.json(transacciones);
   } catch (error) {
@@ -183,9 +480,55 @@ app.put('/api/transacciones/:id', async (req, res) => {
     const { id } = req.params;
     const updateFields = req.body;
     
+    console.log(`🔍 Actualizando transacción ID: ${id}...`);
+    console.log('📋 Datos recibidos (RAW):', JSON.stringify(updateFields, null, 2));
+    console.log('📋 Claves recibidas:', Object.keys(updateFields));
+    
+    // Definir campos válidos de la tabla adcot_transacciones (basado en la estructura real de la tabla)
+    const validFieldNames = [
+      'id_cuenta',
+      'id_tipotransaccion', 
+      'fecha_transaccion',
+      'titulo_transaccion',
+      'id_moneda_transaccion',
+      'valor_total_transaccion',
+      'trm_moneda_base',
+      'observacion',
+      'url_soporte_adjunto',
+      'registro_auxiliar',
+      'registro_validado',
+      'id_etiqueta_contable',
+      'id_tercero',
+      'id_cuenta_destino_transf',
+      'aplica_retencion',
+      'aplica_impuestos',
+      'id_concepto'
+    ];
+    
+    // Filtrar solo campos válidos
+    const validFields = {};
+    Object.keys(updateFields).forEach(key => {
+      if (validFieldNames.includes(key)) {
+        validFields[key] = updateFields[key];
+      } else {
+        console.log(`⚠️  Campo ignorado (no válido): ${key}`);
+      }
+    });
+    
+    console.log('📋 Campos válidos a actualizar:', Object.keys(validFields));
+    
+    // Verificar que hay campos para actualizar
+    if (Object.keys(validFields).length === 0) {
+      return res.status(400).json({ 
+        error: 'No se proporcionaron campos válidos para actualizar' 
+      });
+    }
+    
+    console.log('📋 Campos después del filtrado:', JSON.stringify(validFields, null, 2));
+    
     // Construir query dinámicamente
-    const fields = Object.keys(updateFields);
-    const values = Object.values(updateFields);
+    const fields = Object.keys(validFields);
+    const values = Object.values(validFields);
     const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
     
     const query = `
@@ -195,17 +538,45 @@ app.put('/api/transacciones/:id', async (req, res) => {
       RETURNING *
     `;
     
+    console.log('🔍 Query generada:', query);
+    console.log('📋 Valores:', [...values, id]);
+    
     const result = await pool.query(query, [...values, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Transacción no encontrada' });
     }
     
+    console.log('✅ Transacción actualizada exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error al actualizar transacción:', error);
     res.status(500).json({ 
       error: 'Error al actualizar transacción',
+      details: error.message 
+    });
+  }
+});
+
+// Ruta para obtener transacción individual por ID
+app.get('/api/transacciones/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Obteniendo transacción ID: ${id}...`);
+    
+    const query = 'SELECT * FROM adcot_transacciones WHERE id_transaccion = $1';
+    const result = await pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Transacción no encontrada' });
+    }
+    
+    console.log('✅ Transacción encontrada:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al obtener transacción:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener transacción',
       details: error.message 
     });
   }
@@ -340,10 +711,54 @@ app.get('/api/catalogos/conceptos', async (req, res) => {
 app.get('/api/catalogos/monedas', async (req, res) => {
   try {
     console.log('🔍 Consultando monedas...');
-    const query = 'SELECT * FROM moneda ORDER BY nombre_moneda ASC';
-    const result = await pool.query(query);
-    console.log(`✅ Encontradas ${result.rows.length} monedas`);
-    res.json(result.rows);
+    
+    // Buscar tabla de monedas disponible
+    const tablasMonedas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name LIKE '%moneda%'
+      ORDER BY table_name
+    `);
+    
+    console.log('📋 Tablas de monedas encontradas:', tablasMonedas.rows);
+    
+    if (tablasMonedas.rows.length === 0) {
+      console.log('❌ No se encontraron tablas de monedas');
+      return res.json([]);
+    }
+    
+    // Probar con diferentes tablas hasta encontrar una que funcione
+    for (const tabla of tablasMonedas.rows) {
+      try {
+        const nombreTabla = tabla.table_name;
+        console.log(`📊 Intentando consultar tabla: ${nombreTabla}`);
+        
+        // Obtener columnas de la tabla
+        const columnasResult = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = '${nombreTabla}'
+          ORDER BY ordinal_position
+        `);
+        
+        const columnas = columnasResult.rows.map(r => r.column_name);
+        console.log(`📋 Columnas de ${nombreTabla}:`, columnas);
+        
+        // Construir query basado en las columnas disponibles
+        const query = `SELECT * FROM ${nombreTabla} ORDER BY ${columnas[1] || columnas[0]} ASC LIMIT 10`;
+        const result = await pool.query(query);
+        
+        console.log(`✅ Encontradas ${result.rows.length} monedas en tabla ${nombreTabla}`);
+        console.log('📋 Muestra de datos:', result.rows.slice(0, 2));
+        
+        return res.json(result.rows);
+      } catch (tableError) {
+        console.log(`❌ Error con tabla ${tabla.table_name}:`, tableError.message);
+        continue;
+      }
+    }
+    
+    res.json([]);
   } catch (error) {
     console.error('❌ Error al obtener monedas:', error);
     res.status(500).json({ 
@@ -357,19 +772,36 @@ app.get('/api/catalogos/monedas', async (req, res) => {
 app.get('/api/catalogos/terceros', async (req, res) => {
   try {
     console.log('🔍 Consultando terceros...');
-    const query = `
-      SELECT 
-        id_tercero,
-        razon_social,
-        primer_nombre,
-        primer_apellido,
-        tipo_personalidad,
-        numero_documento
-      FROM adcot_terceros_exogenos 
-      ORDER BY razon_social ASC, primer_nombre ASC
-    `;
+    
+    // Verificar si existe la tabla adcot_terceros_exogenos
+    const verificarTabla = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'adcot_terceros_exogenos'
+    `);
+    
+    if (verificarTabla.rows.length === 0) {
+      console.log('❌ Tabla adcot_terceros_exogenos no encontrada');
+      return res.json([]);
+    }
+    
+    // Obtener columnas de la tabla
+    const columnasResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'adcot_terceros_exogenos'
+      ORDER BY ordinal_position
+    `);
+    
+    const columnas = columnasResult.rows.map(r => r.column_name);
+    console.log('📋 Columnas de adcot_terceros_exogenos:', columnas);
+    
+    const query = `SELECT * FROM adcot_terceros_exogenos ORDER BY razon_social ASC NULLS LAST, primer_nombre ASC LIMIT 20`;
     const result = await pool.query(query);
+    
     console.log(`✅ Encontrados ${result.rows.length} terceros`);
+    console.log('📋 Muestra de terceros:', result.rows.slice(0, 2));
+    
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener terceros:', error);
@@ -694,34 +1126,22 @@ app.get('/api/centros-costos', async (req, res) => {
   }
 });
 
-// 12. Ruta de contratos - VERIFICAR NOMBRE DE TABLA
+// 12. Ruta de contratos - USAR adcot_contratos_clientes
 app.get('/api/contratos', async (req, res) => {
   try {
     console.log('🔍 Consultando contratos...');
     
-    // Primero verificar qué tabla de contratos existe
-    const tablaExiste = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name LIKE '%contrato%'
-    `);
+    const nombreTabla = await getTablaContratos();
     
-    console.log('📋 Tablas de contratos encontradas:', tablaExiste.rows);
-    
-    if (tablaExiste.rows.length === 0) {
-      return res.status(404).json({ 
-        error: 'No se encontró tabla de contratos',
-        availableTables: tablaExiste.rows
-      });
-    }
-    
-    // Usar la primera tabla encontrada (probablemente la correcta)
-    const nombreTabla = tablaExiste.rows[0].table_name;
-    console.log(`📊 Usando tabla: ${nombreTabla}`);
+    console.log(`📊 Usando tabla de contratos: ${nombreTabla}`);
     
     const query = `SELECT * FROM ${nombreTabla} ORDER BY id_contrato DESC LIMIT 100`;
+    console.log(`🔍 Ejecutando query: ${query}`);
+    
     const result = await pool.query(query);
     console.log(`✅ Encontrados ${result.rows.length} contratos`);
+    console.log(`📋 Primeros 2 contratos:`, result.rows.slice(0, 2));
+    
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener contratos:', error);
@@ -732,23 +1152,39 @@ app.get('/api/contratos', async (req, res) => {
   }
 });
 
+// Obtener contrato individual por ID
+app.get('/api/contratos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Consultando contrato ID: ${id}...`);
+    
+    const nombreTabla = await getTablaContratos();
+    console.log(`📊 Usando tabla de contratos: ${nombreTabla}`);
+    
+    const query = `SELECT * FROM ${nombreTabla} WHERE id_contrato = $1`;
+    const result = await pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Contrato no encontrado' });
+    }
+    
+    console.log(`✅ Contrato encontrado: ${result.rows[0].numero_contrato_os}`);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al obtener contrato:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener contrato',
+      details: error.message 
+    });
+  }
+});
+
 // Crear contrato
 app.post('/api/contratos', async (req, res) => {
   try {
     console.log('🔍 Creando contrato...');
     
-    // Verificar tabla contratos
-    const tablaContratos = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name LIKE '%contrato%'
-    `);
-    
-    if (tablaContratos.rows.length === 0) {
-      return res.status(404).json({ error: 'Tabla de contratos no encontrada' });
-    }
-    
-    const nombreTabla = tablaContratos.rows[0].table_name;
+    const nombreTabla = await getTablaContratos();
     
     // Obtener columnas de la tabla
     const columnas = await pool.query(`
@@ -792,18 +1228,7 @@ app.put('/api/contratos/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Actualizando contrato ID: ${id}...`);
     
-    // Verificar tabla contratos
-    const tablaContratos = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name LIKE '%contrato%'
-    `);
-    
-    if (tablaContratos.rows.length === 0) {
-      return res.status(404).json({ error: 'Tabla de contratos no encontrada' });
-    }
-    
-    const nombreTabla = tablaContratos.rows[0].table_name;
+    const nombreTabla = await getTablaContratos();
     
     // Obtener columnas de la tabla
     const columnas = await pool.query(`
@@ -853,18 +1278,7 @@ app.delete('/api/contratos/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Eliminando contrato ID: ${id}...`);
     
-    // Verificar tabla contratos
-    const tablaContratos = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name LIKE '%contrato%'
-    `);
-    
-    if (tablaContratos.rows.length === 0) {
-      return res.status(404).json({ error: 'Tabla de contratos no encontrada' });
-    }
-    
-    const nombreTabla = tablaContratos.rows[0].table_name;
+    const nombreTabla = await getTablaContratos();
     const query = `DELETE FROM ${nombreTabla} WHERE id_contrato = $1 RETURNING *`;
     const result = await pool.query(query, [id]);
     

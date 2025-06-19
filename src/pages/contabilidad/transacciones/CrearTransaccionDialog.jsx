@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,7 +195,9 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
   const onSubmit = async (data) => {
     try {
       const formattedData = {
-        ...data,
+        titulo_transaccion: data.titulo_transaccion,
+        fecha_transaccion: data.fecha_transaccion,
+        valor_total_transaccion: data.valor_total_transaccion ? parseFloat(data.valor_total_transaccion) : null,
         id_cuenta: data.id_cuenta ? parseInt(data.id_cuenta) : null,
         id_tipotransaccion: data.id_tipotransaccion ? parseInt(data.id_tipotransaccion) : null,
         id_moneda_transaccion: data.id_moneda_transaccion ? parseInt(data.id_moneda_transaccion) : null,
@@ -203,12 +205,16 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
         id_tercero: data.id_tercero ? parseInt(data.id_tercero) : null,
         id_cuenta_destino_transf: data.id_cuenta_destino_transf ? parseInt(data.id_cuenta_destino_transf) : null,
         id_concepto: data.id_concepto ? parseInt(data.id_concepto) : null,
-        valor_total_transaccion: data.valor_total_transaccion ? parseFloat(data.valor_total_transaccion) : null,
+        observacion: data.observacion || '',
         trm_moneda_base: data.trm_moneda_base ? parseFloat(data.trm_moneda_base) : null,
-        fecha_transaccion: data.fecha_transaccion ? new Date(data.fecha_transaccion).toISOString().split('T')[0] : null
+        registro_auxiliar: data.registro_auxiliar === true,
+        registro_validado: data.registro_validado === true,
+        aplica_retencion: data.aplica_retencion === true,
+        aplica_impuestos: data.aplica_impuestos === true,
+        url_soporte_adjunto: data.url_soporte_adjunto || null,
       };
 
-      const response = await fetch('/api/transacciones', {
+      const response = await apiCall('/api/transacciones', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -268,9 +274,9 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
               <DialogTitle className="text-xl font-bold text-gray-900">
                 Crear Nueva Transacción
               </DialogTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <DialogDescription className="text-sm text-gray-600 mt-1">
                 Complete la información para crear una nueva transacción
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -391,7 +397,7 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
                   value={currentCuenta}
                   onChange={(value) => setValue('id_cuenta', value)}
                   placeholder="Seleccione cuenta origen"
-                  displayKey="titulo_cuenta"
+                  displayKey="nombre_cuenta"
                   valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
                 />
@@ -410,7 +416,7 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
                   value={currentCuentaDestino}
                   onChange={(value) => setValue('id_cuenta_destino_transf', value)}
                   placeholder="Seleccione cuenta destino"
-                  displayKey="titulo_cuenta"
+                  displayKey="nombre_cuenta"
                   valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
                 />

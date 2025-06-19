@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,29 +154,54 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
   // Cargar catálogos al abrir el diálogo
   useEffect(() => {
     if (open) {
+      console.log('🔄 Cargando catálogos para EditarTransaccion...');
       Promise.all([
-        apiCall('/api/catalogos/cuentas').then(r => r.json()),
-        apiCall('/api/catalogos/tipos-transaccion').then(r => r.json()),
-        apiCall('/api/catalogos/monedas').then(r => r.json()),
-        apiCall('/api/catalogos/etiquetas-contables').then(r => r.json()),
-        apiCall('/api/catalogos/terceros').then(r => r.json()),
-        apiCall('/api/catalogos/conceptos').then(r => r.json())
+        apiCall('/api/catalogos/cuentas'),
+        apiCall('/api/catalogos/tipos-transaccion'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/etiquetas-contables'),
+        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/catalogos/conceptos')
       ]).then(([cuentasData, tiposData, monedasData, etiquetasData, tercerosData, conceptosData]) => {
-        setCuentas(cuentasData);
-        setTiposTransaccion(tiposData);
-        setMonedas(monedasData);
-        setEtiquetas(etiquetasData);
-        setTerceros(tercerosData);
-        setConceptos(conceptosData);
+        console.log('✅ Catálogos cargados en EditarTransaccion:', {
+          cuentas: cuentasData?.length || 0,
+          tipos: tiposData?.length || 0,
+          monedas: monedasData?.length || 0,
+          etiquetas: etiquetasData?.length || 0,
+          terceros: tercerosData?.length || 0,
+          conceptos: conceptosData?.length || 0
+        });
+        
+        setCuentas(cuentasData || []);
+        setTiposTransaccion(tiposData || []);
+        setMonedas(monedasData || []);
+        setEtiquetas(etiquetasData || []);
+        setTerceros(tercerosData || []);
+        setConceptos(conceptosData || []);
+      }).catch(error => {
+        console.error('❌ Error al cargar catálogos:', error);
       });
     }
   }, [open]);
+
+  // Sincronizar valores cuando se cargan los catálogos y la transacción
+  useEffect(() => {
+    if (transaccion && cuentas.length > 0 && tiposTransaccion.length > 0) {
+      setValue('id_cuenta', transaccion.id_cuenta ? String(transaccion.id_cuenta) : '');
+      setValue('id_cuenta_destino_transf', transaccion.id_cuenta_destino_transf ? String(transaccion.id_cuenta_destino_transf) : '');
+      setValue('id_tipotransaccion', transaccion.id_tipotransaccion ? String(transaccion.id_tipotransaccion) : '');
+      setValue('id_moneda_transaccion', transaccion.id_moneda_transaccion ? String(transaccion.id_moneda_transaccion) : '');
+      setValue('id_etiqueta_contable', transaccion.id_etiqueta_contable ? String(transaccion.id_etiqueta_contable) : '');
+      setValue('id_tercero', transaccion.id_tercero ? String(transaccion.id_tercero) : '');
+      setValue('id_concepto', transaccion.id_concepto ? String(transaccion.id_concepto) : '');
+    }
+  }, [transaccion, cuentas, tiposTransaccion, monedas, etiquetas, terceros, conceptos, setValue]);
 
   useEffect(() => {
     if (transaccion) {
       const fecha = transaccion.fecha_transaccion ? new Date(transaccion.fecha_transaccion).toISOString().split('T')[0] : '';
       reset({
-        ...transaccion,
+        titulo_transaccion: transaccion.titulo_transaccion || '',
         fecha_transaccion: fecha,
         valor_total_transaccion: transaccion.valor_total_transaccion !== undefined && transaccion.valor_total_transaccion !== null ? transaccion.valor_total_transaccion.toString() : '',
         id_cuenta: transaccion.id_cuenta ? String(transaccion.id_cuenta) : '',
@@ -186,10 +211,13 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         id_tercero: transaccion.id_tercero ? String(transaccion.id_tercero) : '',
         id_cuenta_destino_transf: transaccion.id_cuenta_destino_transf ? String(transaccion.id_cuenta_destino_transf) : '',
         id_concepto: transaccion.id_concepto ? String(transaccion.id_concepto) : '',
+        observacion: transaccion.observacion || '',
+        trm_moneda_base: transaccion.trm_moneda_base ? String(transaccion.trm_moneda_base) : '',
         registro_auxiliar: transaccion.registro_auxiliar === true,
         registro_validado: transaccion.registro_validado === true,
         aplica_retencion: transaccion.aplica_retencion === true,
         aplica_impuestos: transaccion.aplica_impuestos === true,
+        url_soporte_adjunto: transaccion.url_soporte_adjunto || '',
       });
     }
   }, [transaccion, reset]);
@@ -197,7 +225,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
   const onSubmit = async (data) => {
     try {
       const formattedData = {
-        ...data,
+        titulo_transaccion: data.titulo_transaccion,
+        fecha_transaccion: data.fecha_transaccion,
+        valor_total_transaccion: data.valor_total_transaccion ? parseFloat(data.valor_total_transaccion) : null,
         id_cuenta: data.id_cuenta ? parseInt(data.id_cuenta) : null,
         id_tipotransaccion: data.id_tipotransaccion ? parseInt(data.id_tipotransaccion) : null,
         id_moneda_transaccion: data.id_moneda_transaccion ? parseInt(data.id_moneda_transaccion) : null,
@@ -205,47 +235,31 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         id_tercero: data.id_tercero ? parseInt(data.id_tercero) : null,
         id_cuenta_destino_transf: data.id_cuenta_destino_transf ? parseInt(data.id_cuenta_destino_transf) : null,
         id_concepto: data.id_concepto ? parseInt(data.id_concepto) : null,
-        valor_total_transaccion: data.valor_total_transaccion ? parseFloat(data.valor_total_transaccion) : null,
+        observacion: data.observacion || '',
         trm_moneda_base: data.trm_moneda_base ? parseFloat(data.trm_moneda_base) : null,
+        registro_auxiliar: data.registro_auxiliar === true,
+        registro_validado: data.registro_validado === true,
+        aplica_retencion: data.aplica_retencion === true,
+        aplica_impuestos: data.aplica_impuestos === true,
+        url_soporte_adjunto: data.url_soporte_adjunto || null,
       };
 
-      const response = await fetch(`/api/transacciones/${transaccion.id_transaccion}`, {
+      console.log('📤 Enviando datos de transacción:', formattedData);
+      
+      const responseData = await apiCall(`/api/transacciones/${transaccion.id_transaccion}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(formattedData),
       });
 
-      const responseData = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Éxito",
-          description: "Transacción actualizada correctamente",
-        });
-        onTransaccionActualizada();
-        onClose();
-      } else {
-        if (responseData.field) {
-          toast({
-            title: "Error de validación",
-            description: responseData.message,
-            variant: "destructive",
-          });
-        } else if (responseData.details) {
-          const errorMessage = responseData.details
-            .map(error => `${error.field}: ${error.message}`)
-            .join('\n');
-          toast({
-            title: "Error de validación",
-            description: errorMessage,
-            variant: "destructive",
-          });
-        } else {
-          throw new Error(responseData.message || 'Error al actualizar la transacción');
-        }
-      }
+      console.log('📨 Respuesta recibida:', responseData);
+      
+      // Si llegamos aquí, la actualización fue exitosa
+      toast({
+        title: "Éxito",
+        description: "Transacción actualizada correctamente",
+      });
+      onTransaccionActualizada();
+      onClose();
     } catch (error) {
       console.error('Error al actualizar transacción:', error);
       toast({
@@ -270,9 +284,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
               <DialogTitle className="text-xl font-bold text-gray-900">
                 Editar Transacción
               </DialogTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <DialogDescription className="text-sm text-gray-600 mt-1">
                 Transacción #{transaccion.id_transaccion} - {transaccion.titulo_transaccion}
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -393,7 +407,7 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   value={currentCuenta}
                   onChange={(value) => setValue('id_cuenta', value)}
                   placeholder="Seleccione cuenta origen"
-                  displayKey="titulo_cuenta"
+                  displayKey="nombre_cuenta"
                   valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
                 />
@@ -412,7 +426,7 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   value={currentCuentaDestino}
                   onChange={(value) => setValue('id_cuenta_destino_transf', value)}
                   placeholder="Seleccione cuenta destino"
-                  displayKey="titulo_cuenta"
+                  displayKey="nombre_cuenta"
                   valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
                 />

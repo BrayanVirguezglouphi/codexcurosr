@@ -20,23 +20,19 @@ export default function VerFacturaDialog({ open, onClose, factura }) {
 
   const cargarCatalogos = async () => {
     try {
-      const [contratosRes, monedasRes, taxesRes] = await Promise.all([
+      console.log('🔄 Cargando catálogos en VerFactura...');
+      const [contratosData, monedasData, taxesData] = await Promise.all([
         apiCall('/api/catalogos/contratos'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/taxes')
       ]);
 
-      const [contratosData, monedasData, taxesData] = await Promise.all([
-        contratosRes.json(),
-        monedasRes.json(),
-        taxesRes.json()
-      ]);
-
+      console.log('✅ Catálogos cargados:', { contratos: contratosData.length, monedas: monedasData.length, taxes: taxesData.length });
       setContratos(contratosData);
       setMonedas(monedasData);
       setTaxes(taxesData);
     } catch (error) {
-      console.error('Error al cargar catálogos:', error);
+      console.error('❌ Error al cargar catálogos:', error);
     }
   };
 
@@ -110,7 +106,7 @@ export default function VerFacturaDialog({ open, onClose, factura }) {
   const getNombreTax = (id) => {
     if (!id) return 'No especificado';
     const tax = taxes.find(t => t.id_tax === parseInt(id));
-    return tax ? `${tax.nombre_tax} (${tax.porcentaje_tax}%)` : `ID: ${id}`;
+    return tax ? tax.titulo_impuesto : `ID: ${id}`;
   };
 
   return (

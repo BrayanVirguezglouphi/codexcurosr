@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -236,9 +236,9 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
               <DialogTitle className="text-xl font-bold text-gray-900">
                 Crear Nuevo Contrato
               </DialogTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <DialogDescription className="text-sm text-gray-600 mt-1">
                 Complete la información para registrar un nuevo contrato
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>

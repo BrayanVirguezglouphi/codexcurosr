@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   Users,
@@ -19,7 +20,8 @@ import {
   ChevronRight,
   Settings,
   CreditCard,
-  Zap
+  Zap,
+  LogOut
 } from 'lucide-react';
 
 const menuItems = [
@@ -70,6 +72,7 @@ const menuItems = [
 
 const Sidebar = () => {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [openSections, setOpenSections] = useState({});
 
   const toggleSection = (title) => {
@@ -138,12 +141,21 @@ const Sidebar = () => {
       <div className="border-t border-white/10 p-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">U</span>
+            <span className="text-white text-sm font-medium">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </span>
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-white">Usuario</p>
-            <p className="text-xs text-white/70">Administrador</p>
+            <p className="text-sm font-medium text-white">{user?.name || 'Usuario'}</p>
+            <p className="text-xs text-white/70">{user?.role || 'user'}</p>
           </div>
+          <button
+            onClick={logout}
+            className="p-1 rounded-md hover:bg-white/10 transition-colors"
+            title="Cerrar sesión"
+          >
+            <LogOut className="h-4 w-4 text-white/70 hover:text-white" />
+          </button>
         </div>
       </div>
     </div>

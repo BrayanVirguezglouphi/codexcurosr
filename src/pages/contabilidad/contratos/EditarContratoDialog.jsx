@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -151,7 +151,7 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
     setLoading(true);
     try {
       const [contratoRes, tercerosRes, monedasRes, taxesRes] = await Promise.all([
-        apiCall('/api/contratos/${contratoId}'),
+        apiCall(`/api/contratos/${contratoId}`),
         apiCall('/api/catalogos/terceros'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/taxes')
@@ -200,7 +200,7 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
         fecha_final_servicio: data.fecha_final_servicio ? new Date(data.fecha_final_servicio).toISOString().split('T')[0] : null
       };
 
-      const response = await fetch(`/api/contratos/${contratoId}`, {
+      const response = await apiCall(`/api/contratos/${contratoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
@@ -230,9 +230,9 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
               <DialogTitle className="text-xl font-bold text-gray-900">
                 Editar Contrato
               </DialogTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <DialogDescription className="text-sm text-gray-600 mt-1">
                 Modifique los datos del contrato seleccionado
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>

@@ -85,40 +85,50 @@ const Facturas = () => {
   // Cargar catálogos para mostrar nombres legibles
   const cargarCatalogos = async () => {
     try {
-      const [contratosRes, monedasRes, taxesRes] = await Promise.all([
+      console.log('🔄 Cargando catálogos...');
+      const [contratosData, monedasData, taxesData] = await Promise.all([
         apiCall('/api/catalogos/contratos'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/taxes')
       ]);
 
-      const [contratosData, monedasData, taxesData] = await Promise.all([
-        contratosRes.json(),
-        monedasRes.json(),
-        taxesRes.json()
-      ]);
+      console.log('✅ Catálogos cargados:', {
+        contratos: Array.isArray(contratosData) ? contratosData.length : 'No es array',
+        monedas: Array.isArray(monedasData) ? monedasData.length : 'No es array',
+        taxes: Array.isArray(taxesData) ? taxesData.length : 'No es array'
+      });
 
-      setContratos(contratosData);
-      setMonedas(monedasData);
-      setTaxes(taxesData);
+      setContratos(Array.isArray(contratosData) ? contratosData : []);
+      setMonedas(Array.isArray(monedasData) ? monedasData : []);
+      setTaxes(Array.isArray(taxesData) ? taxesData : []);
     } catch (error) {
-      console.error('Error al cargar catálogos:', error);
-      // No mostramos toast de error aquí para no ser muy intrusivo
+      console.error('❌ Error al cargar catálogos:', error);
+      // Establecer arrays vacíos para evitar errores
+      setContratos([]);
+      setMonedas([]);
+      setTaxes([]);
     }
   };
 
   // Cargar facturas
   const cargarFacturas = async () => {
     try {
-      const response = await apiCall('/api/facturas');
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      const data = await response.json();
+      console.log('🔄 Cargando facturas...');
+      const data = await apiCall('/api/facturas');
+      
+      console.log('📊 Facturas recibidas:', {
+        type: typeof data,
+        isArray: Array.isArray(data),
+        length: Array.isArray(data) ? data.length : 'N/A',
+        sample: Array.isArray(data) && data.length > 0 ? data[0] : 'Sin datos'
+      });
+      
       // Asegurar que data es un array
       if (Array.isArray(data)) {
         setFacturas(data);
+        console.log('✅ Facturas cargadas exitosamente:', data.length);
       } else {
-        console.error('La respuesta no es un array:', data);
+        console.error('❌ La respuesta no es un array:', data);
         setFacturas([]);
         toast({
           title: "Error",
@@ -127,7 +137,7 @@ const Facturas = () => {
         });
       }
     } catch (error) {
-      console.error('Error al cargar facturas:', error);
+      console.error('❌ Error al cargar facturas:', error);
       setFacturas([]);
       toast({
         title: "Error",
@@ -461,7 +471,7 @@ const Facturas = () => {
   const getNombreTax = (id) => {
     if (!id) return '—';
     const tax = taxes.find(t => t.id_tax === parseInt(id));
-    return tax ? `${tax.nombre_tax} (${tax.porcentaje_tax}%)` : `ID: ${id}`;
+    return tax ? tax.titulo_impuesto : `ID: ${id}`;
   };
 
   // Función para renderizar el valor de una columna

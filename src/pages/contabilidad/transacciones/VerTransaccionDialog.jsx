@@ -1,7 +1,8 @@
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiCall } from '@/config/api';
 import { 
   FileText, 
   Calendar, 
@@ -15,11 +16,155 @@ import {
   Receipt,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 
 export default function VerTransaccionDialog({ open, onClose, transaccion }) {
+  
+  const [cargando, setCargando] = useState(false);
+  const [cuentas, setCuentas] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [terceros, setTerceros] = useState([]);
+  const [etiquetasContables, setEtiquetasContables] = useState([]);
+  const [tiposTransaccion, setTiposTransaccion] = useState([]);
+  const [conceptos, setConceptos] = useState([]);
+
+  useEffect(() => {
+    if (open && transaccion) {
+      cargarDatosCompletos();
+    }
+  }, [open, transaccion]);
+
+  const cargarDatosCompletos = async () => {
+    setCargando(true);
+    try {
+      console.log('🔄 Cargando datos completos para transacción:', transaccion.id_transaccion);
+      
+      // Cargar datos completos de la transacción y catálogos en paralelo
+      const transaccionCompleta = await apiCall(`/api/transacciones/${transaccion.id_transaccion}`);
+      
+      console.log('📊 Transacción completa recibida:', transaccionCompleta);
+      
+      // Cargar catálogos después de obtener la transacción
+      await cargarCatalogos();
+      
+    } catch (error) {
+      console.error('❌ Error al cargar datos completos:', error);
+      // Si hay error, aún intentar cargar catálogos
+      await cargarCatalogos();
+    }
+  };
+
+  const cargarCatalogos = async () => {
+    try {
+      console.log('🔄 Cargando catálogos para VerTransaccion...');
+      
+      const [
+        cuentasData,
+        monedasData,
+        tercerosData,
+        etiquetasData,
+        tiposData,
+        conceptosData
+      ] = await Promise.all([
+        apiCall('/api/catalogos/cuentas'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/catalogos/etiquetas-contables'),
+        apiCall('/api/catalogos/tipos-transaccion'),
+        apiCall('/api/catalogos/conceptos')
+      ]);
+
+      console.log('✅ Catálogos cargados en VerTransaccion:', {
+        cuentas: cuentasData?.length || 0,
+        monedas: monedasData?.length || 0,
+        terceros: tercerosData?.length || 0,
+        etiquetas: etiquetasData?.length || 0,
+        tipos: tiposData?.length || 0,
+        conceptos: conceptosData?.length || 0
+      });
+
+      setCuentas(cuentasData || []);
+      setMonedas(monedasData || []);
+      setTerceros(tercerosData || []);
+      setEtiquetasContables(etiquetasData || []);
+      setTiposTransaccion(tiposData || []);
+      setConceptos(conceptosData || []);
+    } catch (error) {
+      console.error('❌ Error al cargar catálogos:', error);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Funciones auxiliares para obtener nombres legibles
+  const getNombreCuenta = (id) => {
+    if (!id) return '—';
+    const cuenta = cuentas.find(c => c.id_cuenta === parseInt(id));
+    return cuenta ? (cuenta.titulo_cuenta || cuenta.nombre_cuenta) : `ID: ${id}`;
+  };
+
+  const getNombreMoneda = (id) => {
+    if (!id) return '—';
+    const moneda = monedas.find(m => m.id_moneda === parseInt(id));
+    return moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : `ID: ${id}`;
+  };
+
+  const getNombreTercero = (id) => {
+    if (!id) return '—';
+    const tercero = terceros.find(t => t.id_tercero === parseInt(id));
+    if (!tercero) return `ID: ${id}`;
+    
+    if (tercero.razon_social) {
+      return tercero.razon_social;
+    }
+    
+    const nombres = [
+      tercero.primer_nombre,
+      tercero.primer_apellido
+    ].filter(Boolean).join(' ');
+    
+    return nombres || 'Sin nombre';
+  };
+
+  const getNombreEtiquetaContable = (id) => {
+    if (!id) return '—';
+    const etiqueta = etiquetasContables.find(e => e.id_etiqueta_contable === parseInt(id));
+    return etiqueta ? etiqueta.etiqueta_contable : `ID: ${id}`;
+  };
+
+  const getNombreTipoTransaccion = (id) => {
+    if (!id) return '—';
+    const tipo = tiposTransaccion.find(t => t.id_tipotransaccion === parseInt(id));
+    return tipo ? tipo.tipo_transaccion : `ID: ${id}`;
+  };
+
+  const getNombreConcepto = (id) => {
+    if (!id) return '—';
+    const concepto = conceptos.find(c => c.id_concepto === parseInt(id));
+    return concepto ? (concepto.nombre_concepto || concepto.descripcion_concepto || concepto.concepto_dian) : `ID: ${id}`;
+  };
+
   if (!transaccion) return null;
+
+  if (cargando) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Cargando detalles</DialogTitle>
+            <DialogDescription>
+              Obteniendo información de la transacción...
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Utilidades para mostrar valores legibles
   const mostrarBooleano = (valor) => valor ? 'Sí' : 'No';
@@ -70,9 +215,9 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
               <DialogTitle className="text-xl font-bold text-gray-900">
                 Detalles de la Transacción
               </DialogTitle>
-              <p className="text-sm text-gray-600 mt-1">
+              <DialogDescription className="text-sm text-gray-600 mt-1">
                 Transacción #{transaccion.id_transaccion} - {transaccion.titulo_transaccion}
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -95,7 +240,7 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Tipo de Transacción</p>
-                <p className="text-sm text-gray-900">{mostrarVacio(transaccion.tipoTransaccion?.tipo_transaccion)}</p>
+                <p className="text-sm text-gray-900">{getNombreTipoTransaccion(transaccion.id_tipotransaccion)}</p>
               </div>
             </div>
           </div>
@@ -115,7 +260,7 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Moneda</p>
-                <p className="text-sm text-gray-900">{mostrarVacio(transaccion.moneda?.nombre_moneda)}</p>
+                <p className="text-sm text-gray-900">{getNombreMoneda(transaccion.id_moneda_transaccion)}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">TRM Moneda Base</p>
@@ -133,11 +278,11 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Cuenta Origen</p>
-                <p className="text-sm text-gray-900">{mostrarVacio(transaccion.cuenta?.titulo_cuenta)}</p>
+                <p className="text-sm text-gray-900">{getNombreCuenta(transaccion.id_cuenta)}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Cuenta Destino</p>
-                <p className="text-sm text-gray-900">{mostrarVacio(transaccion.cuentaDestino?.titulo_cuenta)}</p>
+                <p className="text-sm text-gray-900">{getNombreCuenta(transaccion.id_cuenta_destino_transf)}</p>
               </div>
             </div>
           </div>
@@ -163,15 +308,15 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Tercero</p>
-                <p className="text-sm text-gray-900">{mostrarVacio(transaccion.nombre_tercero)}</p>
+                <p className="text-sm text-gray-900">{getNombreTercero(transaccion.id_tercero)}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-600">Concepto DIAN</p>
-                <p className="text-sm text-gray-900">{mostrarVacio(transaccion.concepto?.concepto_dian)}</p>
+                <p className="text-sm text-gray-900">{getNombreConcepto(transaccion.id_concepto)}</p>
               </div>
               <div className="space-y-1 md:col-span-2">
                 <p className="text-sm font-medium text-gray-600">Etiqueta Contable</p>
-                <p className="text-sm text-gray-900">{mostrarVacio(transaccion.etiquetaContable?.etiqueta_contable)}</p>
+                <p className="text-sm text-gray-900">{getNombreEtiquetaContable(transaccion.id_etiqueta_contable)}</p>
               </div>
             </div>
           </div>
