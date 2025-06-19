@@ -30,9 +30,19 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
         apiCall('/api/catalogos/monedas').then(r => r.json()),
         apiCall('/api/catalogos/taxes').then(r => r.json())
       ]).then(([contratosData, monedasData, taxesData]) => {
+        console.log('Contratos cargados:', contratosData);
+        console.log('Monedas cargadas:', monedasData);
+        console.log('Taxes cargados:', taxesData);
         setContratos(contratosData);
         setMonedas(monedasData);
         setTaxes(taxesData);
+      }).catch(error => {
+        console.error('Error cargando catálogos:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los catálogos",
+          variant: "destructive",
+        });
       });
     }
   }, [open]);
@@ -71,9 +81,8 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
         valor_tax: data.valor_tax ? parseFloat(data.valor_tax) : null
       };
       
-      const response = await fetch(`/api/facturas/${factura.id_factura}`, {
+      const response = await apiCall(`/api/facturas/${factura.id_factura}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
       });
       

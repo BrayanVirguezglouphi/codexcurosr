@@ -45,6 +45,11 @@ const Facturas = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
+  // Estados para catálogos (para mostrar nombres legibles)
+  const [contratos, setContratos] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [taxes, setTaxes] = useState([]);
+
   const { toast } = useToast();
 
   // Definir todas las columnas disponibles (basado en el modelo de Factura)
@@ -76,6 +81,30 @@ const Facturas = () => {
     valor_tax: true,
     observaciones_factura: true
   });
+
+  // Cargar catálogos para mostrar nombres legibles
+  const cargarCatalogos = async () => {
+    try {
+      const [contratosRes, monedasRes, taxesRes] = await Promise.all([
+        apiCall('/api/catalogos/contratos'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/taxes')
+      ]);
+
+      const [contratosData, monedasData, taxesData] = await Promise.all([
+        contratosRes.json(),
+        monedasRes.json(),
+        taxesRes.json()
+      ]);
+
+      setContratos(contratosData);
+      setMonedas(monedasData);
+      setTaxes(taxesData);
+    } catch (error) {
+      console.error('Error al cargar catálogos:', error);
+      // No mostramos toast de error aquí para no ser muy intrusivo
+    }
+  };
 
   // Cargar facturas
   const cargarFacturas = async () => {
@@ -265,11 +294,8 @@ const Facturas = () => {
       });
 
       // Enviar datos al servidor
-      const response = await fetch('/api/facturas/import', {
+      const response = await apiCall('/api/facturas/import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ facturas: processedData }),
       });
 
@@ -320,11 +346,8 @@ const Facturas = () => {
       console.log('Datos limpiados para enviar:', cleanedData);
       console.log('JSON que se enviará:', JSON.stringify({ facturas: cleanedData }, null, 2));
 
-      const response = await fetch('/api/facturas/import', {
+      const response = await apiCall('/api/facturas/import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ facturas: cleanedData }),
       });
 
@@ -378,13 +401,14 @@ const Facturas = () => {
 
   useEffect(() => {
     cargarFacturas();
+    cargarCatalogos();
   }, []);
 
   // Eliminar factura
   const eliminarFactura = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar esta factura?')) {
       try {
-        const response = await fetch(`/api/facturas/${id}`, {
+        const response = await apiCall(`/api/facturas/${id}`, {
           method: 'DELETE',
         });
         if (response.ok) {
@@ -419,6 +443,27 @@ const Facturas = () => {
     }).format(valor);
   };
 
+  // Obtener nombre del contrato por ID
+  const getNombreContrato = (id) => {
+    if (!id) return '—';
+    const contrato = contratos.find(c => c.id_contrato === parseInt(id));
+    return contrato ? `${contrato.numero_contrato_os} - ${contrato.descripcion_servicio_contratado}` : `ID: ${id}`;
+  };
+
+  // Obtener nombre de la moneda por ID
+  const getNombreMoneda = (id) => {
+    if (!id) return '—';
+    const moneda = monedas.find(m => m.id_moneda === parseInt(id));
+    return moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : `ID: ${id}`;
+  };
+
+  // Obtener nombre del impuesto por ID
+  const getNombreTax = (id) => {
+    if (!id) return '—';
+    const tax = taxes.find(t => t.id_tax === parseInt(id));
+    return tax ? `${tax.nombre_tax} (${tax.porcentaje_tax}%)` : `ID: ${id}`;
+  };
+
   // Función para renderizar el valor de una columna
   const renderColumnValue = (factura, columnKey) => {
     const value = factura[columnKey];
@@ -430,10 +475,13 @@ const Facturas = () => {
       case 'subtotal_facturado_moneda':
       case 'valor_tax':
         return formatearMoneda(value);
-      case 'id_factura':
       case 'id_contrato':
+        return getNombreContrato(value);
       case 'id_moneda':
+        return getNombreMoneda(value);
       case 'id_tax':
+        return getNombreTax(value);
+      case 'id_factura':
         return value || '—';
       default:
         return value || '—';
@@ -515,6 +563,16 @@ const Facturas = () => {
           else if (field === 'subtotal_facturado_moneda' || field === 'valor_tax') {
             fieldValue = formatearMoneda(fieldValue);
           }
+          // Manejar catálogos
+          else if (field === 'id_contrato') {
+            fieldValue = getNombreContrato(fieldValue);
+          }
+          else if (field === 'id_moneda') {
+            fieldValue = getNombreMoneda(fieldValue);
+          }
+          else if (field === 'id_tax') {
+            fieldValue = getNombreTax(fieldValue);
+          }
           
           if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
             fieldValue = '(Vacío)';
@@ -547,6 +605,16 @@ const Facturas = () => {
           // Manejar monedas
           else if (field === 'subtotal_facturado_moneda' || field === 'valor_tax') {
             fieldValue = formatearMoneda(fieldValue);
+          }
+          // Manejar catálogos
+          else if (field === 'id_contrato') {
+            fieldValue = getNombreContrato(fieldValue);
+          }
+          else if (field === 'id_moneda') {
+            fieldValue = getNombreMoneda(fieldValue);
+          }
+          else if (field === 'id_tax') {
+            fieldValue = getNombreTax(fieldValue);
           }
           
           if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
@@ -658,11 +726,8 @@ const Facturas = () => {
     // Actualizar inmediatamente en la base de datos
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`/api/facturas/${facturaId}`, {
+      const response = await apiCall(`/api/facturas/${facturaId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updatedData),
       });
 
@@ -703,11 +768,8 @@ const Facturas = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(facturaId => {
         const changes = editedFacturas[facturaId];
-        return fetch(`/api/facturas/${facturaId}`, {
+        return apiCall(`/api/facturas/${facturaId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(changes),
         });
       });

@@ -156,9 +156,19 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
         apiCall('/api/catalogos/monedas').then(r => r.json()),
         apiCall('/api/catalogos/taxes').then(r => r.json())
       ]).then(([contratosData, monedasData, taxesData]) => {
+        console.log('CrearFactura - Contratos cargados:', contratosData);
+        console.log('CrearFactura - Monedas cargadas:', monedasData);
+        console.log('CrearFactura - Taxes cargados:', taxesData);
         setContratos(contratosData);
         setMonedas(monedasData);
         setTaxes(taxesData);
+      }).catch(error => {
+        console.error('Error cargando catálogos:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los catálogos",
+          variant: "destructive",
+        });
       });
     }
   }, [open]);
@@ -194,9 +204,8 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
       
       delete formattedData.id_factura;
       
-      const response = await fetch('/api/facturas', {
+      const response = await apiCall('/api/facturas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
       });
       

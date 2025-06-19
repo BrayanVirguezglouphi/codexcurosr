@@ -1,10 +1,44 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FileText, User, Calendar, DollarSign, Info, Building, X, Hash, CreditCard } from 'lucide-react';
+import { apiCall } from '@/config/api';
 
 export default function VerFacturaDialog({ open, onClose, factura }) {
+  const [contratos, setContratos] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [taxes, setTaxes] = useState([]);
+
+  // Cargar catálogos cuando se abre el diálogo
+  useEffect(() => {
+    if (open && factura) {
+      cargarCatalogos();
+    }
+  }, [open, factura]);
+
   if (!factura) return null;
+
+  const cargarCatalogos = async () => {
+    try {
+      const [contratosRes, monedasRes, taxesRes] = await Promise.all([
+        apiCall('/api/catalogos/contratos'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/taxes')
+      ]);
+
+      const [contratosData, monedasData, taxesData] = await Promise.all([
+        contratosRes.json(),
+        monedasRes.json(),
+        taxesRes.json()
+      ]);
+
+      setContratos(contratosData);
+      setMonedas(monedasData);
+      setTaxes(taxesData);
+    } catch (error) {
+      console.error('Error al cargar catálogos:', error);
+    }
+  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'No especificada';
@@ -58,6 +92,25 @@ export default function VerFacturaDialog({ open, onClose, factura }) {
     const subtotal = parseFloat(factura.subtotal_facturado_moneda) || 0;
     const iva = parseFloat(factura.valor_tax) || 0;
     return subtotal + iva;
+  };
+
+  // Funciones para obtener nombres legibles de los catálogos
+  const getNombreContrato = (id) => {
+    if (!id) return 'No asignado';
+    const contrato = contratos.find(c => c.id_contrato === parseInt(id));
+    return contrato ? `${contrato.numero_contrato_os} - ${contrato.descripcion_servicio_contratado}` : `ID: ${id}`;
+  };
+
+  const getNombreMoneda = (id) => {
+    if (!id) return 'No especificado';
+    const moneda = monedas.find(m => m.id_moneda === parseInt(id));
+    return moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : `ID: ${id}`;
+  };
+
+  const getNombreTax = (id) => {
+    if (!id) return 'No especificado';
+    const tax = taxes.find(t => t.id_tax === parseInt(id));
+    return tax ? `${tax.nombre_tax} (${tax.porcentaje_tax}%)` : `ID: ${id}`;
   };
 
   return (
@@ -129,15 +182,15 @@ export default function VerFacturaDialog({ open, onClose, factura }) {
             </h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-600">ID del Contrato</div>
+                <div className="text-sm text-gray-600">Contrato</div>
                 <div className="font-medium">
-                  {factura.id_contrato || 'No asignado'}
+                  {getNombreContrato(factura.id_contrato)}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Número del Contrato</div>
+                <div className="text-sm text-gray-600">ID del Contrato</div>
                 <div className="font-medium">
-                  {factura.contrato?.numero_contrato_os || 'No disponible'}
+                  {factura.id_contrato || 'No asignado'}
                 </div>
               </div>
               <div>
@@ -222,27 +275,27 @@ export default function VerFacturaDialog({ open, onClose, factura }) {
               {/* Columna derecha */}
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-gray-600">ID Moneda</div>
+                  <div className="text-sm text-gray-600">Moneda</div>
                   <div className="font-medium">
+                    {getNombreMoneda(factura.id_moneda)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">ID Moneda</div>
+                  <div className="font-medium text-gray-500 text-sm">
                     {factura.id_moneda || 'No especificado'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">Moneda</div>
+                  <div className="text-sm text-gray-600">Impuesto</div>
                   <div className="font-medium">
-                    {factura.moneda?.nombre_moneda || 'Pesos Colombianos (COP)'}
+                    {getNombreTax(factura.id_tax)}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">ID Tax</div>
-                  <div className="font-medium">
+                  <div className="font-medium text-gray-500 text-sm">
                     {factura.id_tax || 'No especificado'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Impuesto Aplicado</div>
-                  <div className="font-medium">
-                    {factura.tax?.titulo_impuesto || 'IVA General'}
                   </div>
                 </div>
               </div>

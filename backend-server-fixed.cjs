@@ -380,6 +380,54 @@ app.get('/api/catalogos/terceros', async (req, res) => {
   }
 });
 
+// 7. Catálogo de contratos
+app.get('/api/catalogos/contratos', async (req, res) => {
+  try {
+    console.log('🔍 Consultando contratos...');
+    const query = `
+      SELECT 
+        id_contrato,
+        numero_contrato_os,
+        descripcion_servicio_contratado,
+        estatus_contrato
+      FROM adcot_contratos_clientes 
+      ORDER BY numero_contrato_os ASC
+    `;
+    const result = await pool.query(query);
+    console.log(`✅ Encontrados ${result.rows.length} contratos`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error al obtener contratos:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener contratos',
+      details: error.message 
+    });
+  }
+});
+
+// 8. Catálogo de impuestos/taxes
+app.get('/api/catalogos/taxes', async (req, res) => {
+  try {
+    console.log('🔍 Consultando impuestos...');
+    const query = `
+      SELECT 
+        id_tax,
+        titulo_impuesto
+      FROM adcot_taxes 
+      ORDER BY titulo_impuesto ASC
+    `;
+    const result = await pool.query(query);
+    console.log(`✅ Encontrados ${result.rows.length} impuestos`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error al obtener impuestos:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener impuestos',
+      details: error.message 
+    });
+  }
+});
+
 // RUTAS PRINCIPALES PARA OTRAS ENTIDADES
 
 // 7. Ruta principal de terceros con detalles completos
@@ -840,12 +888,22 @@ app.get('/api/facturas', async (req, res) => {
   try {
     console.log('🔍 Consultando facturas...');
     
-    // Verificar tabla facturas
-    const tablaFacturas = await pool.query(`
+    // Verificar tabla facturas - buscar específicamente adcot_facturas primero
+    let tablaFacturas = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_name LIKE '%factura%'
+      WHERE table_name = 'adcot_facturas'
     `);
+    
+    // Si no existe adcot_facturas, buscar otras tablas de facturas
+    if (tablaFacturas.rows.length === 0) {
+      tablaFacturas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%factura%' AND table_name != 'adcot_facturas_electronicas'
+        ORDER BY table_name
+      `);
+    }
     
     if (tablaFacturas.rows.length === 0) {
       return res.status(404).json({ 
@@ -875,12 +933,22 @@ app.post('/api/facturas', async (req, res) => {
   try {
     console.log('🔍 Creando factura...');
     
-    // Verificar tabla facturas
-    const tablaFacturas = await pool.query(`
+    // Verificar tabla facturas - buscar específicamente adcot_facturas primero
+    let tablaFacturas = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_name LIKE '%factura%'
+      WHERE table_name = 'adcot_facturas'
     `);
+    
+    // Si no existe adcot_facturas, buscar otras tablas de facturas
+    if (tablaFacturas.rows.length === 0) {
+      tablaFacturas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%factura%' AND table_name != 'adcot_facturas_electronicas'
+        ORDER BY table_name
+      `);
+    }
     
     if (tablaFacturas.rows.length === 0) {
       return res.status(404).json({ error: 'Tabla de facturas no encontrada' });
@@ -930,12 +998,22 @@ app.put('/api/facturas/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Actualizando factura ID: ${id}...`);
     
-    // Verificar tabla facturas
-    const tablaFacturas = await pool.query(`
+    // Verificar tabla facturas - buscar específicamente adcot_facturas primero
+    let tablaFacturas = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_name LIKE '%factura%'
+      WHERE table_name = 'adcot_facturas'
     `);
+    
+    // Si no existe adcot_facturas, buscar otras tablas de facturas
+    if (tablaFacturas.rows.length === 0) {
+      tablaFacturas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%factura%' AND table_name != 'adcot_facturas_electronicas'
+        ORDER BY table_name
+      `);
+    }
     
     if (tablaFacturas.rows.length === 0) {
       return res.status(404).json({ error: 'Tabla de facturas no encontrada' });
@@ -991,12 +1069,22 @@ app.delete('/api/facturas/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Eliminando factura ID: ${id}...`);
     
-    // Verificar tabla facturas
-    const tablaFacturas = await pool.query(`
+    // Verificar tabla facturas - buscar específicamente adcot_facturas primero
+    let tablaFacturas = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_name LIKE '%factura%'
+      WHERE table_name = 'adcot_facturas'
     `);
+    
+    // Si no existe adcot_facturas, buscar otras tablas de facturas
+    if (tablaFacturas.rows.length === 0) {
+      tablaFacturas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%factura%' AND table_name != 'adcot_facturas_electronicas'
+        ORDER BY table_name
+      `);
+    }
     
     if (tablaFacturas.rows.length === 0) {
       return res.status(404).json({ error: 'Tabla de facturas no encontrada' });
