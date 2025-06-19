@@ -199,6 +199,13 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
 
   useEffect(() => {
     if (transaccion) {
+      console.log('🔄 Inicializando valores en EditarTransaccion:', {
+        registro_auxiliar: transaccion.registro_auxiliar,
+        registro_validado: transaccion.registro_validado,
+        aplica_retencion: transaccion.aplica_retencion,
+        aplica_impuestos: transaccion.aplica_impuestos
+      });
+      
       const fecha = transaccion.fecha_transaccion ? new Date(transaccion.fecha_transaccion).toISOString().split('T')[0] : '';
       reset({
         titulo_transaccion: transaccion.titulo_transaccion || '',
@@ -224,6 +231,17 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
 
   const onSubmit = async (data) => {
     try {
+      console.log('📋 Datos del formulario antes de formatear:', {
+        registro_auxiliar: data.registro_auxiliar,
+        registro_validado: data.registro_validado,
+        aplica_retencion: data.aplica_retencion,
+        aplica_impuestos: data.aplica_impuestos,
+        registro_auxiliar_type: typeof data.registro_auxiliar,
+        registro_validado_type: typeof data.registro_validado,
+        aplica_retencion_type: typeof data.aplica_retencion,
+        aplica_impuestos_type: typeof data.aplica_impuestos
+      });
+      
       const formattedData = {
         titulo_transaccion: data.titulo_transaccion,
         fecha_transaccion: data.fecha_transaccion,
@@ -244,7 +262,15 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         url_soporte_adjunto: data.url_soporte_adjunto || null,
       };
 
-      console.log('📤 Enviando datos de transacción:', formattedData);
+      console.log('📤 Enviando datos de transacción:', {
+        ...formattedData,
+        'BOOLEANOS': {
+          registro_auxiliar: formattedData.registro_auxiliar,
+          registro_validado: formattedData.registro_validado,
+          aplica_retencion: formattedData.aplica_retencion,
+          aplica_impuestos: formattedData.aplica_impuestos
+        }
+      });
       
       const responseData = await apiCall(`/api/transacciones/${transaccion.id_transaccion}`, {
         method: 'PUT',
@@ -514,9 +540,11 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                 <Label htmlFor="registro_auxiliar">Registro Auxiliar</Label>
                 <select 
                   id="registro_auxiliar"
-                  {...register("registro_auxiliar")}
                   value={currentRegistroAuxiliar ? 'true' : 'false'}
-                  onChange={(e) => setValue('registro_auxiliar', e.target.value === 'true')}
+                  onChange={(e) => {
+                    console.log('🔄 Cambiando registro_auxiliar:', e.target.value, '→', e.target.value === 'true');
+                    setValue('registro_auxiliar', e.target.value === 'true');
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                 >
                   <option value="false">No</option>
@@ -528,9 +556,11 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                 <Label htmlFor="registro_validado">Registro Validado</Label>
                 <select 
                   id="registro_validado"
-                  {...register("registro_validado")}
                   value={currentRegistroValidado ? 'true' : 'false'}
-                  onChange={(e) => setValue('registro_validado', e.target.value === 'true')}
+                  onChange={(e) => {
+                    console.log('🔄 Cambiando registro_validado:', e.target.value, '→', e.target.value === 'true');
+                    setValue('registro_validado', e.target.value === 'true');
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                 >
                   <option value="false">No</option>
@@ -542,9 +572,11 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                 <Label htmlFor="aplica_retencion">Aplica Retención</Label>
                 <select 
                   id="aplica_retencion"
-                  {...register("aplica_retencion")}
                   value={currentAplicaRetencion ? 'true' : 'false'}
-                  onChange={(e) => setValue('aplica_retencion', e.target.value === 'true')}
+                  onChange={(e) => {
+                    console.log('🔄 Cambiando aplica_retencion:', e.target.value, '→', e.target.value === 'true');
+                    setValue('aplica_retencion', e.target.value === 'true');
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                 >
                   <option value="false">No</option>
@@ -556,9 +588,11 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                 <Label htmlFor="aplica_impuestos">Aplica Impuestos</Label>
                 <select 
                   id="aplica_impuestos"
-                  {...register("aplica_impuestos")}
                   value={currentAplicaImpuestos ? 'true' : 'false'}
-                  onChange={(e) => setValue('aplica_impuestos', e.target.value === 'true')}
+                  onChange={(e) => {
+                    console.log('🔄 Cambiando aplica_impuestos:', e.target.value, '→', e.target.value === 'true');
+                    setValue('aplica_impuestos', e.target.value === 'true');
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                 >
                   <option value="false">No</option>
