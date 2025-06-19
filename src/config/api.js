@@ -144,8 +144,15 @@ export const api = {
     method: 'DELETE'
   }),
 
-  // Catálogos
+  // Catálogos generales
   getCatalogos: (tipo) => apiCall(`/api/catalogos/${tipo}`),
+  
+  // Catálogos específicos
+  getCuentas: () => apiCall('/api/catalogos/cuentas'),
+  getTiposTransaccion: () => apiCall('/api/tipos-transaccion'),
+  getContratos: () => apiCall('/api/contratos'),
+  getMonedas: () => apiCall('/api/catalogos/monedas'),
+  getTaxes: () => apiCall('/api/impuestos'),
   
   // Health check
   health: () => apiCall('/api/health')
