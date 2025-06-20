@@ -8,6 +8,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import theme from './theme/mui-theme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { SettingsProvider } from '@/contexts/SettingsContext';
 import Login from './pages/Login';
 import './styles/login.css';
 import MainLayout from '@/layouts/MainLayout';
@@ -138,9 +139,11 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        <SettingsProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </SettingsProvider>
       </LocalizationProvider>
     </ThemeProvider>
   );
