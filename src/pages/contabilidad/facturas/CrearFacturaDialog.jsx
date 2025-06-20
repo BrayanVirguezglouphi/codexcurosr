@@ -152,9 +152,9 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
   useEffect(() => {
     if (open) {
       Promise.all([
-        apiCall('/api/catalogos/contratos').then(r => r.json()),
-        apiCall('/api/catalogos/monedas').then(r => r.json()),
-        apiCall('/api/catalogos/taxes').then(r => r.json())
+        apiCall('/api/catalogos/contratos'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/taxes')
       ]).then(([contratosData, monedasData, taxesData]) => {
         console.log('CrearFactura - Contratos cargados:', contratosData);
         console.log('CrearFactura - Monedas cargadas:', monedasData);

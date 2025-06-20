@@ -150,17 +150,12 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [contratoRes, tercerosRes, monedasRes, taxesRes] = await Promise.all([
+      const [contrato, tercerosData, monedasData, taxesData] = await Promise.all([
         apiCall(`/api/contratos/${contratoId}`),
         apiCall('/api/catalogos/terceros'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/taxes')
       ]);
-
-      const contrato = await contratoRes.json();
-      const tercerosData = await tercerosRes.json();
-      const monedasData = await monedasRes.json();
-      const taxesData = await taxesRes.json();
 
       setTerceros(tercerosData);
       setMonedas(monedasData);

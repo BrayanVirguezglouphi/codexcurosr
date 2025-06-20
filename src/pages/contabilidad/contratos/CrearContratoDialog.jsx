@@ -171,15 +171,15 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
   const cargarCatalogos = async () => {
     setLoading(true);
     try {
-      const [tercerosRes, monedasRes, taxesRes] = await Promise.all([
+      const [tercerosData, monedasData, taxesData] = await Promise.all([
         apiCall('/api/catalogos/terceros'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/taxes')
       ]);
       
-      setTerceros(await tercerosRes.json());
-      setMonedas(await monedasRes.json());
-      setTaxes(await taxesRes.json());
+      setTerceros(tercerosData);
+      setMonedas(monedasData);
+      setTaxes(taxesData);
     } catch (error) {
       console.error('Error al cargar catálogos:', error);
       toast({ title: "Error", description: "No se pudieron cargar los catálogos", variant: "destructive" });

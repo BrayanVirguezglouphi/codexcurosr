@@ -67,12 +67,12 @@ const ContabilidadDashboard = () => {
         ]);
 
         const [facturas, transacciones, contratos, servicios, impuestos, terceros] = await Promise.all([
-          facturasRes.json(),
-          transaccionesRes.json(),
-          contratosRes.json(),
-          serviciosRes.json(),
-          impuestosRes.json(),
-          tercerosRes.json()
+                  facturasRes,
+        transaccionesRes,
+        contratosRes,
+        serviciosRes,
+        impuestosRes,
+        tercerosRes
         ]);
 
         console.log('✅ Datos REALES cargados:', {

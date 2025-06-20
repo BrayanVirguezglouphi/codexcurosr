@@ -98,8 +98,7 @@ const Contratos = () => {
   const cargarContratos = async () => {
     try {
       setLoading(true);
-      const response = await apiCall('/api/contratos');
-      const data = await response.json();
+      const data = await apiCall('/api/contratos');
       setContratos(data);
     } catch (error) {
       console.error('Error al cargar contratos:', error);
@@ -112,14 +111,9 @@ const Contratos = () => {
   const handleEliminar = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este contrato?')) {
       try {
-        const response = await apiCall(`/api/contratos/${id}`, { method: 'DELETE' });
-        
-        if (response.ok) {
-          toast({ title: "Éxito", description: "Contrato eliminado correctamente" });
-          cargarContratos();
-        } else {
-          throw new Error('Error al eliminar');
-        }
+        await apiCall(`/api/contratos/${id}`, { method: 'DELETE' });
+        toast({ title: "Éxito", description: "Contrato eliminado correctamente" });
+        cargarContratos();
       } catch (error) {
         toast({ title: "Error", description: "No se pudo eliminar el contrato", variant: "destructive" });
       }
