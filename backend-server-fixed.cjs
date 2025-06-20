@@ -860,6 +860,50 @@ app.get('/api/catalogos/taxes', async (req, res) => {
   }
 });
 
+// 9. Catálogo de tipos de documento
+app.get('/api/catalogos/tipos-documento', async (req, res) => {
+  try {
+    console.log('🔍 Consultando tipos de documento...');
+    
+    // Verificar si existe la tabla adcot_tipo_documento
+    const verificarTabla = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'adcot_tipo_documento'
+    `);
+    
+    if (verificarTabla.rows.length === 0) {
+      console.log('❌ Tabla adcot_tipo_documento no encontrada');
+      return res.json([]);
+    }
+    
+    // Obtener columnas de la tabla
+    const columnasResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'adcot_tipo_documento'
+      ORDER BY ordinal_position
+    `);
+    
+    const columnas = columnasResult.rows.map(r => r.column_name);
+    console.log('📋 Columnas de adcot_tipo_documento:', columnas);
+    
+    const query = `SELECT * FROM adcot_tipo_documento ORDER BY id_tipo_documento ASC`;
+    const result = await pool.query(query);
+    
+    console.log(`✅ Encontrados ${result.rows.length} tipos de documento`);
+    console.log('📋 Muestra de tipos de documento:', result.rows.slice(0, 3));
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error al obtener tipos de documento:', error);
+    res.status(500).json({ 
+      error: 'Error al obtener tipos de documento',
+      details: error.message 
+    });
+  }
+});
+
 // RUTAS PRINCIPALES PARA OTRAS ENTIDADES
 
 // 7. Ruta principal de terceros con detalles completos

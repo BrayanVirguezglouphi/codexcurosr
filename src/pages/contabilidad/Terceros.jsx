@@ -49,6 +49,9 @@ const Terceros = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   
+  // Estados para catálogos
+  const [tiposDocumento, setTiposDocumento] = useState([]);
+  
   const { toast } = useToast();
 
   // Definir columnas disponibles
@@ -139,6 +142,18 @@ const Terceros = () => {
     setVisibleColumns(defaultColumns);
   }, []);
 
+  // Cargar tipos de documento
+  const cargarTiposDocumento = async () => {
+    try {
+      const data = await apiCall('/api/catalogos/tipos-documento');
+      console.log('📋 Tipos de documento cargados:', data);
+      setTiposDocumento(data);
+    } catch (error) {
+      console.error('Error al cargar tipos de documento:', error);
+      // No mostrar toast de error para catálogos opcionales
+    }
+  };
+
   // Cargar terceros
   const cargarTerceros = async () => {
     try {
@@ -156,6 +171,7 @@ const Terceros = () => {
 
   useEffect(() => {
     cargarTerceros();
+    cargarTiposDocumento();
   }, []);
 
   // Función de exportación
@@ -520,6 +536,14 @@ const Terceros = () => {
           { value: 'EMPLEADO', label: 'EMPLEADO' }
         ];
       case 'tipo_documento':
+        // Usar tipos de documento dinámicos de la base de datos
+        if (tiposDocumento.length > 0) {
+          return tiposDocumento.map(tipo => ({
+            value: tipo.id_tipo_documento, // Usar el ID como value
+            label: `${tipo.tipo_documento || tipo.codigo || tipo.id_tipo_documento}${tipo.descripcion ? ' - ' + tipo.descripcion : ''}`
+          }));
+        }
+        // Fallback a opciones hardcodeadas si no se han cargado los tipos
         return [
           { value: 'CC', label: 'Cédula de Ciudadanía' },
           { value: 'NIT', label: 'NIT' },
