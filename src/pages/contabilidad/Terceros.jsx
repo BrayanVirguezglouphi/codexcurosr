@@ -471,7 +471,9 @@ const Terceros = () => {
       case 'tipo_documento':
         // Buscar el nombre del tipo de documento en el catálogo
         if (value && tiposDocumento.length > 0) {
-          const tipoDoc = tiposDocumento.find(tipo => tipo.id_tipo_documento == value);
+          const tipoDoc = tiposDocumento.find(tipo => 
+            (tipo.id_tipodocumento == value) || (tipo.id_tipo_documento == value)
+          );
           const displayValue = tipoDoc ? 
             (tipoDoc.tipo_documento || tipoDoc.codigo || value) : 
             value;
@@ -553,8 +555,8 @@ const Terceros = () => {
         // Usar tipos de documento dinámicos de la base de datos
         if (tiposDocumento.length > 0) {
           return tiposDocumento.map(tipo => ({
-            value: tipo.id_tipo_documento, // Usar el ID como value
-            label: `${tipo.tipo_documento || tipo.codigo || tipo.id_tipo_documento}${tipo.descripcion ? ' - ' + tipo.descripcion : ''}`
+            value: tipo.id_tipodocumento || tipo.id_tipo_documento, // Usar el ID como value (con y sin underscore)
+            label: `${tipo.tipo_documento || tipo.codigo || tipo.id_tipodocumento || tipo.id_tipo_documento}`
           }));
         }
         // Fallback a opciones hardcodeadas si no se han cargado los tipos
