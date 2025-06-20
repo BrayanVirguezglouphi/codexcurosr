@@ -142,8 +142,7 @@ const Terceros = () => {
   // Cargar terceros
   const cargarTerceros = async () => {
     try {
-      const response = await apiCall('/api/terceros');
-      const data = await response.json();
+      const data = await apiCall('/api/terceros');
       setTerceros(data);
     } catch (error) {
       console.error('Error al cargar terceros:', error);
@@ -335,14 +334,9 @@ const Terceros = () => {
             body: JSON.stringify({ terceros: nuevosTerceros }),
           });
 
-          if (response.ok) {
-            await cargarTerceros();
-            setIsImportDialogOpen(false);
-            toastImport.success(`${nuevosTerceros.length} terceros importados exitosamente`);
-          } else {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al importar los terceros');
-          }
+          await cargarTerceros();
+          setIsImportDialogOpen(false);
+          toastImport.success(`${nuevosTerceros.length} terceros importados exitosamente`);
         } catch (error) {
           console.error('Error al procesar el archivo:', error);
           toastImport.error('Error al procesar el archivo de importación');
@@ -363,16 +357,14 @@ const Terceros = () => {
   const eliminarTercero = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar este tercero?')) {
       try {
-        const response = await apiCall(`/api/terceros/${id}`, {
+        await apiCall(`/api/terceros/${id}`, {
           method: 'DELETE',
         });
-        if (response.ok) {
-          toast({
-            title: "Éxito",
-            description: "Tercero eliminado correctamente",
-          });
-          cargarTerceros();
-        }
+        toast({
+          title: "Éxito",
+          description: "Tercero eliminado correctamente",
+        });
+        cargarTerceros();
       } catch (error) {
         toast({
           title: "Error",
@@ -690,32 +682,31 @@ const Terceros = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await apiCall(`/api/terceros/${terceroId}`, {
+      console.log('🔄 Actualizando tercero:', { terceroId, field, newValue });
+      
+      await apiCall(`/api/terceros/${terceroId}`, {
         method: 'PUT',
         body: JSON.stringify(updatedData),
       });
 
-      if (response.ok) {
-        setTerceros(prev => prev.map(t => 
-          t.id_tercero === terceroId 
-            ? { ...t, [field]: newValue }
-            : t
-        ));
+      setTerceros(prev => prev.map(t => 
+        t.id_tercero === terceroId 
+          ? { ...t, [field]: newValue }
+          : t
+      ));
 
-        setPendingChanges(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(terceroId);
-          return newSet;
-        });
+      setPendingChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(terceroId);
+        return newSet;
+      });
 
-        toast({
-          title: "Cambio guardado",
-          description: `Campo ${field} actualizado correctamente`,
-        });
-      } else {
-        throw new Error('Error al actualizar');
-      }
+      toast({
+        title: "Cambio guardado",
+        description: `Campo ${field} actualizado correctamente`,
+      });
     } catch (error) {
+      console.error('❌ Error al actualizar tercero:', error);
       toast({
         title: "Error",
         description: "No se pudo guardar el cambio",
@@ -730,11 +721,8 @@ const Terceros = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(terceroId => {
         const changes = editedTerceros[terceroId];
-        return fetch(`/api/terceros/${terceroId}`, {
+        return apiCall(`/api/terceros/${terceroId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(changes),
         });
       });
@@ -751,6 +739,7 @@ const Terceros = () => {
         description: `${pendingChanges.size} cambios guardados correctamente`,
       });
     } catch (error) {
+      console.error('❌ Error al guardar cambios:', error);
       toast({
         title: "Error",
         description: "Error al guardar algunos cambios",
