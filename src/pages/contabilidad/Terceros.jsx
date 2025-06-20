@@ -468,6 +468,20 @@ const Terceros = () => {
             {value || 'No especificado'}
           </span>
         );
+      case 'tipo_documento':
+        // Buscar el nombre del tipo de documento en el catálogo
+        if (value && tiposDocumento.length > 0) {
+          const tipoDoc = tiposDocumento.find(tipo => tipo.id_tipo_documento == value);
+          const displayValue = tipoDoc ? 
+            (tipoDoc.tipo_documento || tipoDoc.codigo || value) : 
+            value;
+          return (
+            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+              {displayValue}
+            </span>
+          );
+        }
+        return value || '-';
       case 'numero_documento':
         return (
           <div className="font-mono">
