@@ -131,6 +131,9 @@ const SearchableSelect = ({
 const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) => {
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm();
   const { toast } = useToast();
+  
+  // Estado para tipos de documento dinámicos
+  const [tiposDocumento, setTiposDocumento] = useState([]);
 
   // Watch para campos controlados
   const currentTipoRelacion = watch('tipo_relacion');
@@ -151,15 +154,39 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
     { id: 'JURIDICA', name: 'Persona Jurídica' }
   ];
 
-  const tiposDocumento = [
-    { id: 'CC', name: 'Cédula de Ciudadanía' },
-    { id: 'CE', name: 'Cédula de Extranjería' },
-    { id: 'NIT', name: 'NIT' },
-    { id: 'TI', name: 'Tarjeta de Identidad' },
-    { id: 'RC', name: 'Registro Civil' },
-    { id: 'PA', name: 'Pasaporte' },
-    { id: 'RUT', name: 'RUT' }
-  ];
+  // Cargar tipos de documento de la base de datos
+  useEffect(() => {
+    const cargarTiposDocumento = async () => {
+      try {
+        const data = await apiCall('/api/catalogos/tipos-documento');
+        console.log('📋 Tipos de documento cargados en diálogo:', data);
+        
+        // Mapear los datos para el formato esperado por SearchableSelect
+        const tiposFormateados = data.map(tipo => ({
+          id: tipo.id_tipodocumento || tipo.id_tipo_documento,
+          name: tipo.tipo_documento || tipo.codigo || `Tipo ${tipo.id_tipodocumento || tipo.id_tipo_documento}`
+        }));
+        
+        setTiposDocumento(tiposFormateados);
+      } catch (error) {
+        console.error('Error al cargar tipos de documento:', error);
+        // Fallback a tipos hardcodeados
+        setTiposDocumento([
+          { id: 'CC', name: 'Cédula de Ciudadanía' },
+          { id: 'CE', name: 'Cédula de Extranjería' },
+          { id: 'NIT', name: 'NIT' },
+          { id: 'TI', name: 'Tarjeta de Identidad' },
+          { id: 'RC', name: 'Registro Civil' },
+          { id: 'PA', name: 'Pasaporte' },
+          { id: 'RUT', name: 'RUT' }
+        ]);
+      }
+    };
+
+    if (open) {
+      cargarTiposDocumento();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (tercero) {
@@ -185,19 +212,16 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
 
   const onSubmit = async (data) => {
     try {
-      const response = await apiCall(`/api/terceros/${tercero.id_tercero}`, {
+      await apiCall(`/api/terceros/${tercero.id_tercero}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
 
-      if (response.ok) {
-        toast({ title: "Éxito", description: "Tercero actualizado correctamente" });
-        onTerceroActualizado();
-        onClose();
-      } else {
-        throw new Error('Error al actualizar el tercero');
-      }
+      toast({ title: "Éxito", description: "Tercero actualizado correctamente" });
+      onTerceroActualizado();
+      onClose();
     } catch (error) {
+      console.error('Error al actualizar tercero:', error);
       toast({ title: "Error", description: "No se pudo actualizar el tercero", variant: "destructive" });
     }
   };
