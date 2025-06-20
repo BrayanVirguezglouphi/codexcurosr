@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -25,6 +24,15 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    
+    /* Variables personalizadas para tamaños de fuente */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
   }
 
   .dark {
@@ -48,6 +56,31 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
   }
+  
+  /* Configuraciones de tamaño de fuente */
+  .text-small {
+    --font-size-xs: 0.625rem;
+    --font-size-sm: 0.75rem;
+    --font-size-base: 0.875rem;
+    --font-size-lg: 1rem;
+    --font-size-xl: 1.125rem;
+    --font-size-2xl: 1.25rem;
+    --font-size-3xl: 1.5rem;
+  }
+  
+  .text-medium {
+    /* Valores por defecto ya definidos arriba */
+  }
+  
+  .text-large {
+    --font-size-xs: 0.875rem;
+    --font-size-sm: 1rem;
+    --font-size-base: 1.125rem;
+    --font-size-lg: 1.25rem;
+    --font-size-xl: 1.375rem;
+    --font-size-2xl: 1.75rem;
+    --font-size-3xl: 2.125rem;
+  }
 }
 
 @layer base {
@@ -57,7 +90,689 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-size: var(--font-size-base);
   }
+  
+  /* Aplicar tamaños de fuente responsivos */
+  .text-xs { font-size: var(--font-size-xs) !important; }
+  .text-sm { font-size: var(--font-size-sm) !important; }
+  .text-base { font-size: var(--font-size-base) !important; }
+  .text-lg { font-size: var(--font-size-lg) !important; }
+  .text-xl { font-size: var(--font-size-xl) !important; }
+  .text-2xl { font-size: var(--font-size-2xl) !important; }
+  .text-3xl { font-size: var(--font-size-3xl) !important; }
+}
+
+@layer components {
+  /* Modo oscuro usando componentes para evitar dependencias circulares */
+  .dark-theme {
+    color-scheme: dark;
+  }
+  
+  .dark-bg-primary {
+    background-color: rgb(15 23 42);
+    color: rgb(241 245 249);
+  }
+  
+  .dark-bg-secondary {
+    background-color: rgb(30 41 59);
+    color: rgb(226 232 240);
+  }
+  
+  .dark-bg-card {
+    background-color: rgb(30 41 59);
+    border-color: rgb(51 65 85);
+    color: rgb(241 245 249);
+  }
+  
+  .dark-table {
+    background-color: rgb(30 41 59);
+  }
+  
+  .dark-table-header {
+    background-color: rgb(51 65 85);
+    color: rgb(241 245 249);
+    border-color: rgb(100 116 139);
+  }
+  
+  .dark-table-cell {
+    background-color: rgb(30 41 59);
+    color: rgb(241 245 249);
+    border-color: rgb(51 65 85);
+  }
+  
+  .dark-input {
+    background-color: rgb(51 65 85);
+    border-color: rgb(100 116 139);
+    color: rgb(241 245 249);
+  }
+  
+  .dark-button-primary {
+    background-color: rgb(37 99 235);
+    color: rgb(241 245 249);
+  }
+  
+  .dark-button-secondary {
+    background-color: rgb(51 65 85);
+    color: rgb(241 245 249);
+    border-color: rgb(100 116 139);
+  }
+}
+
+@layer utilities {
+  /* Aplicación del modo oscuro */
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark body {
+    background-color: rgb(15 23 42) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark main {
+    background-color: rgb(15 23 42) !important;
+  }
+
+  /* Fondos básicos */
+  .dark .bg-white {
+    background-color: rgb(30 41 59) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark .bg-gray-50 {
+    background-color: rgb(30 41 59) !important;
+  }
+
+  .dark .bg-gray-100 {
+    background-color: rgb(51 65 85) !important;
+  }
+
+  /* Textos */
+  .dark .text-gray-800 {
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark .text-gray-600 {
+    color: rgb(203 213 225) !important;
+  }
+
+  .dark .text-gray-500 {
+    color: rgb(148 163 184) !important;
+  }
+
+  /* Bordes */
+  .dark .border-gray-200 {
+    border-color: rgb(51 65 85) !important;
+  }
+
+  .dark .border-gray-300 {
+    border-color: rgb(100 116 139) !important;
+  }
+
+  /* Tablas */
+  .dark table {
+    background-color: rgb(30 41 59) !important;
+  }
+
+  .dark thead {
+    background-color: rgb(51 65 85) !important;
+  }
+
+  .dark th {
+    background-color: rgb(51 65 85) !important;
+    color: rgb(241 245 249) !important;
+    border-color: rgb(100 116 139) !important;
+  }
+
+  .dark td {
+    background-color: rgb(30 41 59) !important;
+    color: rgb(241 245 249) !important;
+    border-color: rgb(51 65 85) !important;
+  }
+
+  .dark tbody tr {
+    border-color: rgb(51 65 85) !important;
+  }
+
+  .dark tr:hover td {
+    background-color: rgb(51 65 85) !important;
+  }
+
+  /* Inputs */
+  .dark input,
+  .dark select,
+  .dark textarea {
+    background-color: rgb(51 65 85) !important;
+    border-color: rgb(100 116 139) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark input:focus,
+  .dark select:focus,
+  .dark textarea:focus {
+    background-color: rgb(71 85 105) !important;
+    border-color: rgb(148 163 184) !important;
+  }
+
+  .dark input::placeholder,
+  .dark select::placeholder,
+  .dark textarea::placeholder {
+    color: rgb(148 163 184) !important;
+  }
+
+  /* Badges y estados */
+  .dark .bg-green-100 {
+    background-color: rgb(22 101 52) !important;
+    color: rgb(187 247 208) !important;
+  }
+
+  .dark .bg-red-100 {
+    background-color: rgb(127 29 29) !important;
+    color: rgb(254 202 202) !important;
+  }
+
+  .dark .bg-yellow-100 {
+    background-color: rgb(133 77 14) !important;
+    color: rgb(254 240 138) !important;
+  }
+
+  .dark .bg-blue-100 {
+    background-color: rgb(30 58 138) !important;
+    color: rgb(191 219 254) !important;
+  }
+
+  /* .dark .text-green-700 {
+    color: rgb(134 239 172) !important;
+  } */
+
+  .dark .text-red-700 {
+    color: rgb(248 113 113) !important;
+  }
+
+  .dark .text-yellow-700 {
+    color: rgb(250 204 21) !important;
+  }
+
+  .dark .text-blue-700 {
+    color: rgb(147 197 253) !important;
+  }
+
+  /* Botones en modo oscuro */
+  .dark .bg-green-500 {
+    background-color: rgb(34 197 94) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark .hover\:bg-green-600:hover {
+    background-color: rgb(22 163 74) !important;
+  }
+
+  .dark .bg-blue-500 {
+    background-color: rgb(59 130 246) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark .hover\:bg-blue-600:hover {
+    background-color: rgb(37 99 235) !important;
+  }
+
+  .dark .bg-red-500 {
+    background-color: rgb(239 68 68) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark .hover\:bg-red-600:hover {
+    background-color: rgb(220 38 38) !important;
+  }
+
+  .dark .bg-purple-500 {
+    background-color: rgb(168 85 247) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark .hover\:bg-purple-600:hover {
+    background-color: rgb(147 51 234) !important;
+  }
+
+  .dark .bg-yellow-500 {
+    background-color: rgb(234 179 8) !important;
+    color: rgb(0 0 0) !important;
+  }
+
+  .dark .hover\:bg-yellow-600:hover {
+    background-color: rgb(202 138 4) !important;
+  }
+
+  .dark .bg-indigo-500 {
+    background-color: rgb(99 102 241) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark .hover\:bg-indigo-600:hover {
+    background-color: rgb(79 70 229) !important;
+  }
+
+  /* Botones de outline en modo oscuro */
+  .dark .border-green-500 {
+    border-color: rgb(34 197 94) !important;
+    color: rgb(34 197 94) !important;
+  }
+
+  .dark .border-blue-500 {
+    border-color: rgb(59 130 246) !important;
+    color: rgb(59 130 246) !important;
+  }
+
+  .dark .border-red-500 {
+    border-color: rgb(239 68 68) !important;
+    color: rgb(239 68 68) !important;
+  }
+
+  .dark .border-purple-500 {
+    border-color: rgb(168 85 247) !important;
+    color: rgb(168 85 247) !important;
+  }
+
+  /* Hovers */
+  .dark .hover\:bg-gray-100:hover {
+    background-color: rgb(51 65 85) !important;
+  }
+
+  .dark .hover\:bg-blue-100:hover {
+    background-color: rgb(51 65 85) !important;
+  }
+
+  /* Botones específicos de Excel */
+  .dark button[class*="excel"] {
+    background-color: rgb(34 197 94) !important;
+    color: rgb(255 255 255) !important;
+    border-color: rgb(34 197 94) !important;
+  }
+
+  .dark button[class*="excel"]:hover {
+    background-color: rgb(22 163 74) !important;
+    border-color: rgb(22 163 74) !important;
+  }
+
+  .dark button[class*="import"] {
+    background-color: rgb(59 130 246) !important;
+    color: rgb(255 255 255) !important;
+    border-color: rgb(59 130 246) !important;
+  }
+
+  .dark button[class*="import"]:hover {
+    background-color: rgb(37 99 235) !important;
+    border-color: rgb(37 99 235) !important;
+  }
+
+  /* Estilos específicos para botones de Excel */
+  .dark .border-green-400 {
+    border-color: rgb(34 197 94) !important;
+  }
+
+  .dark .text-green-600 {
+    color: rgb(34 197 94) !important;
+  }
+
+  .dark .hover\:bg-green-50:hover {
+    background-color: rgb(34 197 94) !important;
+    color: rgb(255 255 255) !important;
+    border-color: rgb(34 197 94) !important;
+  }
+
+  /* Mejorar visibilidad del botón de exportar específicamente - Updated v2 */
+  .dark button.border-green-400 {
+    background-color: rgba(34, 197, 94, 0.2) !important;
+    border-color: rgb(34 197 94) !important;
+    color: rgb(220 252 231) !important;
+    font-weight: 600 !important;
+    backdrop-filter: blur(1px);
+  }
+
+  .dark button.border-green-400:hover {
+    background-color: rgba(34, 197, 94, 0.35) !important;
+    border-color: rgb(34 197 94) !important;
+    color: rgb(240 253 244) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Regla específica adicional para el botón de exportar */
+  .dark .excel-export-btn,
+  .dark button:has(.mr-2):has([data-lucide="download"]) {
+    background-color: rgba(34, 197, 94, 0.2) !important;
+    border-color: rgb(34 197 94) !important;
+    color: rgb(220 252 231) !important;
+    font-weight: 600 !important;
+  }
+
+  .dark .border-blue-400 {
+    border-color: rgb(59 130 246) !important;
+  }
+
+  .dark .text-blue-600 {
+    color: rgb(59 130 246) !important;
+  }
+
+  .dark .hover\:bg-blue-50:hover {
+    background-color: rgb(59 130 246) !important;
+    color: rgb(255 255 255) !important;
+    border-color: rgb(59 130 246) !important;
+  }
+
+  /* Mejorar visibilidad del botón de importar */
+  .dark button.border-blue-400 {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    border-color: rgb(59 130 246) !important;
+    color: rgb(59 130 246) !important;
+  }
+
+  .dark button.border-blue-400:hover {
+    background-color: rgb(59 130 246) !important;
+    border-color: rgb(59 130 246) !important;
+    color: rgb(255 255 255) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .dark .border-purple-400 {
+    border-color: rgb(168 85 247) !important;
+  }
+
+  .dark .text-purple-600 {
+    color: rgb(168 85 247) !important;
+  }
+
+  .dark .hover\:bg-purple-50:hover {
+    background-color: rgb(168 85 247) !important;
+    color: rgb(255 255 255) !important;
+    border-color: rgb(168 85 247) !important;
+  }
+
+  /* Mejorar visibilidad del botón de plantilla */
+  .dark button.border-purple-400 {
+    background-color: rgba(168, 85, 247, 0.1) !important;
+    border-color: rgb(168 85 247) !important;
+    color: rgb(168 85 247) !important;
+  }
+
+  .dark button.border-purple-400:hover {
+    background-color: rgb(168 85 247) !important;
+    border-color: rgb(168 85 247) !important;
+    color: rgb(255 255 255) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+  }
+
+  /* Fondos de información en modo oscuro */
+  .dark .bg-blue-50 {
+    background-color: rgb(30 58 138) !important;
+    color: rgb(191 219 254) !important;
+  }
+
+  .dark .bg-yellow-50 {
+    background-color: rgb(133 77 14) !important;
+    color: rgb(254 240 138) !important;
+  }
+
+  .dark .text-blue-600 {
+    color: rgb(147 197 253) !important;
+  }
+
+  .dark .text-yellow-800 {
+    color: rgb(250 204 21) !important;
+  }
+
+  .dark .text-yellow-700 {
+    color: rgb(234 179 8) !important;
+  }
+
+  /* Diálogos y modales en modo oscuro */
+  .dark [data-radix-dialog-content] {
+    background-color: rgb(30 41 59) !important;
+    border-color: rgb(51 65 85) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  /* Diálogos específicos para exportación */
+  .dark .DialogContent {
+    background-color: rgb(30 41 59) !important;
+    border-color: rgb(51 65 85) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark .DialogHeader {
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark .DialogTitle {
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark .bg-gray-200 {
+    background-color: rgb(51 65 85) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark .text-gray-700 {
+    color: rgb(203 213 225) !important;
+  }
+
+  .dark .text-gray-900 {
+    color: rgb(241 245 249) !important;
+  }
+
+  /* Tablas en diálogos */
+  .dark table tr.bg-white {
+    background-color: rgb(30 41 59) !important;
+  }
+
+  .dark table tr.bg-gray-200 {
+    background-color: rgb(51 65 85) !important;
+  }
+
+  /* Estados hover para elementos interactivos */
+  .dark button:hover {
+    filter: brightness(1.1);
+  }
+
+  /* Transiciones suaves para botones de Excel */
+  .dark button.border-green-400,
+  .dark button.border-blue-400,
+  .dark button.border-purple-400 {
+    transition: all 0.2s ease-in-out !important;
+  }
+
+  /* Efecto adicional para todos los botones outline en modo oscuro */
+  .dark button[variant="outline"] {
+    transition: all 0.2s ease-in-out !important;
+  }
+
+  .dark button[variant="outline"]:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Mejoras para text-muted */
+  .dark .text-muted-foreground {
+    color: rgb(148 163 184) !important;
+  }
+
+  /* ScrollArea en modo oscuro */
+  .dark .scrollbar-thumb-gray-300 {
+    background-color: rgb(100 116 139) !important;
+  }
+
+  .dark .scrollbar-track-gray-100 {
+    background-color: rgb(51 65 85) !important;
+  }
+
+  /* Elementos específicos del diálogo de exportación */
+  .dark [role="dialog"] {
+    background-color: rgb(30 41 59) !important;
+    border-color: rgb(51 65 85) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark [role="dialog"] h2,
+  .dark [role="dialog"] h3,
+  .dark [role="dialog"] h4 {
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark [role="dialog"] p {
+    color: rgb(203 213 225) !important;
+  }
+
+  /* Radio buttons y checkboxes en diálogos */
+  .dark [role="dialog"] [type="radio"],
+  .dark [role="dialog"] [type="checkbox"] {
+    border-color: rgb(100 116 139) !important;
+    background-color: rgb(51 65 85) !important;
+  }
+
+  .dark [role="dialog"] [type="radio"]:checked,
+  .dark [role="dialog"] [type="checkbox"]:checked {
+    background-color: rgb(59 130 246) !important;
+    border-color: rgb(59 130 246) !important;
+  }
+
+  /* Labels en diálogos */
+  .dark [role="dialog"] label {
+    color: rgb(241 245 249) !important;
+  }
+
+  /* Contenedores con fondos específicos */
+  .dark [role="dialog"] .bg-blue-50 {
+    background-color: rgb(30 58 138) !important;
+    color: rgb(191 219 254) !important;
+  }
+
+  .dark [role="dialog"] .text-blue-600 {
+    color: rgb(147 197 253) !important;
+  }
+
+  .dark [role="dialog"] .text-gray-600 {
+    color: rgb(203 213 225) !important;
+  }
+
+  .dark [role="dialog"] .text-gray-700 {
+    color: rgb(203 213 225) !important;
+  }
+
+  .dark [role="dialog"] .text-gray-800 {
+    color: rgb(241 245 249) !important;
+  }
+
+  /* Botones dentro de diálogos */
+  .dark [role="dialog"] button {
+    color: rgb(241 245 249) !important;
+  }
+
+  .dark [role="dialog"] .bg-green-500 {
+    background-color: rgb(34 197 94) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  /* Tarjetas/opciones seleccionables en diálogos */
+  .dark [role="dialog"] .border-blue-500,
+  .dark [role="dialog"] .border-blue-600 {
+    border-color: rgb(59 130 246) !important;
+    background-color: rgba(59, 130, 246, 0.1) !important;
+  }
+
+  .dark [role="dialog"] .border-green-500,
+  .dark [role="dialog"] .border-green-600 {
+    border-color: rgb(34 197 94) !important;
+    background-color: rgba(34, 197, 94, 0.1) !important;
+  }
+
+  /* Opciones no seleccionadas */
+  .dark [role="dialog"] .border-gray-300 {
+    border-color: rgb(100 116 139) !important;
+    background-color: rgba(51, 65, 85, 0.3) !important;
+  }
+
+  /* Textos dentro de las opciones */
+  .dark [role="dialog"] .text-blue-700 {
+    color: rgb(147 197 253) !important;
+  }
+
+  .dark [role="dialog"] .text-green-700 {
+    color: rgb(134 239 172) !important;
+  }
+
+  .dark [role="dialog"] .text-gray-500 {
+    color: rgb(148 163 184) !important;
+  }
+
+  .dark [role="dialog"] .text-gray-400 {
+    color: rgb(156 163 175) !important;
+  }
+
+  /* Asegurar que todos los textos sean visibles */
+  .dark [role="dialog"] * {
+    color: rgb(241 245 249) !important;
+  }
+
+  /* Excepciones para elementos específicos que necesitan colores especiales */
+  .dark [role="dialog"] .text-blue-600,
+  .dark [role="dialog"] .text-blue-700 {
+    color: rgb(147 197 253) !important;
+  }
+
+  .dark [role="dialog"] .text-green-600,
+  .dark [role="dialog"] .text-green-700 {
+    color: rgb(134 239 172) !important;
+  }
+}
+
+/* Estilos personalizados para scrollbars */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Glassmorphism effects */
+.glass-sidebar {
+  background: rgba(30, 58, 138, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .glass-sidebar {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .gradient-bg {
@@ -70,8 +785,9 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/* Animaciones mejoradas */
 .module-card {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .module-card:hover {
@@ -80,7 +796,7 @@
 }
 
 .sidebar-item {
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-item:hover {
@@ -90,4 +806,111 @@
 .sidebar-item.active {
   background-color: hsl(var(--primary)/0.2);
   border-left: 3px solid hsl(var(--primary));
+}
+
+/* Efectos de hover mejorados */
+.sidebar-nav-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.sidebar-nav-item:hover::before {
+  left: 100%;
+}
+
+/* Indicadores de estado activo */
+.active-indicator {
+  background: linear-gradient(45deg, #ffffff, rgba(255, 255, 255, 0.8));
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Tooltips personalizados */
+.tooltip {
+  z-index: 9999;
+  animation: tooltip-fade-in 0.2s ease-out;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estados de focus mejorados */
+.focus-ring {
+  transition: all 0.2s ease;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* Animación de carga para el logo */
+@keyframes logo-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.logo-animation {
+  animation: logo-pulse 2s ease-in-out infinite;
+}
+
+/* Estilos para tarjetas de configuración */
+.settings-card {
+  @apply bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-all duration-200;
+}
+
+.settings-card-header {
+  @apply flex items-center gap-3 mb-4;
+}
+
+.settings-card-title {
+  @apply text-lg font-semibold text-foreground;
+}
+
+.settings-card-description {
+  @apply text-sm text-muted-foreground mt-1;
+}
+
+/* Interruptores personalizados */
+.toggle-switch {
+  @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors;
+  @apply bg-gray-200 dark:bg-gray-700;
+}
+
+.toggle-switch[data-state="checked"] {
+  @apply bg-primary;
+}
+
+.toggle-switch-thumb {
+  @apply inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out;
+}
+
+.toggle-switch[data-state="checked"] .toggle-switch-thumb {
+  @apply translate-x-6;
+}
+
+.toggle-switch[data-state="unchecked"] .toggle-switch-thumb {
+  @apply translate-x-1;
 }

@@ -15,6 +15,7 @@ import FacturasPage from '@/pages/contabilidad/Facturas';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
+import Ajustes from '@/pages/Ajustes';
 
 // Módulos
 import CRMDashboard from '@/pages/crm/CRMDashboard';
@@ -109,6 +110,9 @@ function AppContent() {
               <Route path="capacitaciones" element={<CapacitacionesSkills />} />
               <Route path="asignaciones" element={<AsignacionesEvaluaciones />} />
             </Route>
+
+            {/* Ajustes Route */}
+            <Route path="ajustes" element={<Ajustes />} />
           </Route>
 
           {/* Redirect unmatched routes to login if not authenticated, or dashboard if authenticated */}

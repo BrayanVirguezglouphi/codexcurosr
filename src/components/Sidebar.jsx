@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSidebar } from '@/layouts/MainLayout';
+import { useSettings } from '@/contexts/SettingsContext';
 import { cn } from '@/lib/utils';
 import {
   Users,
@@ -21,10 +23,19 @@ import {
   Settings,
   CreditCard,
   Zap,
-  LogOut
+  LogOut,
+  Menu,
+  X,
+  Home
 } from 'lucide-react';
 
 const menuItems = [
+  {
+    title: 'Dashboard',
+    path: '/',
+    icon: <Home className="h-5 w-5" />,
+    items: []
+  },
   {
     title: 'CRM',
     path: '/crm',
@@ -42,7 +53,6 @@ const menuItems = [
     icon: <DollarSign className="h-5 w-5" />,
     items: [
       { name: 'Facturas', path: '/contabilidad/facturas', icon: <FileText className="h-4 w-4" /> },
-      
       { name: 'Transacciones', path: '/contabilidad/transacciones', icon: <CreditCard className="h-4 w-4" /> },
       { name: 'Contratos', path: '/contabilidad/contratos', icon: <Receipt className="h-4 w-4" /> },
       { name: 'Línea de Servicios', path: '/contabilidad/servicios', icon: <FileText className="h-4 w-4" /> },
@@ -73,61 +83,205 @@ const menuItems = [
 const Sidebar = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { isCollapsed, setIsCollapsed } = useSidebar();
+  const { isDarkMode } = useSettings();
   const [openSections, setOpenSections] = useState({});
 
+  // Sincronizar con localStorage al montar el componente
+  useEffect(() => {
+    const savedOpenSections = localStorage.getItem('sidebar-open-sections');
+    if (savedOpenSections) {
+      try {
+        setOpenSections(JSON.parse(savedOpenSections));
+      } catch (error) {
+        console.warn('Error al cargar secciones abiertas del sidebar:', error);
+      }
+    }
+  }, []);
+
+  // Guardar estado de secciones abiertas
+  useEffect(() => {
+    localStorage.setItem('sidebar-open-sections', JSON.stringify(openSections));
+  }, [openSections]);
+
   const toggleSection = (title) => {
-    setOpenSections(prev => ({
-      ...prev,
-      [title]: !prev[title]
-    }));
+    if (!isCollapsed) {
+      setOpenSections(prev => ({
+        ...prev,
+        [title]: !prev[title]
+      }));
+    }
+  };
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+    if (!isCollapsed) {
+      setOpenSections({});
+    }
   };
 
   return (
-    <div className="fixed left-0 top-0 h-screen w-64 flex flex-col bg-[#1e3a8a]">
-      {/* Logo section */}
-      <div className="p-4 border-b border-white/10">
-        <div className="h-20 flex items-center justify-center">
-          <h1 className="text-white text-xl font-bold">GLOUPHI</h1>
+    <div className={cn(
+      "fixed left-0 top-0 h-screen flex flex-col transition-all duration-300 ease-in-out z-50",
+      "backdrop-blur-xl border-r shadow-2xl",
+      isDarkMode 
+        ? "bg-slate-900/95 border-slate-700/50 shadow-slate-900/50" 
+        : "bg-[#1e3a8a]/95 border-white/10 shadow-blue-900/20",
+      isCollapsed ? "w-16" : "w-64"
+    )}>
+      {/* Header con logo y toggle */}
+      <div className={cn(
+        "relative p-4 border-b bg-gradient-to-r from-white/5 to-transparent",
+        isDarkMode ? "border-slate-700/50" : "border-white/10"
+      )}>
+        <div className="flex items-center justify-between">
+          <div className={cn(
+            "flex items-center gap-3 transition-all duration-300",
+            isCollapsed && "justify-center"
+          )}>
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-sm border shadow-lg",
+              isDarkMode 
+                ? "bg-gradient-to-br from-slate-700/50 to-slate-800/50 border-slate-600/50" 
+                : "bg-gradient-to-br from-white/20 to-white/10 border-white/20"
+            )}>
+              <span className="text-white text-lg font-bold">G</span>
+            </div>
+            {!isCollapsed && (
+              <div className="overflow-hidden">
+                <h1 className="text-white text-xl font-bold tracking-wide">GLOUPHI</h1>
+                <p className="text-white/60 text-xs">Sistema Empresarial</p>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={toggleCollapse}
+            className={cn(
+              "p-2 rounded-lg transition-all duration-200 group",
+              isDarkMode 
+                ? "hover:bg-slate-700/50" 
+                : "hover:bg-white/10"
+            )}
+          >
+            {isCollapsed ? (
+              <Menu className="h-4 w-4 text-white/70 group-hover:text-white transition-colors" />
+            ) : (
+              <X className="h-4 w-4 text-white/70 group-hover:text-white transition-colors" />
+            )}
+          </button>
         </div>
       </div>
 
       {/* Menu section */}
-      <div className="flex-1 overflow-y-auto py-4">
-        <div className="space-y-1">
+      <div className="flex-1 overflow-y-auto py-4 scrollbar-none">
+        <div className="space-y-2 px-2">
           {menuItems.map((section, index) => (
-            <div key={index}>
+            <div key={index} className="relative">
+              {/* Main menu item */}
               <div 
-                className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-white/5"
-                onClick={() => section.items.length > 0 && toggleSection(section.title)}
+                className={cn(
+                  "relative group rounded-xl transition-all duration-200",
+                  isDarkMode 
+                    ? "hover:bg-slate-700/50 hover:shadow-lg hover:shadow-slate-700/20" 
+                    : "hover:bg-white/10 hover:shadow-lg hover:shadow-blue-900/20"
+                )}
               >
-                <Link
-                  to={section.path}
-                  className="flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white flex-grow"
+                <div 
+                  className="flex items-center justify-between p-3 cursor-pointer"
+                  onClick={() => section.items.length > 0 && toggleSection(section.title)}
                 >
-                  {section.icon}
-                  {section.title}
-                </Link>
-                {section.items.length > 0 && (
-                  openSections[section.title] ? 
-                    <ChevronDown className="h-4 w-4 text-white/70" /> : 
-                    <ChevronRight className="h-4 w-4 text-white/70" />
+                  <Link
+                    to={section.path}
+                    className={cn(
+                      "flex items-center gap-3 text-sm font-medium transition-all duration-200 flex-grow",
+                      (location.pathname === section.path || location.pathname.startsWith(section.path + '/'))
+                        ? "text-white" 
+                        : "text-white/70 group-hover:text-white"
+                    )}
+                  >
+                    <span className={cn(
+                      "transition-all duration-200 group-hover:scale-110",
+                      (location.pathname === section.path || location.pathname.startsWith(section.path + '/'))
+                        ? "text-white shadow-lg" 
+                        : "text-white/70"
+                    )}>
+                      {section.icon}
+                    </span>
+                    {!isCollapsed && (
+                      <span className="tracking-wide">{section.title}</span>
+                    )}
+                  </Link>
+                  {!isCollapsed && section.items.length > 0 && (
+                    <div className="ml-2">
+                      {openSections[section.title] ? 
+                        <ChevronDown className="h-4 w-4 text-white/70 group-hover:text-white transition-all duration-200" /> : 
+                        <ChevronRight className="h-4 w-4 text-white/70 group-hover:text-white transition-all duration-200" />
+                      }
+                    </div>
+                  )}
+                </div>
+
+                {/* Active indicator */}
+                {(location.pathname === section.path || 
+                  (section.path !== '/' && location.pathname.startsWith(section.path + '/'))) && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full shadow-lg shadow-white/50" />
+                )}
+
+                {/* Tooltip para estado colapsado */}
+                {isCollapsed && (
+                  <div className={cn(
+                    "absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 text-white text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50",
+                    isDarkMode ? "bg-slate-800" : "bg-gray-900"
+                  )}>
+                    {section.title}
+                    <div className={cn(
+                      "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 rotate-45",
+                      isDarkMode ? "bg-slate-800" : "bg-gray-900"
+                    )} />
+                  </div>
                 )}
               </div>
-              {openSections[section.title] && section.items.length > 0 && (
-                <div className="mt-1">
+
+              {/* Submenu items */}
+              {!isCollapsed && openSections[section.title] && section.items.length > 0 && (
+                <div className={cn(
+                  "mt-2 space-y-1 ml-4 border-l-2 pl-4",
+                  isDarkMode ? "border-slate-700/50" : "border-white/10"
+                )}>
                   {section.items.map((item, itemIndex) => (
                     <Link
                       key={itemIndex}
                       to={item.path}
                       className={cn(
-                        "flex items-center gap-2 py-2 pl-11 pr-4 text-sm font-medium transition-colors",
+                        "flex items-center gap-3 py-2.5 px-3 text-sm font-medium transition-all duration-200 rounded-lg group relative",
                         location.pathname === item.path 
-                          ? "bg-white/10 text-white" 
-                          : "text-white/70 hover:bg-white/10 hover:text-white"
+                          ? cn(
+                              "text-white shadow-lg border",
+                              isDarkMode 
+                                ? "bg-slate-700/50 shadow-slate-700/20 border-slate-600/50" 
+                                : "bg-white/15 shadow-blue-900/20 border-white/20"
+                            )
+                          : cn(
+                              "text-white/60 hover:text-white",
+                              isDarkMode 
+                                ? "hover:bg-slate-700/30 hover:shadow-md" 
+                                : "hover:bg-white/10 hover:shadow-md"
+                            )
                       )}
                     >
-                      {item.icon}
-                      {item.name}
+                      <span className={cn(
+                        "transition-all duration-200 group-hover:scale-110",
+                        location.pathname === item.path ? "text-white" : "text-white/60"
+                      )}>
+                        {item.icon}
+                      </span>
+                      <span className="tracking-wide">{item.name}</span>
+                      
+                      {location.pathname === item.path && (
+                        <div className="absolute right-2">
+                          <div className="w-2 h-2 bg-white rounded-full shadow-lg shadow-white/50" />
+                        </div>
+                      )}
                     </Link>
                   ))}
                 </div>
@@ -138,24 +292,66 @@ const Sidebar = () => {
       </div>
 
       {/* User profile section */}
-      <div className="border-t border-white/10 p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </span>
+      <div className={cn(
+        "border-t p-4 bg-gradient-to-r from-white/5 to-transparent",
+        isDarkMode ? "border-slate-700/50" : "border-white/10"
+      )}>
+        <div className={cn(
+          "flex items-center transition-all duration-300",
+          isCollapsed ? "justify-center" : "gap-3"
+        )}>
+          <div className="relative">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-sm",
+              isDarkMode 
+                ? "bg-gradient-to-br from-slate-600/50 to-slate-700/50 border-slate-500/50" 
+                : "bg-gradient-to-br from-white/30 to-white/20 border-white/30"
+            )}>
+              <span className="text-white text-sm font-bold">
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </span>
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 shadow-lg"
+                 style={{ borderColor: isDarkMode ? '#0f172a' : '#1e3a8a' }} />
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-white">{user?.name || 'Usuario'}</p>
-            <p className="text-xs text-white/70">{user?.role || 'user'}</p>
-          </div>
-          <button
-            onClick={logout}
-            className="p-1 rounded-md hover:bg-white/10 transition-colors"
-            title="Cerrar sesión"
-          >
-            <LogOut className="h-4 w-4 text-white/70 hover:text-white" />
-          </button>
+          
+          {!isCollapsed && (
+            <>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">
+                  {user?.name || 'Usuario'}
+                </p>
+                <p className="text-xs text-white/60 truncate">
+                  {user?.role || 'user'}
+                </p>
+              </div>
+              <button
+                onClick={logout}
+                className={cn(
+                  "p-2 rounded-lg transition-all duration-200 group",
+                  isDarkMode 
+                    ? "hover:bg-slate-700/50" 
+                    : "hover:bg-white/10"
+                )}
+                title="Cerrar sesión"
+              >
+                <LogOut className="h-4 w-4 text-white/70 group-hover:text-white transition-colors" />
+              </button>
+            </>
+          )}
+          
+          {isCollapsed && (
+            <div className={cn(
+              "absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 text-white text-sm rounded-lg shadow-lg opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50",
+              isDarkMode ? "bg-slate-800" : "bg-gray-900"
+            )}>
+              {user?.name || 'Usuario'}
+              <div className={cn(
+                "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 rotate-45",
+                isDarkMode ? "bg-slate-800" : "bg-gray-900"
+              )} />
+            </div>
+          )}
         </div>
       </div>
     </div>
