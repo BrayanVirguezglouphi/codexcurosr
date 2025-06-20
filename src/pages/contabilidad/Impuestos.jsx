@@ -80,8 +80,7 @@ const Impuestos = () => {
   // Cargar impuestos
   const cargarImpuestos = async () => {
     try {
-      const response = await apiCall('/api/impuestos');
-      const data = await response.json();
+      const data = await apiCall('/api/impuestos');
       setImpuestos(data);
     } catch (error) {
       toast({
@@ -222,14 +221,9 @@ const Impuestos = () => {
             body: JSON.stringify({ impuestos: nuevosImpuestos }),
           });
 
-          if (response.ok) {
-            await cargarImpuestos();
-            setIsImportDialogOpen(false);
-            toastImport.success(`${nuevosImpuestos.length} impuestos importados exitosamente`);
-          } else {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al importar los impuestos');
-          }
+          await cargarImpuestos();
+          setIsImportDialogOpen(false);
+          toastImport.success(`${nuevosImpuestos.length} impuestos importados exitosamente`);
         } catch (error) {
           console.error('Error al procesar el archivo:', error);
           toastImport.error('Error al procesar el archivo de importación');

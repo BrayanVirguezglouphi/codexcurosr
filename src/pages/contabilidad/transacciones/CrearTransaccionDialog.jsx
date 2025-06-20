@@ -175,12 +175,12 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
   useEffect(() => {
     if (open) {
       Promise.all([
-        apiCall('/api/catalogos/cuentas').then(r => r.json()),
-        apiCall('/api/catalogos/tipos-transaccion').then(r => r.json()),
-        apiCall('/api/catalogos/monedas').then(r => r.json()),
-        apiCall('/api/catalogos/etiquetas-contables').then(r => r.json()),
-        apiCall('/api/catalogos/terceros').then(r => r.json()),
-        apiCall('/api/catalogos/conceptos').then(r => r.json())
+        apiCall('/api/catalogos/cuentas'),
+        apiCall('/api/catalogos/tipos-transaccion'),
+        apiCall('/api/catalogos/monedas'),
+        apiCall('/api/catalogos/etiquetas-contables'),
+        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/catalogos/conceptos')
       ]).then(([cuentasData, tiposData, monedasData, etiquetasData, tercerosData, conceptosData]) => {
         setCuentas(cuentasData);
         setTiposTransaccion(tiposData);
@@ -214,7 +214,7 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
         url_soporte_adjunto: data.url_soporte_adjunto || null,
       };
 
-      const response = await apiCall('/api/transacciones', {
+      await apiCall('/api/transacciones', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,36 +222,13 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
         body: JSON.stringify(formattedData),
       });
 
-      const responseData = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Éxito",
-          description: "Transacción creada correctamente",
-        });
-        onTransaccionCreada();
-        onClose();
-        reset();
-      } else {
-        if (responseData.field) {
-          toast({
-            title: "Error de validación",
-            description: responseData.message,
-            variant: "destructive",
-          });
-        } else if (responseData.details) {
-          const errorMessage = responseData.details
-            .map(error => `${error.field}: ${error.message}`)
-            .join('\n');
-          toast({
-            title: "Error de validación",
-            description: errorMessage,
-            variant: "destructive",
-          });
-        } else {
-          throw new Error(responseData.message || 'Error al crear la transacción');
-        }
-      }
+      toast({
+        title: "Éxito",
+        description: "Transacción creada correctamente",
+      });
+      onTransaccionCreada();
+      onClose();
+      reset();
     } catch (error) {
       console.error('Error al crear transacción:', error);
       toast({

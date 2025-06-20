@@ -195,20 +195,19 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
         fecha_final_servicio: data.fecha_final_servicio ? new Date(data.fecha_final_servicio).toISOString().split('T')[0] : null
       };
 
-      const response = await apiCall(`/api/contratos/${contratoId}`, {
+      console.log('🔄 Actualizando contrato con datos:', formattedData);
+
+      await apiCall(`/api/contratos/${contratoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
       });
 
-      if (response.ok) {
-        toast({ title: "Éxito", description: "Contrato actualizado correctamente" });
-        onContratoActualizado();
-        onClose();
-      } else {
-        throw new Error('Error al actualizar el contrato');
-      }
+      toast({ title: "Éxito", description: "Contrato actualizado correctamente" });
+      onContratoActualizado();
+      onClose();
     } catch (error) {
+      console.error('❌ Error al actualizar contrato:', error);
       toast({ title: "Error", description: "No se pudo actualizar el contrato", variant: "destructive" });
     }
   };

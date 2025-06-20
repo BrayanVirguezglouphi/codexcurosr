@@ -1650,25 +1650,221 @@ app.get('/api/lineas-servicios', async (req, res) => {
   try {
     console.log('🔍 Consultando líneas de servicios...');
     
-    // Verificar tabla líneas de servicios
-    const tablaLineas = await pool.query(`
+    // Buscar específicamente adcot_lineas_de_servicios primero
+    let tablaLineas = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_name LIKE '%linea%' OR table_name LIKE '%servicio%'
+      WHERE table_name = 'adcot_lineas_de_servicios'
     `);
     
+    // Si no existe, buscar otras tablas relacionadas
     if (tablaLineas.rows.length === 0) {
+      tablaLineas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%linea%' OR table_name LIKE '%servicio%'
+        ORDER BY table_name
+      `);
+    }
+    
+    if (tablaLineas.rows.length === 0) {
+      console.log('❌ No se encontraron tablas de líneas de servicios');
       return res.json([]);
     }
     
     const nombreTabla = tablaLineas.rows[0].table_name;
-    const query = `SELECT * FROM ${nombreTabla} LIMIT 100`;
+    console.log(`📊 Usando tabla de líneas de servicios: ${nombreTabla}`);
+    
+    const query = `SELECT * FROM ${nombreTabla} ORDER BY id_servicio DESC LIMIT 100`;
     const result = await pool.query(query);
     console.log(`✅ Encontradas ${result.rows.length} líneas de servicios`);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener líneas de servicios:', error);
-    res.json([]);
+    res.status(500).json({ 
+      error: 'Error al obtener líneas de servicios',
+      details: error.message 
+    });
+  }
+});
+
+// Crear línea de servicio
+app.post('/api/lineas-servicios', async (req, res) => {
+  try {
+    console.log('🔍 Creando línea de servicio...');
+    
+    // Buscar tabla de líneas de servicios
+    let tablaLineas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'adcot_lineas_de_servicios'
+    `);
+    
+    if (tablaLineas.rows.length === 0) {
+      tablaLineas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%linea%' OR table_name LIKE '%servicio%'
+        ORDER BY table_name
+      `);
+    }
+    
+    if (tablaLineas.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de líneas de servicios no encontrada' });
+    }
+    
+    const nombreTabla = tablaLineas.rows[0].table_name;
+    
+    // Obtener columnas de la tabla
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_servicio'
+      ORDER BY ordinal_position
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos' });
+    }
+    
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    const placeholders = camposDelBody.map((_, index) => `$${index + 1}`).join(', ');
+    
+    const query = `
+      INSERT INTO ${nombreTabla} (${camposDelBody.join(', ')})
+      VALUES (${placeholders})
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, valores);
+    console.log('✅ Línea de servicio creada exitosamente');
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al crear línea de servicio:', error);
+    res.status(500).json({ 
+      error: 'Error al crear línea de servicio',
+      details: error.message 
+    });
+  }
+});
+
+// Actualizar línea de servicio
+app.put('/api/lineas-servicios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Actualizando línea de servicio ID: ${id}...`);
+    console.log('📋 Datos recibidos:', req.body);
+    
+    // Buscar tabla de líneas de servicios
+    let tablaLineas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'adcot_lineas_de_servicios'
+    `);
+    
+    if (tablaLineas.rows.length === 0) {
+      tablaLineas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%linea%' OR table_name LIKE '%servicio%'
+        ORDER BY table_name
+      `);
+    }
+    
+    if (tablaLineas.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de líneas de servicios no encontrada' });
+    }
+    
+    const nombreTabla = tablaLineas.rows[0].table_name;
+    
+    // Obtener columnas de la tabla
+    const columnas = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = '${nombreTabla}' 
+      AND column_name != 'id_servicio'
+    `);
+    
+    const camposDisponibles = columnas.rows.map(r => r.column_name);
+    const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
+    
+    if (camposDelBody.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos válidos para actualizar' });
+    }
+    
+    const setClause = camposDelBody.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
+    const valores = camposDelBody.map(campo => req.body[campo]);
+    
+    const query = `
+      UPDATE ${nombreTabla} 
+      SET ${setClause}
+      WHERE id_servicio = $${camposDelBody.length + 1}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [...valores, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Línea de servicio no encontrada' });
+    }
+    
+    console.log('✅ Línea de servicio actualizada exitosamente');
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al actualizar línea de servicio:', error);
+    res.status(500).json({ 
+      error: 'Error al actualizar línea de servicio',
+      details: error.message 
+    });
+  }
+});
+
+// Eliminar línea de servicio
+app.delete('/api/lineas-servicios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Eliminando línea de servicio ID: ${id}...`);
+    
+    // Buscar tabla de líneas de servicios
+    let tablaLineas = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_name = 'adcot_lineas_de_servicios'
+    `);
+    
+    if (tablaLineas.rows.length === 0) {
+      tablaLineas = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%linea%' OR table_name LIKE '%servicio%'
+        ORDER BY table_name
+      `);
+    }
+    
+    if (tablaLineas.rows.length === 0) {
+      return res.status(404).json({ error: 'Tabla de líneas de servicios no encontrada' });
+    }
+    
+    const nombreTabla = tablaLineas.rows[0].table_name;
+    const query = `DELETE FROM ${nombreTabla} WHERE id_servicio = $1 RETURNING *`;
+    const result = await pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Línea de servicio no encontrada' });
+    }
+    
+    console.log('✅ Línea de servicio eliminada exitosamente');
+    res.json({ message: 'Línea de servicio eliminada', lineaServicio: result.rows[0] });
+  } catch (error) {
+    console.error('❌ Error al eliminar línea de servicio:', error);
+    res.status(500).json({ 
+      error: 'Error al eliminar línea de servicio',
+      details: error.message 
+    });
   }
 });
 

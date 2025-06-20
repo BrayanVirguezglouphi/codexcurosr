@@ -205,21 +205,20 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
         fecha_final_servicio: data.fecha_final_servicio ? new Date(data.fecha_final_servicio).toISOString().split('T')[0] : null
       };
 
-      const response = await fetch('/api/contratos', {
+      console.log('🔄 Creando contrato con datos:', formattedData);
+
+      await apiCall('/api/contratos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedData),
       });
 
-      if (response.ok) {
-        toast({ title: "Éxito", description: "Contrato creado correctamente" });
-        onContratoCreado();
-        reset();
-        onClose();
-      } else {
-        throw new Error('Error al crear el contrato');
-      }
+      toast({ title: "Éxito", description: "Contrato creado correctamente" });
+      onContratoCreado();
+      reset();
+      onClose();
     } catch (error) {
+      console.error('❌ Error al crear contrato:', error);
       toast({ title: "Error", description: "No se pudo crear el contrato", variant: "destructive" });
     }
   };

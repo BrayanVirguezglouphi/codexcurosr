@@ -81,6 +81,13 @@ export const apiCall = async (endpoint, options = {}) => {
         }
       }
       
+      // Si hay un error del servidor (4xx, 5xx), lanzar excepción con el mensaje del servidor
+      if (!response.ok) {
+        const errorMessage = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
+        console.error('❌ Error del servidor:', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
       return data;
     }
     

@@ -138,9 +138,16 @@ const CrearLineaServicioDialog = ({ open, onClose, onLineaServicioCreada }) => {
   const currentTipoServicio = watch('tipo_servicio');
 
   const tiposServicio = [
+    { id: 'Internet', name: 'Internet' },
+    { id: 'Telefonía', name: 'Telefonía' },
+    { id: 'Televisión', name: 'Televisión' },
+    { id: 'Streaming', name: 'Streaming' },
+    { id: 'Seguridad', name: 'Seguridad' },
+    { id: 'Soporte', name: 'Soporte' },
+    { id: 'Cloud', name: 'Cloud' },
+    { id: 'IoT', name: 'IoT' },
     { id: 'CONSULTORIA', name: 'Consultoría' },
     { id: 'DESARROLLO', name: 'Desarrollo' },
-    { id: 'SOPORTE', name: 'Soporte' },
     { id: 'MANTENIMIENTO', name: 'Mantenimiento' },
     { id: 'CAPACITACION', name: 'Capacitación' },
     { id: 'ANALISIS', name: 'Análisis' },
@@ -150,21 +157,18 @@ const CrearLineaServicioDialog = ({ open, onClose, onLineaServicioCreada }) => {
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch('/api/lineas-servicios', {
+      console.log('📝 Creando línea de servicio:', data);
+      await apiCall('/api/lineas-servicios', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
-      if (response.ok) {
-        toast({ title: "Éxito", description: "Línea de servicio creada correctamente" });
-        onLineaServicioCreada();
-        reset();
-        onClose();
-      } else {
-        throw new Error('Error al crear la línea de servicio');
-      }
+      toast({ title: "Éxito", description: "Línea de servicio creada correctamente" });
+      onLineaServicioCreada();
+      reset();
+      onClose();
     } catch (error) {
+      console.error('❌ Error al crear línea de servicio:', error);
       toast({ title: "Error", description: "No se pudo crear la línea de servicio", variant: "destructive" });
     }
   };

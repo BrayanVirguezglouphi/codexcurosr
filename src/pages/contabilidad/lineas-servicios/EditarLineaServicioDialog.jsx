@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { apiCall } from '@/config/api';
 import { useForm } from 'react-hook-form';
 import { 
   Settings, 
@@ -130,9 +131,16 @@ const EditarLineaServicioDialog = ({ open, onClose, lineaServicio, onLineaServic
   const currentTipoServicio = watch('tipo_servicio');
 
   const tiposServicio = [
+    { id: 'Internet', name: 'Internet' },
+    { id: 'Telefonía', name: 'Telefonía' },
+    { id: 'Televisión', name: 'Televisión' },
+    { id: 'Streaming', name: 'Streaming' },
+    { id: 'Seguridad', name: 'Seguridad' },
+    { id: 'Soporte', name: 'Soporte' },
+    { id: 'Cloud', name: 'Cloud' },
+    { id: 'IoT', name: 'IoT' },
     { id: 'CONSULTORIA', name: 'Consultoría' },
     { id: 'DESARROLLO', name: 'Desarrollo' },
-    { id: 'SOPORTE', name: 'Soporte' },
     { id: 'MANTENIMIENTO', name: 'Mantenimiento' },
     { id: 'CAPACITACION', name: 'Capacitación' },
     { id: 'ANALISIS', name: 'Análisis' },
@@ -150,20 +158,17 @@ const EditarLineaServicioDialog = ({ open, onClose, lineaServicio, onLineaServic
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch(`/api/lineas-servicios/${lineaServicio.id_servicio}`, {
+      console.log('📝 Actualizando línea de servicio:', data);
+      await apiCall(`/api/lineas-servicios/${lineaServicio.id_servicio}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
-      if (response.ok) {
-        toast({ title: "Éxito", description: "Línea de servicio actualizada correctamente" });
-        onLineaServicioActualizada();
-        onClose();
-      } else {
-        throw new Error('Error al actualizar la línea de servicio');
-      }
+      toast({ title: "Éxito", description: "Línea de servicio actualizada correctamente" });
+      onLineaServicioActualizada();
+      onClose();
     } catch (error) {
+      console.error('❌ Error al actualizar línea de servicio:', error);
       toast({ title: "Error", description: "No se pudo actualizar la línea de servicio", variant: "destructive" });
     }
   };

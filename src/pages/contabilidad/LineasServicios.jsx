@@ -73,9 +73,16 @@ const LineasServicios = () => {
   // Obtener etiqueta para tipo de servicio
   const getTipoServicioLabel = (tipo) => {
     const tipos = {
+      'Internet': 'Internet',
+      'Telefonía': 'Telefonía',
+      'Televisión': 'Televisión',
+      'Streaming': 'Streaming',
+      'Seguridad': 'Seguridad',
+      'Soporte': 'Soporte',
+      'Cloud': 'Cloud',
+      'IoT': 'IoT',
       'CONSULTORIA': 'Consultoría',
       'DESARROLLO': 'Desarrollo',
-      'SOPORTE': 'Soporte',
       'MANTENIMIENTO': 'Mantenimiento',
       'CAPACITACION': 'Capacitación',
       'ANALISIS': 'Análisis',
@@ -88,9 +95,16 @@ const LineasServicios = () => {
   // Obtener color para tipo de servicio
   const getTipoServicioColor = (tipo) => {
     const colors = {
+      'Internet': 'bg-blue-100 text-blue-700',
+      'Telefonía': 'bg-green-100 text-green-700',
+      'Televisión': 'bg-purple-100 text-purple-700',
+      'Streaming': 'bg-red-100 text-red-700',
+      'Seguridad': 'bg-orange-100 text-orange-700',
+      'Soporte': 'bg-yellow-100 text-yellow-700',
+      'Cloud': 'bg-cyan-100 text-cyan-700',
+      'IoT': 'bg-indigo-100 text-indigo-700',
       'CONSULTORIA': 'bg-blue-100 text-blue-700',
       'DESARROLLO': 'bg-green-100 text-green-700',
-      'SOPORTE': 'bg-yellow-100 text-yellow-700',
       'MANTENIMIENTO': 'bg-orange-100 text-orange-700',
       'CAPACITACION': 'bg-purple-100 text-purple-700',
       'ANALISIS': 'bg-indigo-100 text-indigo-700',
@@ -147,9 +161,16 @@ const LineasServicios = () => {
     switch (columnKey) {
       case 'tipo_servicio':
         return [
+          { value: 'Internet', label: 'Internet' },
+          { value: 'Telefonía', label: 'Telefonía' },
+          { value: 'Televisión', label: 'Televisión' },
+          { value: 'Streaming', label: 'Streaming' },
+          { value: 'Seguridad', label: 'Seguridad' },
+          { value: 'Soporte', label: 'Soporte' },
+          { value: 'Cloud', label: 'Cloud' },
+          { value: 'IoT', label: 'IoT' },
           { value: 'CONSULTORIA', label: 'Consultoría' },
           { value: 'DESARROLLO', label: 'Desarrollo' },
-          { value: 'SOPORTE', label: 'Soporte' },
           { value: 'MANTENIMIENTO', label: 'Mantenimiento' },
           { value: 'CAPACITACION', label: 'Capacitación' },
           { value: 'ANALISIS', label: 'Análisis' },
@@ -300,10 +321,10 @@ const LineasServicios = () => {
   // Cargar líneas de servicios
   const cargarLineasServicios = async () => {
     try {
-      const response = await apiCall('/api/lineas-servicios');
-      const data = await response.json();
+      const data = await apiCall('/api/lineas-servicios');
       setLineasServicios(data);
     } catch (error) {
+      console.error('Error al cargar líneas de servicios:', error);
       toast({
         title: "Error",
         description: "No se pudieron cargar las líneas de servicios",
@@ -320,17 +341,16 @@ const LineasServicios = () => {
   const eliminarLineaServicio = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar esta línea de servicio?')) {
       try {
-        const response = await fetch(`/api/lineas-servicios/${id}`, {
+        await apiCall(`/api/lineas-servicios/${id}`, {
           method: 'DELETE',
         });
-        if (response.ok) {
-          toast({
-            title: "Éxito",
-            description: "Línea de servicio eliminada correctamente",
-          });
-          cargarLineasServicios();
-        }
+        toast({
+          title: "Éxito",
+          description: "Línea de servicio eliminada correctamente",
+        });
+        cargarLineasServicios();
       } catch (error) {
+        console.error('Error al eliminar línea de servicio:', error);
         toast({
           title: "Error",
           description: "No se pudo eliminar la línea de servicio",
@@ -490,35 +510,31 @@ const LineasServicios = () => {
 
     try {
       const updatedData = { [field]: newValue };
-      const response = await fetch(`/api/lineas-servicios/${lineaServicioId}`, {
+      console.log('🔄 Actualizando línea de servicio:', { lineaServicioId, field, newValue });
+      
+      await apiCall(`/api/lineas-servicios/${lineaServicioId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(updatedData),
       });
 
-      if (response.ok) {
-        setLineasServicios(prev => prev.map(ls => 
-          ls.id_servicio === lineaServicioId 
-            ? { ...ls, [field]: newValue }
-            : ls
-        ));
+      setLineasServicios(prev => prev.map(ls => 
+        ls.id_servicio === lineaServicioId 
+          ? { ...ls, [field]: newValue }
+          : ls
+      ));
 
-        setPendingChanges(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(lineaServicioId);
-          return newSet;
-        });
+      setPendingChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(lineaServicioId);
+        return newSet;
+      });
 
-        toast({
-          title: "Cambio guardado",
-          description: `Campo ${field} actualizado correctamente`,
-        });
-      } else {
-        throw new Error('Error al actualizar');
-      }
+      toast({
+        title: "Cambio guardado",
+        description: `Campo ${field} actualizado correctamente`,
+      });
     } catch (error) {
+      console.error('❌ Error al actualizar línea de servicio:', error);
       toast({
         title: "Error",
         description: "No se pudo guardar el cambio",
@@ -533,11 +549,8 @@ const LineasServicios = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(lineaServicioId => {
         const changes = editedLineasServicios[lineaServicioId];
-        return fetch(`/api/lineas-servicios/${lineaServicioId}`, {
+        return apiCall(`/api/lineas-servicios/${lineaServicioId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(changes),
         });
       });
