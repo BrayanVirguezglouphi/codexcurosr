@@ -64,35 +64,43 @@ const authenticateToken = (req, res, next) => {
 // Login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    console.log('🔐 Intento de login para:', email);
+    console.log('🔐 Intento de login para:', username);
 
-    if (!email || !password) {
+    if (!username || !password) {
       return res.status(400).json({ 
-        error: 'Email y contraseña son requeridos' 
+        error: 'Username y contraseña son requeridos' 
       });
     }
 
-    // Buscar usuario por email
-    const query = 'SELECT * FROM "Users" WHERE email = $1';
-    const result = await pool.query(query, [email]);
+    // Buscar usuario por username
+    const query = 'SELECT * FROM "Users" WHERE username = $1';
+    const result = await pool.query(query, [username]);
 
     if (result.rows.length === 0) {
-      console.log('❌ Usuario no encontrado:', email);
+      console.log('❌ Usuario no encontrado:', username);
       return res.status(401).json({ 
         error: 'Credenciales inválidas' 
       });
     }
 
     const user = result.rows[0];
-    console.log('👤 Usuario encontrado:', { id: user.id, email: user.email, role: user.role });
+    console.log('👤 Usuario encontrado:', { id: user.id, username: user.username, email: user.email });
 
-    // Verificar contraseña
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    // Verificar contraseña - verificar si está hasheada o no
+    let passwordMatch = false;
+    
+    // Primero intentar comparar con bcrypt (contraseña hasheada)
+    try {
+      passwordMatch = await bcrypt.compare(password, user.password);
+    } catch (bcryptError) {
+      // Si falla bcrypt, comparar directamente (contraseña en texto plano)
+      passwordMatch = password === user.password;
+    }
     
     if (!passwordMatch) {
-      console.log('❌ Contraseña incorrecta para:', email);
+      console.log('❌ Contraseña incorrecta para:', username);
       return res.status(401).json({ 
         error: 'Credenciales inválidas' 
       });
@@ -101,20 +109,24 @@ app.post('/api/auth/login', async (req, res) => {
     // Generar JWT token
     const tokenPayload = {
       id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+      username: user.username,
+      email: user.email
     };
 
     const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-    console.log('✅ Login exitoso para:', email);
+    console.log('✅ Login exitoso para:', username);
 
-    // Actualizar fecha de último acceso
-    await pool.query(
-      'UPDATE "Users" SET "updatedAt" = NOW() WHERE id = $1',
-      [user.id]
-    );
+    // Actualizar fecha de último acceso (usando created_at como referencia si no existe updatedAt)
+    try {
+      await pool.query(
+        'UPDATE "Users" SET created_at = NOW() WHERE id = $1',
+        [user.id]
+      );
+    } catch (updateError) {
+      // Si no se puede actualizar, continuar sin error
+      console.log('⚠️ No se pudo actualizar fecha de acceso');
+    }
 
     res.json({
       success: true,
@@ -122,11 +134,9 @@ app.post('/api/auth/login', async (req, res) => {
       token,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
-        name: user.name,
-        role: user.role,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        created_at: user.created_at
       }
     });
 
@@ -149,7 +159,7 @@ app.get('/api/auth/verify', authenticateToken, (req, res) => {
 
 // Logout endpoint (opcional - principalmente para limpiar del lado del cliente)
 app.post('/api/auth/logout', authenticateToken, (req, res) => {
-  console.log('🚪 Logout para usuario:', req.user.email);
+  console.log('🚪 Logout para usuario:', req.user.username);
   res.json({
     success: true,
     message: 'Logout exitoso'
@@ -159,7 +169,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
 // Endpoint para obtener perfil de usuario
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
-    const query = 'SELECT id, name, email, role, "createdAt", "updatedAt" FROM "Users" WHERE id = $1';
+    const query = 'SELECT id, username, email, created_at FROM "Users" WHERE id = $1';
     const result = await pool.query(query, [req.user.id]);
 
     if (result.rows.length === 0) {
@@ -180,28 +190,30 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// ENDPOINT PARA CREAR USUARIOS (SOLO ADMIN)
-app.post('/api/auth/register', authenticateToken, async (req, res) => {
+// ENDPOINT PARA CREAR USUARIOS
+app.post('/api/auth/register', async (req, res) => {
   try {
-    // Verificar que el usuario sea admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ 
-        error: 'Solo los administradores pueden crear usuarios' 
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ 
+        error: 'Username, email y contraseña son requeridos' 
       });
     }
 
-    const { name, email, password, role = 'user' } = req.body;
-
-    if (!name || !email || !password) {
+    // Verificar si el username ya existe
+    const existingUsername = await pool.query('SELECT id FROM "Users" WHERE username = $1', [username]);
+    
+    if (existingUsername.rows.length > 0) {
       return res.status(400).json({ 
-        error: 'Nombre, email y contraseña son requeridos' 
+        error: 'El username ya está registrado' 
       });
     }
 
     // Verificar si el email ya existe
-    const existingUser = await pool.query('SELECT id FROM "Users" WHERE email = $1', [email]);
+    const existingEmail = await pool.query('SELECT id FROM "Users" WHERE email = $1', [email]);
     
-    if (existingUser.rows.length > 0) {
+    if (existingEmail.rows.length > 0) {
       return res.status(400).json({ 
         error: 'El email ya está registrado' 
       });
@@ -213,15 +225,15 @@ app.post('/api/auth/register', authenticateToken, async (req, res) => {
 
     // Crear usuario
     const query = `
-      INSERT INTO "Users" (name, email, password, role, "createdAt", "updatedAt")
-      VALUES ($1, $2, $3, $4, NOW(), NOW())
-      RETURNING id, name, email, role, "createdAt", "updatedAt"
+      INSERT INTO "Users" (username, email, password, created_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING id, username, email, created_at
     `;
 
-    const result = await pool.query(query, [name, email, hashedPassword, role]);
+    const result = await pool.query(query, [username, email, hashedPassword]);
     const newUser = result.rows[0];
 
-    console.log('✅ Usuario creado exitosamente:', { id: newUser.id, email: newUser.email });
+    console.log('✅ Usuario creado exitosamente:', { id: newUser.id, username: newUser.username });
 
     res.status(201).json({
       success: true,

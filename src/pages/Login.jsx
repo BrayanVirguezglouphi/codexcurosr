@@ -12,7 +12,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
 
@@ -34,7 +34,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      if (!formData.email || !formData.password) {
+      if (!formData.username || !formData.password) {
         toast({
           title: "Error de validación",
           description: "Por favor, complete todos los campos",
@@ -44,7 +44,7 @@ const Login = () => {
         return;
       }
 
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.username, formData.password);
       
       if (result.success) {
         toast({
@@ -124,22 +124,22 @@ const Login = () => {
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Campo Email */}
+              {/* Campo Username */}
               <div className="space-y-2">
                 <label className="block text-white/90 text-sm font-medium">
-                  Email
+                  Username
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-white/50" />
                   </div>
                   <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
+                    type="text"
+                    name="username"
+                    value={formData.username}
                     onChange={handleChange}
                     className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent transition-all duration-300"
-                    placeholder="Ingresa tu email"
+                    placeholder="Ingresa tu username"
                     required
                   />
                 </div>
