@@ -75,7 +75,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Buscar usuario por username
-    const query = 'SELECT * FROM "Users" WHERE username = $1';
+    const query = 'SELECT * FROM "User" WHERE username = $1';
     const result = await pool.query(query, [username]);
 
     if (result.rows.length === 0) {
@@ -120,7 +120,7 @@ app.post('/api/auth/login', async (req, res) => {
     // Actualizar fecha de último acceso (usando created_at como referencia si no existe updatedAt)
     try {
       await pool.query(
-        'UPDATE "Users" SET created_at = NOW() WHERE id = $1',
+        'UPDATE "User" SET created_at = NOW() WHERE id = $1',
         [user.id]
       );
     } catch (updateError) {
@@ -169,7 +169,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
 // Endpoint para obtener perfil de usuario
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
-    const query = 'SELECT id, username, email, created_at FROM "Users" WHERE id = $1';
+    const query = 'SELECT id, username, email, created_at FROM "User" WHERE id = $1';
     const result = await pool.query(query, [req.user.id]);
 
     if (result.rows.length === 0) {
@@ -202,7 +202,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // Verificar si el username ya existe
-    const existingUsername = await pool.query('SELECT id FROM "Users" WHERE username = $1', [username]);
+    const existingUsername = await pool.query('SELECT id FROM "User" WHERE username = $1', [username]);
     
     if (existingUsername.rows.length > 0) {
       return res.status(400).json({ 
@@ -211,7 +211,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // Verificar si el email ya existe
-    const existingEmail = await pool.query('SELECT id FROM "Users" WHERE email = $1', [email]);
+    const existingEmail = await pool.query('SELECT id FROM "User" WHERE email = $1', [email]);
     
     if (existingEmail.rows.length > 0) {
       return res.status(400).json({ 
@@ -225,7 +225,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Crear usuario
     const query = `
-      INSERT INTO "Users" (username, email, password, created_at)
+      INSERT INTO "User" (username, email, password, created_at)
       VALUES ($1, $2, $3, NOW())
       RETURNING id, username, email, created_at
     `;
