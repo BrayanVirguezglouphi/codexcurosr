@@ -1,26 +1,23 @@
-# Dockerfile para backend API con PostgreSQL
+# Imagen base de Node.js
 FROM node:18-alpine
 
-# Establecer directorio de trabajo
+# Directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias
+# Copiar package.json y package-lock.json
 COPY package*.json ./
 
-# Instalar dependencias de producción (incluyendo pg para PostgreSQL)
+# Instalar dependencias de producción
 RUN npm ci --only=production
 
-# Instalar pg específicamente
-RUN npm install pg
-
-# Copiar servidor backend corregido
+# Copiar código fuente
 COPY backend-server-fixed.cjs ./backend-server.cjs
 
-# Exponer puerto 8080
+# Exponer puerto
 EXPOSE 8080
 
 # Variables de entorno
 ENV NODE_ENV=production
 
-# Comando para iniciar el servidor backend
+# Comando para ejecutar el servidor
 CMD ["node", "backend-server.cjs"] 

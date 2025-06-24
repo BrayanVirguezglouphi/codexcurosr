@@ -1,28 +1,32 @@
 steps:
-  # Build the container image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/pros-app:$COMMIT_SHA', '.']
+  # Instalar dependencias y hacer build
+  - name: 'node:18'
+    entrypoint: 'npm'
+    args: ['install']
   
-  # Push the container image to Container Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/pros-app:$COMMIT_SHA']
+  - name: 'node:18'
+    entrypoint: 'npm'
+    args: ['run', 'build']
   
-  # Deploy container image to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args: 
-    - 'run'
-    - 'deploy'
-    - 'pros-app'
-    - '--image'
-    - 'gcr.io/$PROJECT_ID/pros-app:$COMMIT_SHA'
-    - '--region'
-    - 'us-central1'
-    - '--platform'
-    - 'managed'
-    - '--allow-unauthenticated'
-    - '--set-env-vars'
-    - 'NODE_ENV=production'
+  # Build de la imagen Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/pros-app', '.']
+  
+  # Deploy a Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'pros-app'
+      - '--image=gcr.io/$PROJECT_ID/pros-app'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--set-env-vars=NODE_ENV=production,PORT=8080,DB_HOST=api2.zuhe.social,DB_PORT=5432,DB_NAME=SQL_DDL_ADMCOT,DB_USER=postgres,DB_PASSWORD=00GP5673BD**$$eG3Ve1101,DB_SSL=false'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
 
 images:
   - 'gcr.io/$PROJECT_ID/pros-app:$COMMIT_SHA'

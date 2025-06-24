@@ -18,30 +18,167 @@ app.use(cors());
 app.use(express.json());
 
 // Configuración de base de datos
-const isProduction = process.env.NODE_ENV === 'production';
-const dbConfig = {
-  host: process.env.DB_HOST || (isProduction ? 'cloud-access.zuhe.social' : 'localhost'),
-  port: process.env.DB_PORT || 8321,
-  database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
-  ssl: process.env.DB_SSL === 'true' ? (isProduction ? true : false) : false
-};
+// Función para detectar si tenemos acceso al tunnel de Cloudflare
+async function detectCloudflaredAccess() {
+  console.log('🔍 Detectando acceso a Cloudflare Tunnel...');
+  
+  const { Pool } = require('pg');
+  
+  // Detectar si estamos en Cloud Run
+  const isCloudRun = process.env.K_SERVICE ? true : false;
+  
+  let configuracionesTunnel;
+  
+  if (isCloudRun) {
+    // Para Cloud Run: usar URLs públicas del tunnel existente
+    console.log('☁️ Cloud Run detectado - probando URLs públicas del tunnel');
+    configuracionesTunnel = [
+      {
+        nombre: 'api2.zuhe.social (URL pública del tunnel)',
+        config: {
+          host: 'api2.zuhe.social',
+          port: 5432,
+          database: 'SQL_DDL_ADMCOT',
+          user: 'postgres',
+          password: '00GP5673BD**$eG3Ve1101',
+          ssl: false,
+          connectionTimeoutMillis: 8000
+        }
+      },
+      {
+        nombre: 'database.zuhe.social (URL alternativa)',
+        config: {
+          host: 'database.zuhe.social', 
+          port: 5432,
+          database: 'SQL_DDL_ADMCOT',
+          user: 'postgres',
+          password: '00GP5673BD**$eG3Ve1101',
+          ssl: false,
+          connectionTimeoutMillis: 8000
+        }
+      }
+    ];
+  } else {
+    // Para computadores locales: usar localhost (tunnel ya configurado)
+    console.log('🏠 Entorno local detectado - probando localhost');
+    configuracionesTunnel = [
+      {
+        nombre: 'localhost:8321 (tunnel local)',
+        config: {
+          host: 'localhost',
+          port: 8321,
+          database: 'SQL_DDL_ADMCOT',
+          user: 'postgres',
+          password: '00GP5673BD**$eG3Ve1101',
+          ssl: false,
+          connectionTimeoutMillis: 5000
+        }
+      },
+      {
+        nombre: '127.0.0.1:8321 (IP local directa)',
+        config: {
+          host: '127.0.0.1',
+          port: 8321,
+          database: 'SQL_DDL_ADMCOT',
+          user: 'postgres', 
+          password: '00GP5673BD**$eG3Ve1101',
+          ssl: false,
+          connectionTimeoutMillis: 5000
+        }
+      }
+    ];
+  }
+  
+  for (const { nombre, config } of configuracionesTunnel) {
+    console.log(`🔗 Probando: ${nombre} (${config.host}:${config.port})...`);
+    
+    const testPool = new Pool(config);
+    
+    try {
+      await testPool.query('SELECT 1');
+      console.log(`✅ Conexión exitosa con: ${nombre}`);
+      await testPool.end();
+      
+      return {
+        success: true,
+        config: config,
+        method: nombre
+      };
+    } catch (error) {
+      console.log(`❌ ${nombre} falló: ${error.message}`);
+      await testPool.end();
+    }
+  }
+  
+  console.log('❌ No se detectó acceso al tunnel de Cloudflare');
+  return { success: false };
+}
 
-console.log('🔍 Configuración de base de datos:', {
-  host: dbConfig.host,
-  port: dbConfig.port,
-  database: dbConfig.database,
-  user: dbConfig.user,
-  ssl: dbConfig.ssl,
-  environment: process.env.NODE_ENV || 'development'
-});
+// Configuración de base de datos con detección automática
+let dbConfig;
 
-const pool = new Pool(dbConfig);
+// Detectar si estamos en Cloud Run
+const isCloudRun = process.env.K_SERVICE ? true : false;
+
+async function initializeDatabase() {
+  console.log(`🌍 Entorno detectado: ${isCloudRun ? 'Cloud Run' : 'Local'}`);
+  
+  // Intentar detectar acceso al tunnel primero
+  const tunnelResult = await detectCloudflaredAccess();
+  
+  if (tunnelResult.success) {
+    // Usar la configuración del tunnel que funcionó
+    console.log(`🚇 Usando configuración de Cloudflare Tunnel: ${tunnelResult.method}`);
+    dbConfig = tunnelResult.config;
+  } else if (isCloudRun) {
+    // Fallback para Cloud Run sin tunnel - usar URL pública de Cloudflare
+    console.log('☁️ Cloud Run sin tunnel - usando URL pública de Cloudflare');
+    dbConfig = {
+      host: process.env.DB_HOST || 'api2.zuhe.social',
+      port: process.env.DB_PORT || 5432,
+      database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
+      ssl: process.env.DB_SSL === 'true'
+    };
+  } else {
+    // Configuración local estándar como último recurso
+    console.log('🏠 Configuración local estándar (fallback)');
+    dbConfig = {
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || 8321,
+      database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
+      ssl: process.env.DB_SSL === 'true'
+    };
+  }
+  
+  console.log('🔍 Configuración final de base de datos:', {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    database: dbConfig.database,
+    user: dbConfig.user,
+    ssl: dbConfig.ssl,
+    environment: process.env.NODE_ENV || 'development',
+    detectedMethod: tunnelResult.success ? tunnelResult.method : 'Sin tunnel detectado'
+  });
+  
+  return dbConfig;
+}
+
+// Inicializar pool de conexiones (se configura al arrancar el servidor)
+let pool;
 
 // Función para probar conexión
 const testConnection = async () => {
   try {
+    if (!pool) {
+      console.log('⚠️ Pool no inicializado, inicializando...');
+      await initializeDatabase();
+      pool = new Pool(dbConfig);
+    }
+    
     const client = await pool.connect();
     const result = await client.query('SELECT NOW()');
     console.log('✅ Conexión a BD exitosa:', result.rows[0]);
@@ -1901,11 +2038,26 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// Inicializar conexión al arrancar
-testConnection();
-
 // Iniciar servidor usando PORT de Cloud Run
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Servidor backend corriendo en puerto ${PORT}`);
-  console.log(`📊 Conectado a: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 8321}`);
+  
+  // Configurar base de datos al arrancar
+  try {
+    console.log('🔧 Inicializando configuración de base de datos...');
+    await initializeDatabase();
+    pool = new Pool(dbConfig);
+    
+    // Probar conexión inicial
+    const isConnected = await testConnection();
+    if (isConnected) {
+      console.log('🎉 Servidor completamente inicializado y conectado a BD');
+    } else {
+      console.log('⚠️ Servidor iniciado pero sin conexión a BD');
+    }
+  } catch (error) {
+    console.error('❌ Error al inicializar BD:', error);
+  }
+  
+  console.log(`📊 Configuración final: ${dbConfig?.host}:${dbConfig?.port}`);
 }); 

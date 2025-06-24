@@ -1,11 +1,11 @@
 steps:
   # Build backend image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile.backend', '-t', 'gcr.io/$PROJECT_ID/pros-backend:$BUILD_ID', '.']
+    args: ['build', '-f', 'Dockerfile.backend', '-t', 'gcr.io/$PROJECT_ID/pros-backend', '.']
   
   # Push backend image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/pros-backend:$BUILD_ID']
+    args: ['push', 'gcr.io/$PROJECT_ID/pros-backend']
   
   # Deploy to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -13,17 +13,12 @@ steps:
       - 'run'
       - 'deploy'
       - 'pros-backend'
-      - '--image'
-      - 'gcr.io/$PROJECT_ID/pros-backend:$BUILD_ID'
-      - '--region'
-      - 'us-central1'
-      - '--platform'
-      - 'managed'
+      - '--image=gcr.io/$PROJECT_ID/pros-backend'
+      - '--region=us-central1'
+      - '--platform=managed'
       - '--allow-unauthenticated'
-      - '--port'
-      - '8080'
-      - '--set-env-vars'
-      - 'NODE_ENV=production,DB_HOST=cloud-access.zuhe.social,DB_PORT=8321,DB_NAME=SQL_DDL_ADMCOT,DB_USER=postgres,DB_PASSWORD=00GP5673BD**$eG3Ve1101'
+      - '--port=8081'
+      - '--set-env-vars=NODE_ENV=production,JWT_SECRET=tu_clave_secreta_super_segura_2025'
 
 options:
   logging: CLOUD_LOGGING_ONLY 
