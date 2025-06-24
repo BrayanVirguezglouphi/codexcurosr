@@ -10,8 +10,10 @@ COPY . .
 # Instalar dependencias de tu app
 RUN npm install
 
-# Instalar Cloudflared en el contenedor
-RUN curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && \
+# Instalar herramientas necesarias y Cloudflared
+RUN apt-get update && \
+    apt-get install -y netcat-traditional && \
+    curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && \
     dpkg -i cloudflared.deb || apt-get update && apt-get install -f -y && \
     rm cloudflared.deb
 
