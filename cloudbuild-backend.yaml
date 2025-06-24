@@ -1,24 +1,23 @@
 steps:
-  # Build backend image
+  # Construir la imagen Docker
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile.backend', '-t', 'gcr.io/$PROJECT_ID/pros-backend', '.']
+    args: ['build', '-f', 'Dockerfile.backend', '-t', 'gcr.io/$PROJECT_ID/pros-backend:latest', '.']
   
-  # Push backend image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/pros-backend']
-  
-  # Deploy to Cloud Run
+  # Desplegar a Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
       - 'deploy'
       - 'pros-backend'
-      - '--image=gcr.io/$PROJECT_ID/pros-backend'
+      - '--image=gcr.io/$PROJECT_ID/pros-backend:latest'
       - '--region=us-central1'
-      - '--platform=managed'
       - '--allow-unauthenticated'
-      - '--port=8081'
-      - '--set-env-vars=NODE_ENV=production,JWT_SECRET=tu_clave_secreta_super_segura_2025'
+      - '--port=8080'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--env-vars-file=env-vars.yaml'
 
+# Configuración adicional
 options:
+  machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY 

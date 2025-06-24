@@ -1,17 +1,26 @@
-# Imagen base de Node.js
-FROM node:18-alpine
+# Usar imagen base de Node.js
+FROM node:20
 
 # Directorio de trabajo
 WORKDIR /app
 
-# Copiar package.json y package-lock.json
-COPY package*.json ./
+# Copiar archivos de backend
+COPY . .
 
-# Instalar dependencias de producción
-RUN npm ci --only=production
+# Instalar dependencias de tu app
+RUN npm install
 
-# Copiar código fuente
-COPY backend-server-fixed.cjs ./backend-server.cjs
+# Instalar Cloudflared en el contenedor
+RUN curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && \
+    dpkg -i cloudflared.deb || apt-get update && apt-get install -f -y && \
+    rm cloudflared.deb
+
+# Crear directorio para cloudflared y copiar configuración
+RUN mkdir -p /root/.cloudflared
+COPY cloudflared-config.yml /root/.cloudflared/config.yml
+
+# Hacer ejecutable el script de inicio
+RUN chmod +x start-backend.sh
 
 # Exponer puerto
 EXPOSE 8080
@@ -19,5 +28,5 @@ EXPOSE 8080
 # Variables de entorno
 ENV NODE_ENV=production
 
-# Comando para ejecutar el servidor
-CMD ["node", "backend-server.cjs"] 
+# Usar script de inicio
+CMD ["./start-backend.sh"] 
