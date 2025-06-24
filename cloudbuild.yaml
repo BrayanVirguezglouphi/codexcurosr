@@ -28,9 +28,9 @@ images:
   - 'gcr.io/$PROJECT_ID/pros-app:$COMMIT_SHA'
 
 substitutions:
-  _DB_HOST: '35.238.111.59'
+  _DB_HOST: 'localhost'
   _DB_NAME: 'SQL_DDL_ADMCOT'
   _DB_USER: 'postgres'
-  _DB_PASSWORD: '123456789'
-  _DB_PORT: '5432'
+  _DB_PASSWORD: '00GP5673BD**$eG3Ve1101'
+  _DB_PORT: '8321'
   _PROJECT_ID: 'inner-root-463214-j1' 

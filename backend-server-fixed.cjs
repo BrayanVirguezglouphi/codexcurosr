@@ -19,11 +19,11 @@ app.use(express.json());
 
 // Configuración de base de datos
 const pool = new Pool({
-  host: process.env.DB_HOST || '35.238.111.59',
-  port: process.env.DB_PORT || 5432,
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 8321,
   database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '123456789',
+  password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
   ssl: false
 });
 
@@ -291,7 +291,8 @@ app.get('/api/health', async (req, res) => {
     port: process.env.PORT || 8080,
     database: {
       connected: dbConnected,
-      host: process.env.DB_HOST || '35.238.111.59',
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || 8321,
       database: process.env.DB_NAME || 'SQL_DDL_ADMCOT'
     }
   });
@@ -1882,5 +1883,5 @@ testConnection();
 // Iniciar servidor usando PORT de Cloud Run
 app.listen(PORT, () => {
   console.log(`🚀 Servidor backend corriendo en puerto ${PORT}`);
-  console.log(`📊 Conectado a: ${process.env.DB_HOST || '35.238.111.59'}:${process.env.DB_PORT || 5432}`);
+  console.log(`📊 Conectado a: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 8321}`);
 }); 
