@@ -10,17 +10,6 @@ COPY . .
 # Instalar dependencias de tu app
 RUN npm install
 
-# Instalar herramientas necesarias y Cloudflared
-RUN apt-get update && \
-    apt-get install -y netcat-traditional && \
-    curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && \
-    dpkg -i cloudflared.deb || apt-get update && apt-get install -f -y && \
-    rm cloudflared.deb
-
-# Crear directorio para cloudflared y copiar configuración
-RUN mkdir -p /root/.cloudflared
-COPY cloudflared-config.yml /root/.cloudflared/config.yml
-
 # Hacer ejecutable el script de inicio
 RUN chmod +x start-backend.sh
 

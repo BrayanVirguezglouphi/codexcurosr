@@ -22,42 +22,15 @@ app.use(express.json());
 async function detectCloudflaredAccess() {
   console.log('🔍 Detectando acceso a Cloudflare Tunnel...');
   
-  const { Pool } = require('pg');
-  
-  // Detectar si estamos en Cloud Run
+  // Detectar entorno
   const isCloudRun = process.env.K_SERVICE ? true : false;
   
   let configuracionesTunnel;
   
   if (isCloudRun) {
-    // Para Cloud Run: usar URLs públicas del tunnel existente
-    console.log('☁️ Cloud Run detectado - probando URLs públicas del tunnel');
-    configuracionesTunnel = [
-      {
-        nombre: 'api2.zuhe.social (URL pública del tunnel)',
-        config: {
-          host: 'api2.zuhe.social',
-          port: 5432,
-          database: 'SQL_DDL_ADMCOT',
-          user: 'postgres',
-          password: '00GP5673BD**$eG3Ve1101',
-          ssl: false,
-          connectionTimeoutMillis: 8000
-        }
-      },
-      {
-        nombre: 'database.zuhe.social (URL alternativa)',
-        config: {
-          host: 'database.zuhe.social', 
-          port: 5432,
-          database: 'SQL_DDL_ADMCOT',
-          user: 'postgres',
-          password: '00GP5673BD**$eG3Ve1101',
-          ssl: false,
-          connectionTimeoutMillis: 8000
-        }
-      }
-    ];
+    // Para Cloud Run: NO usar tunnel, usar configuración directa
+    console.log('☁️ Cloud Run detectado - usando configuración local simulada');
+    return { success: false }; // Forzar uso de configuración local
   } else {
     // Para computadores locales: usar localhost (tunnel ya configurado)
     console.log('🏠 Entorno local detectado - probando localhost');
@@ -123,35 +96,38 @@ const isCloudRun = process.env.K_SERVICE ? true : false;
 async function initializeDatabase() {
   console.log(`🌍 Entorno detectado: ${isCloudRun ? 'Cloud Run' : 'Local'}`);
   
-  // Intentar detectar acceso al tunnel primero
-  const tunnelResult = await detectCloudflaredAccess();
-  
-  if (tunnelResult.success) {
-    // Usar la configuración del tunnel que funcionó
-    console.log(`🚇 Usando configuración de Cloudflare Tunnel: ${tunnelResult.method}`);
-    dbConfig = tunnelResult.config;
-  } else if (isCloudRun) {
-    // Fallback para Cloud Run sin tunnel - usar URL pública de Cloudflare
-    console.log('☁️ Cloud Run sin tunnel - usando URL pública de Cloudflare');
-    dbConfig = {
-      host: process.env.DB_HOST || 'api2.zuhe.social',
-      port: process.env.DB_PORT || 5432,
-      database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
-      ssl: process.env.DB_SSL === 'true'
-    };
-  } else {
-    // Configuración local estándar como último recurso
-    console.log('🏠 Configuración local estándar (fallback)');
+  if (isCloudRun) {
+    // Para Cloud Run: usar configuración simplificada sin tunnel
+    console.log('☁️ Cloud Run - usando configuración sin tunnel');
     dbConfig = {
       host: process.env.DB_HOST || 'localhost',
       port: process.env.DB_PORT || 8321,
       database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
-      ssl: process.env.DB_SSL === 'true'
+      ssl: process.env.DB_SSL === 'true',
+      connectionTimeoutMillis: 10000
     };
+  } else {
+    // Para local: intentar detectar acceso al tunnel primero
+    const tunnelResult = await detectCloudflaredAccess();
+    
+    if (tunnelResult.success) {
+      // Usar la configuración del tunnel que funcionó
+      console.log(`🚇 Usando configuración de Cloudflare Tunnel: ${tunnelResult.method}`);
+      dbConfig = tunnelResult.config;
+    } else {
+      // Configuración local estándar como fallback
+      console.log('🏠 Configuración local estándar (fallback)');
+      dbConfig = {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 8321,
+        database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
+        ssl: process.env.DB_SSL === 'true'
+      };
+    }
   }
   
   console.log('🔍 Configuración final de base de datos:', {
@@ -160,8 +136,7 @@ async function initializeDatabase() {
     database: dbConfig.database,
     user: dbConfig.user,
     ssl: dbConfig.ssl,
-    environment: process.env.NODE_ENV || 'development',
-    detectedMethod: tunnelResult.success ? tunnelResult.method : 'Sin tunnel detectado'
+    environment: process.env.NODE_ENV || 'development'
   });
   
   return dbConfig;
