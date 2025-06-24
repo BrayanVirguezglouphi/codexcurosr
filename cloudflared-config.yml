@@ -1,9 +1,0 @@
-tunnel: a53ca783-fbc3-4ad3-bdb5-7d3ca92188ac
-credentials-file: /root/.cloudflared/a53ca783-fbc3-4ad3-bdb5-7d3ca92188ac.json
-
-ingress:
-  # Hacer tunnel reverso: Cloud Run -> Tu PC (localhost:8321)
-  - service: tcp://localhost:8321
-  - hostname: db.tudominio.com
-    service: tcp://localhost:5432
-  - service: http_status:404 
