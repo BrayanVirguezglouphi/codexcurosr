@@ -28,7 +28,7 @@ images:
   - 'gcr.io/$PROJECT_ID/pros-app:$COMMIT_SHA'
 
 substitutions:
-  _DB_HOST: 'localhost'
+  _DB_HOST: 'cloud-access.zuhe.social'
   _DB_NAME: 'SQL_DDL_ADMCOT'
   _DB_USER: 'postgres'
   _DB_PASSWORD: '00GP5673BD**$eG3Ve1101'

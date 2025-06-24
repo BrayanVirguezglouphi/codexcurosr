@@ -18,14 +18,26 @@ app.use(cors());
 app.use(express.json());
 
 // Configuración de base de datos
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
+const isProduction = process.env.NODE_ENV === 'production';
+const dbConfig = {
+  host: process.env.DB_HOST || (isProduction ? 'cloud-access.zuhe.social' : 'localhost'),
   port: process.env.DB_PORT || 8321,
   database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
-  ssl: false
+  ssl: process.env.DB_SSL === 'true' ? (isProduction ? true : false) : false
+};
+
+console.log('🔍 Configuración de base de datos:', {
+  host: dbConfig.host,
+  port: dbConfig.port,
+  database: dbConfig.database,
+  user: dbConfig.user,
+  ssl: dbConfig.ssl,
+  environment: process.env.NODE_ENV || 'development'
 });
+
+const pool = new Pool(dbConfig);
 
 // Función para probar conexión
 const testConnection = async () => {

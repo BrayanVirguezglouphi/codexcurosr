@@ -23,7 +23,7 @@ steps:
       - '--port'
       - '8080'
       - '--set-env-vars'
-      - 'NODE_ENV=production,DB_HOST=localhost,DB_PORT=8321,DB_NAME=SQL_DDL_ADMCOT,DB_USER=postgres,DB_PASSWORD=00GP5673BD**$eG3Ve1101'
+      - 'NODE_ENV=production,DB_HOST=cloud-access.zuhe.social,DB_PORT=8321,DB_NAME=SQL_DDL_ADMCOT,DB_USER=postgres,DB_PASSWORD=00GP5673BD**$eG3Ve1101'
 
 options:
   logging: CLOUD_LOGGING_ONLY 
