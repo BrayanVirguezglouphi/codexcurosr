@@ -466,21 +466,28 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="modo_pago">Modo de Pago</Label>
-                <select 
-                  id="modo_pago"
+                <SearchableSelect
+                  options={[
+                    { value: "TRANSFERENCIA", label: "Transferencia Bancaria" },
+                    { value: "CHEQUE", label: "Cheque" },
+                    { value: "EFECTIVO", label: "Efectivo" },
+                    { value: "TARJETA_CREDITO", label: "Tarjeta de Crédito" },
+                    { value: "TARJETA_DEBITO", label: "Tarjeta de Débito" },
+                    { value: "PSE", label: "PSE" },
+                    { value: "CONSIGNACION", label: "Consignación" }
+                  ]}
+                  value={currentModoPago}
+                  onChange={(value) => setValue('modo_pago', value)}
+                  placeholder="Seleccione modo de pago"
+                  displayKey="label"
+                  valueKey="value"
+                  searchPlaceholder="Buscar modo de pago..."
+                />
+                <input 
+                  type="hidden" 
                   {...register("modo_pago")}
                   value={currentModoPago || ''}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Seleccione modo de pago</option>
-                  <option value="TRANSFERENCIA">Transferencia Bancaria</option>
-                  <option value="CHEQUE">Cheque</option>
-                  <option value="EFECTIVO">Efectivo</option>
-                  <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
-                  <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
-                  <option value="PSE">PSE</option>
-                  <option value="CONSIGNACION">Consignación</option>
-                </select>
+                />
               </div>
               
               <div className="grid gap-2">

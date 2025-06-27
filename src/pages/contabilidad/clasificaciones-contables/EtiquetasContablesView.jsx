@@ -74,10 +74,12 @@ const EtiquetasContablesView = () => {
   // Cargar etiquetas contables
   const cargarEtiquetasContables = async () => {
     try {
-      const response = await apiCall('/api/etiquetas-contables');
-      const data = await response.json();
-      setEtiquetasContables(data);
+      const data = await apiCall('/api/etiquetas-contables');
+      setEtiquetasContables(Array.isArray(data) ? data : []);
+      console.log('✅ Etiquetas contables cargadas:', data);
     } catch (error) {
+      console.error('❌ Error al cargar etiquetas contables:', error);
+      setEtiquetasContables([]);
       useToastToast({
         title: "Error",
         description: "No se pudieron cargar las etiquetas contables",
@@ -725,4 +727,4 @@ const EtiquetasContablesView = () => {
   );
 };
 
-export default EtiquetasContablesView; 
+export default EtiquetasContablesView;

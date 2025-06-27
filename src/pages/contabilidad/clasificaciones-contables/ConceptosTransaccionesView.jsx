@@ -73,20 +73,17 @@ const ConceptosTransaccionesView = () => {
   // Cargar conceptos de transacciones
   const cargarConceptosTransacciones = async () => {
     try {
-      const [conceptosResponse, tiposResponse] = await Promise.all([
+      const [conceptos, tipos] = await Promise.all([
         apiCall('/api/conceptos-transacciones'),
         apiCall('/api/tipos-transaccion')
       ]);
       
-      const conceptos = await conceptosResponse.json();
-      const tipos = await tiposResponse.json();
-      
       // Guardar tipos de transacción en el estado
-      setTiposTransaccion(tipos);
+      setTiposTransaccion(Array.isArray(tipos) ? tipos : []);
       
       // Agregar el nombre del tipo de transacción a cada concepto
-      const conceptosConTipos = conceptos.map(concepto => {
-        const tipo = tipos.find(t => t.id_tipotransaccion === concepto.id_tipotransaccion);
+      const conceptosConTipos = (Array.isArray(conceptos) ? conceptos : []).map(concepto => {
+        const tipo = (Array.isArray(tipos) ? tipos : []).find(t => t.id_tipotransaccion === concepto.id_tipotransaccion);
         return {
           ...concepto,
           nombre_tipo_transaccion: tipo ? tipo.tipo_transaccion : 'No asignado'
@@ -94,7 +91,11 @@ const ConceptosTransaccionesView = () => {
       });
       
       setConceptosTransacciones(conceptosConTipos);
+      console.log('✅ Conceptos de transacciones cargados:', conceptosConTipos);
     } catch (error) {
+      console.error('❌ Error al cargar conceptos de transacciones:', error);
+      setConceptosTransacciones([]);
+      setTiposTransaccion([]);
       useToastToast({
         title: "Error",
         description: "No se pudieron cargar los conceptos de transacciones",
@@ -833,4 +834,4 @@ const ConceptosTransaccionesView = () => {
   );
 };
 
-export default ConceptosTransaccionesView; 
+export default ConceptosTransaccionesView;

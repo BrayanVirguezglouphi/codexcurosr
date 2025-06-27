@@ -78,54 +78,138 @@ const Terceros = () => {
   ];
 
   // Configuración de columnas para plantilla Excel (sin campos auto-incrementales)
-  const templateColumns = availableColumns
-    .filter(col => col.key !== 'id_tercero' && col.key !== 'nombre_completo') // Excluir campos calculados/auto-incrementales
-    .map(col => ({
-      ...col,
-      example: getTerceroExampleValue(col.key)
-    }));
-
-  // Función para obtener valores de ejemplo para la plantilla
-  function getTerceroExampleValue(columnKey) {
-    switch (columnKey) {
-      case 'tipo_personalidad':
-        return 'NATURAL';
-      case 'tipo_documento':
-        return 'CC';
-      case 'numero_documento':
-        return '12345678';
-      case 'dv':
-        return '9';
-      case 'tipo_relacion':
-        return 'CLIENTE';
-      case 'telefono':
-        return '3001234567';
-      case 'email':
-        return 'ejemplo@email.com';
-      case 'direccion':
-        return 'Calle 123 # 45-67';
-      case 'municipio_ciudad':
-        return 'Bogotá';
-      case 'departamento_region':
-        return 'Cundinamarca';
-      case 'pais':
-        return 'Colombia';
-      case 'primer_nombre':
-        return 'Juan';
-      case 'otros_nombres':
-        return 'Carlos';
-      case 'primer_apellido':
-        return 'Pérez';
-      case 'segundo_apellido':
-        return 'García';
-      case 'razon_social':
-        return 'Empresa S.A.S.';
-      case 'observaciones':
-        return 'Observaciones del tercero';
-      default:
-        return 'Ejemplo';
+  const templateColumns = [
+    { 
+      key: 'tipo_personalidad', 
+      label: 'Tipo Personalidad', 
+      required: true, 
+      example: 'NATURAL',
+      options: ['NATURAL', 'JURIDICA']
+    },
+    { 
+      key: 'tipo_documento', 
+      label: 'Tipo Documento', 
+      required: true, 
+      example: 'CC',
+      options: ['CC', 'CE', 'NIT', 'TI', 'PP', 'PE']
+    },
+    { 
+      key: 'numero_documento', 
+      label: 'Número Documento', 
+      required: true, 
+      example: '12345678'
+    },
+    { 
+      key: 'dv', 
+      label: 'DV', 
+      example: '9'
+    },
+    { 
+      key: 'tipo_relacion', 
+      label: 'Tipo Relación', 
+      required: true, 
+      example: 'CLIENTE',
+      options: ['CLIENTE', 'PROVEEDOR', 'EMPLEADO', 'OTRO']
+    },
+    { 
+      key: 'primer_nombre', 
+      label: 'Primer Nombre', 
+      example: 'Juan'
+    },
+    { 
+      key: 'otros_nombres', 
+      label: 'Otros Nombres', 
+      example: 'Carlos'
+    },
+    { 
+      key: 'primer_apellido', 
+      label: 'Primer Apellido', 
+      example: 'Pérez'
+    },
+    { 
+      key: 'segundo_apellido', 
+      label: 'Segundo Apellido', 
+      example: 'García'
+    },
+    { 
+      key: 'razon_social', 
+      label: 'Razón Social', 
+      example: 'Empresa S.A.S.'
+    },
+    { 
+      key: 'telefono', 
+      label: 'Teléfono', 
+      example: '3001234567'
+    },
+    { 
+      key: 'email', 
+      label: 'Email', 
+      example: 'ejemplo@email.com'
+    },
+    { 
+      key: 'direccion', 
+      label: 'Dirección', 
+      example: 'Calle 123 # 45-67'
+    },
+    { 
+      key: 'municipio_ciudad', 
+      label: 'Ciudad', 
+      example: 'Bogotá'
+    },
+    { 
+      key: 'departamento_region', 
+      label: 'Departamento', 
+      example: 'Cundinamarca'
+    },
+    { 
+      key: 'pais', 
+      label: 'País', 
+      example: 'Colombia',
+      options: ['Colombia', 'Ecuador', 'Perú', 'Venezuela', 'Panamá', 'México', 'Chile', 'Argentina', 'Brasil', 'Estados Unidos', 'España', 'Otro']
+    },
+    { 
+      key: 'observaciones', 
+      label: 'Observaciones', 
+      example: 'Observaciones del tercero'
     }
-  }
+  ];
+
+  // Datos de ejemplo para la plantilla
+  const templateData = [
+    {
+      tipo_personalidad: 'NATURAL',
+      tipo_documento: 'CC',
+      numero_documento: '12345678',
+      dv: '9',
+      tipo_relacion: 'CLIENTE',
+      primer_nombre: 'Juan',
+      otros_nombres: 'Carlos',
+      primer_apellido: 'Pérez',
+      segundo_apellido: 'García',
+      telefono: '3001234567',
+      email: 'juan.perez@email.com',
+      direccion: 'Calle 123 # 45-67',
+      municipio_ciudad: 'Bogotá',
+      departamento_region: 'Cundinamarca',
+      pais: 'Colombia',
+      observaciones: 'Cliente frecuente'
+    },
+    {
+      tipo_personalidad: 'JURIDICA',
+      tipo_documento: 'NIT',
+      numero_documento: '900123456',
+      dv: '7',
+      tipo_relacion: 'PROVEEDOR',
+      razon_social: 'Empresa Ejemplo S.A.S.',
+      telefono: '6011234567',
+      email: 'contacto@empresa.com',
+      direccion: 'Av Principal # 100-200',
+      municipio_ciudad: 'Medellín',
+      departamento_region: 'Antioquia',
+      pais: 'Colombia',
+      observaciones: 'Proveedor principal'
+    }
+  ];
 
   // Debug: Log de templateColumns cuando cambie
   useEffect(() => {
@@ -873,8 +957,6 @@ const Terceros = () => {
             Importar Excel
           </Button>
 
-
-          
           <ColumnSelector
             availableColumns={availableColumns}
             visibleColumns={visibleColumns}
@@ -892,39 +974,15 @@ const Terceros = () => {
               Modo Cuadrícula
             </Button>
           ) : (
-            <div className="flex gap-2">
-              {pendingChanges.size > 0 && (
-                <>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={saveAllPendingChanges}
-                    className="border-green-400 text-green-600 hover:bg-green-50"
-                  >
-                    <Save className="mr-1 h-3 w-3" />
-                    Guardar Todo ({pendingChanges.size})
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={discardChanges}
-                    className="border-orange-400 text-orange-600 hover:bg-orange-50"
-                  >
-                    <RotateCcw className="mr-1 h-3 w-3" />
-                    Descartar
-                  </Button>
-                </>
-              )}
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={toggleGridEditMode}
-                className="border-gray-400 text-gray-600 hover:bg-gray-50"
-              >
-                <X className="mr-1 h-3 w-3" />
-                Salir
-              </Button>
-            </div>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={toggleGridEditMode}
+              className="border-gray-400 text-gray-600 hover:bg-gray-50"
+            >
+              <X className="mr-1 h-3 w-3" />
+              Salir
+            </Button>
           )}
           
           <Button onClick={() => setIsCrearDialogOpen(true)} className="bg-red-600 hover:bg-red-700 text-white">
@@ -970,11 +1028,11 @@ const Terceros = () => {
             <div className="flex items-center gap-2">
               <Grid3X3 className="h-4 w-4" />
               <span className="font-medium">Modo Edición Masiva Activo</span>
-              <span className="text-purple-600">- Haz clic en cualquier celda para editarla</span>
+              <span className="text-purple-600">- Haz clic en cualquier celda para editarla. Los cambios se guardan automáticamente al confirmar cada celda.</span>
             </div>
             {pendingChanges.size > 0 && (
               <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
-                {pendingChanges.size} cambio(s) pendiente(s)
+                {pendingChanges.size} celda(s) en edición
               </span>
             )}
           </div>
@@ -1012,6 +1070,7 @@ const Terceros = () => {
               >
                 {availableColumns.map(column => {
                   if (!visibleColumns[column.key]) return null;
+                  
                   
                   const fieldType = getFieldType(column.key);
                   const currentValue = editedTerceros[tercero.id_tercero]?.[column.key] ?? getNestedValue(tercero, column.key);
@@ -1128,25 +1187,7 @@ const Terceros = () => {
         loading={isImporting}
         entityName="terceros"
         columns={templateColumns}
-        templateData={[{
-          'Tipo Personalidad': 'NATURAL',
-          'Tipo Documento': 'CC',
-          'Número Documento': '12345678',
-          'DV': '9',
-          'Tipo Relación': 'CLIENTE',
-          'Teléfono': '3001234567',
-          'Email': 'ejemplo@email.com',
-          'Dirección': 'Calle 123 # 45-67',
-          'Ciudad': 'Bogotá',
-          'Departamento': 'Cundinamarca',
-          'País': 'Colombia',
-          'Primer Nombre': 'Juan',
-          'Otros Nombres': 'Carlos',
-          'Primer Apellido': 'Pérez',
-          'Segundo Apellido': 'García',
-          'Razón Social': 'Empresa S.A.S.',
-          'Observaciones': 'Observaciones del tercero'
-        }]}
+        templateData={templateData}
       />
     </div>
   );

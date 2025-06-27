@@ -60,6 +60,11 @@ const Contratos = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   
+  // Estados para catálogos
+  const [terceros, setTerceros] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [impuestos, setImpuestos] = useState([]);
+  
   const { toast } = useToast();
 
   // Definir columnas disponibles
@@ -235,7 +240,8 @@ const Contratos = () => {
           { value: 'ACTIVO', label: 'ACTIVO' },
           { value: 'FINALIZADO', label: 'FINALIZADO' },
           { value: 'SUSPENDIDO', label: 'SUSPENDIDO' },
-          { value: 'CANCELADO', label: 'CANCELADO' }
+          { value: 'CANCELADO', label: 'CANCELADO' },
+          { value: 'EN_NEGOCIACION', label: 'EN NEGOCIACION' }
         ];
       default:
         return [];
@@ -549,33 +555,42 @@ const Contratos = () => {
   };
 
   const handleCellSave = async (contratoId, field, newValue) => {
-    setEditedContratos(prev => ({
-      ...prev,
-      [contratoId]: {
-        ...prev[contratoId],
-        [field]: newValue
-      }
-    }));
-
-    setPendingChanges(prev => new Set([...prev, contratoId]));
-
     try {
-      const updatedData = { [field]: newValue };
-      const response = await fetch(`/api/contratos/${contratoId}`, {
+      // Validar el tipo de dato según el campo
+      const validatedValue = validateFieldValue(field, newValue);
+      if (validatedValue.error) {
+        throw new Error(validatedValue.error);
+      }
+
+      // Actualizar estado local primero para UI responsiva
+      setEditedContratos(prev => ({
+        ...prev,
+        [contratoId]: {
+          ...prev[contratoId],
+          [field]: validatedValue.value
+        }
+      }));
+
+      setPendingChanges(prev => new Set([...prev, contratoId]));
+
+      // Formatear el valor según el tipo de campo
+      const formattedValue = formatValueForUpdate(field, validatedValue.value);
+
+      // Intentar actualizar en el servidor
+      const response = await apiCall(`/api/contratos/${contratoId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedData),
+        body: JSON.stringify({ [field]: formattedValue })
       });
 
-      if (response.ok) {
+      if (!response.error) {
+        // Actualizar el estado global de contratos
         setContratos(prev => prev.map(c => 
           c.id_contrato === contratoId 
-            ? { ...c, [field]: newValue }
+            ? { ...c, [field]: validatedValue.value }
             : c
         ));
 
+        // Remover de cambios pendientes
         setPendingChanges(prev => {
           const newSet = new Set(prev);
           newSet.delete(contratoId);
@@ -587,14 +602,103 @@ const Contratos = () => {
           description: `Campo ${field} actualizado correctamente`,
         });
       } else {
-        throw new Error('Error al actualizar');
+        throw new Error(response.error || 'Error al actualizar');
       }
     } catch (error) {
+      console.error('Error al actualizar:', error);
+      
+      // Revertir cambios locales en caso de error
+      setEditedContratos(prev => {
+        const newState = { ...prev };
+        if (newState[contratoId]) {
+          delete newState[contratoId][field];
+          if (Object.keys(newState[contratoId]).length === 0) {
+            delete newState[contratoId];
+          }
+        }
+        return newState;
+      });
+
+      setPendingChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(contratoId);
+        return newSet;
+      });
+
       toast({
         title: "Error",
-        description: "No se pudo guardar el cambio",
+        description: error.message || "No se pudo guardar el cambio",
         variant: "destructive",
       });
+    }
+  };
+
+  const formatValueForUpdate = (field, value) => {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    switch (field) {
+      case 'valor_cotizado':
+      case 'valor_descuento':
+      case 'valor_tax':
+      case 'trm':
+        return parseFloat(value);
+
+      case 'fecha_contrato':
+      case 'fecha_inicio_servicio':
+      case 'fecha_final_servicio':
+        return new Date(value).toISOString().split('T')[0];
+
+      case 'id_tercero':
+      case 'id_moneda_cotizacion':
+      case 'id_tax':
+        return parseInt(value, 10);
+
+      default:
+        return value;
+    }
+  };
+
+  const validateFieldValue = (field, value) => {
+    if (value === null || value === undefined || value === '') {
+      return { value: null };
+    }
+
+    switch (field) {
+      case 'valor_cotizado':
+      case 'valor_descuento':
+      case 'valor_tax':
+      case 'trm':
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+          return { error: 'El valor debe ser un número válido' };
+        }
+        return { value: numValue };
+
+      case 'fecha_contrato':
+      case 'fecha_inicio_servicio':
+      case 'fecha_final_servicio':
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return { error: 'La fecha no es válida' };
+        }
+        return { value: date.toISOString() };
+
+      case 'estatus_contrato':
+        if (!estatusContratoOptions.includes(value)) {
+          return { error: 'Estado no válido' };
+        }
+        return { value };
+
+      case 'modo_de_pago':
+        if (!modoPagoOptions.includes(value)) {
+          return { error: 'Modo de pago no válido' };
+        }
+        return { value };
+
+      default:
+        return { value };
     }
   };
 
@@ -604,30 +708,39 @@ const Contratos = () => {
     try {
       const updatePromises = Array.from(pendingChanges).map(contratoId => {
         const changes = editedContratos[contratoId];
-        return fetch(`/api/contratos/${contratoId}`, {
+        return apiCall(`/api/contratos/${contratoId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(changes),
+          body: JSON.stringify(changes)
         });
       });
 
-      await Promise.all(updatePromises);
+      const results = await Promise.allSettled(updatePromises);
       
-      await cargarContratos();
-      
-      setEditedContratos({});
-      setPendingChanges(new Set());
+      // Contar éxitos y fallos
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failCount = results.filter(r => r.status === 'rejected').length;
 
-      toast({
-        title: "Éxito",
-        description: `${pendingChanges.size} cambios guardados correctamente`,
-      });
+      if (failCount === 0) {
+        await cargarContratos();
+        setEditedContratos({});
+        setPendingChanges(new Set());
+        toast({
+          title: "Éxito",
+          description: `${successCount} cambios guardados correctamente`,
+        });
+      } else {
+        toast({
+          title: "Advertencia",
+          description: `${successCount} cambios guardados, ${failCount} fallidos`,
+          variant: "warning",
+        });
+        // Recargar para asegurar consistencia
+        await cargarContratos();
+      }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al guardar algunos cambios",
+        description: "Error al guardar los cambios",
         variant: "destructive",
       });
     }
@@ -640,6 +753,42 @@ const Contratos = () => {
       cargarContratos();
     }
   };
+
+  // Cargar catálogos al montar
+  useEffect(() => {
+    const cargarCatalogos = async () => {
+      try {
+        const [tercerosData, monedasData, impuestosData] = await Promise.all([
+          apiCall('/api/terceros'),
+          apiCall('/api/catalogos/monedas'),
+          apiCall('/api/impuestos')
+        ]);
+        setTerceros(tercerosData);
+        setMonedas(monedasData);
+        setImpuestos(impuestosData);
+      } catch (error) {
+        console.error('Error al cargar catálogos:', error);
+      }
+    };
+    cargarCatalogos();
+  }, []);
+
+  // Opciones para estados y modos de pago
+  const estatusContratoOptions = [
+    'ACTIVO',
+    'FINALIZADO',
+    'SUSPENDIDO',
+    'CANCELADO',
+    'EN_NEGOCIACION'
+  ];
+
+  const modoPagoOptions = [
+    'MENSUAL',
+    'QUINCENAL',
+    'UNICO',
+    'POR DEMANDA',
+    'OTRO'
+  ];
 
   return (
     <div className="w-full max-w-[1800px] mx-auto py-6 overflow-x-auto">
@@ -989,11 +1138,16 @@ const Contratos = () => {
         onOpenChange={setIsImportDialogOpen}
         onImport={handleImport}
         loading={isImporting}
-        tableName="contratos"
-        templateColumns={['numero_contrato_os', 'descripcion_servicio_contratado', 'valor_cotizado', 'estatus_contrato', 'modo_de_pago', 'fecha_inicio_servicio', 'fecha_final_servicio', 'valor_descuento', 'trm', 'valor_tax', 'observaciones_contrato', 'url_cotizacion', 'url_contrato']}
+        entityName="contratos"
+        columns={availableColumns}
+        terceros={terceros}
+        monedas={monedas}
+        impuestos={impuestos}
+        estados={estatusContratoOptions}
+        modosPago={modoPagoOptions}
       />
     </div>
   );
 };
 
-export default Contratos; 
+export default Contratos;

@@ -15,7 +15,17 @@ const ImportDialog = ({
   tableName = "datos", // Retrocompatibilidad
   templateData = [],
   columns = [],
-  templateColumns = [] // Retrocompatibilidad
+  templateColumns = [], // Retrocompatibilidad
+  // Props para dropdowns en facturas
+  contratos = [],
+  monedas = [],
+  impuestos = [],
+  terceros = [],
+  // Props para dropdowns en transacciones
+  cuentas = [],
+  tiposTransaccion = [],
+  etiquetasContables = [],
+  conceptos = []
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
@@ -79,8 +89,6 @@ const ImportDialog = ({
       onImport(file);
     }
   };
-
-
 
   const handleCancel = () => {
     closeDialog();
@@ -156,6 +164,9 @@ const ImportDialog = ({
               <li>• Archivo Excel (.xlsx o .xls)</li>
               <li>• Primera fila debe contener los nombres de las columnas</li>
               <li>• Los datos deben empezar desde la segunda fila</li>
+              {finalColumns.some(col => col.options) && (
+                <li className="text-blue-600">• Algunos campos tienen listas desplegables (⬇️)</li>
+              )}
             </ul>
             
             {/* Mostrar columnas esperadas */}
@@ -166,17 +177,26 @@ const ImportDialog = ({
                   {finalColumns.map((col, idx) => (
                     <span 
                       key={idx}
-                      className={`text-xs px-2 py-1 rounded ${
+                      className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
                         col.required 
                           ? 'bg-red-100 text-red-700' 
                           : 'bg-gray-100 text-gray-600'
                       }`}
                     >
-                      {col.label}{col.required && ' *'}
+                      {col.label || col.key}
+                      {col.required && ' *'}
+                      {col.options && (
+                        <span className="text-blue-500">⬇️</span>
+                      )}
                     </span>
                   ))}
                 </div>
-                <p className="text-xs text-red-600 mt-1">* Campos requeridos</p>
+                <div className="mt-2 space-y-1 text-xs">
+                  <p className="text-red-600">* Campos requeridos</p>
+                  {finalColumns.some(col => col.options) && (
+                    <p className="text-blue-600">⬇️ Campos con lista desplegable</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -197,15 +217,17 @@ const ImportDialog = ({
                   templateData={finalTemplateData}
                   columns={finalColumns}
                   entityName={displayName}
+                  className="bg-white hover:bg-gray-50"
                 />
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 mt-6">
-          <Button 
-            variant="outline" 
+        {/* Botones de acción */}
+        <div className="flex justify-end gap-2 mt-4">
+          <Button
+            variant="outline"
             onClick={handleCancel}
             disabled={loading}
           >

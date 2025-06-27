@@ -19,7 +19,7 @@ const dbConfig = {
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '12345',
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT) || 5432,
+  port: 5432, // Puerto por defecto de PostgreSQL
   dialect: 'postgres'
 };
 
@@ -44,13 +44,7 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
     idle: isCloudRun ? 10000 : 10000     // Liberar conexiones más rápido en Cloud Run
   },
   dialectOptions: {
-    // Para conexiones SSL si es necesario
-    ssl: process.env.DB_SSL === 'true' ? {
-      require: true,
-      rejectUnauthorized: false
-    } : false,
-    // Timeout de conexión más corto para containers
-    connectTimeout: isCloudRun ? 15000 : 30000
+    ssl: false
   },
   // Reintentos de conexión
   retry: {
@@ -61,16 +55,16 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
 // Función para probar la conexión
 export const testConnection = async () => {
   try {
-    console.log('🔄 Probando conexión a la base de datos...');
+    console.log('🔄 Probando conexión a la base de datos local...');
     await sequelize.authenticate();
     console.log('✅ Conexión a la base de datos establecida correctamente.');
     return true;
   } catch (error) {
     console.error('❌ Error al conectar con la base de datos:', error.message);
     console.error('🔍 Detalles del error:', {
-      host: dbConfig.host,
-      port: dbConfig.port,
-      database: dbConfig.database,
+      host: 'localhost',
+      port: 5432,
+      database: 'SQL_DDL_ADMCOT',
       errorCode: error.original?.code,
       errorDetail: error.original?.detail
     });
@@ -78,9 +72,7 @@ export const testConnection = async () => {
   }
 };
 
-// Solo probar conexión automáticamente si no estamos en Cloud Run
-if (!process.env.K_SERVICE) {
-  testConnection();
-}
+// Probar conexión automáticamente
+testConnection();
 
 export default sequelize; 

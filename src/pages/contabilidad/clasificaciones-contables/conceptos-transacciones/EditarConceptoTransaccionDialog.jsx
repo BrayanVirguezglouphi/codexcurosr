@@ -159,9 +159,8 @@ const EditarConceptoTransaccionDialog = ({ open, onOpenChange, concepto, onConce
     const cargarDatos = async () => {
       if (open) {
         try {
-          const response = await apiCall('/api/tipos-transaccion');
-          const tipos = await response.json();
-          setTiposTransaccion(tipos);
+          const tipos = await apiCall('/api/tipos-transaccion');
+          setTiposTransaccion(Array.isArray(tipos) ? tipos : []);
         } catch (error) {
           console.error('Error al cargar tipos de transacción:', error);
           toast({

@@ -73,6 +73,14 @@ const menuItems = [
     ]
   },
   {
+    title: 'Sistema de Gestión',
+    path: '/gestion',
+    icon: <Target className="h-5 w-5" />,
+    items: [
+      { name: 'OKR', path: '/gestion/okr', icon: <Target className="h-4 w-4" /> },
+    ]
+  },
+  {
     title: 'Ajustes',
     path: '/ajustes',
     icon: <Settings className="h-5 w-5" />,
@@ -322,7 +330,7 @@ const Sidebar = () => {
                   {user?.name || 'Usuario'}
                 </p>
                 <p className="text-xs text-white/60 truncate">
-                  {user?.role || 'user'}
+                  {user?.email || 'correo@ejemplo.com'}
                 </p>
               </div>
               <button

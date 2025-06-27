@@ -46,12 +46,11 @@ const CrearCentroCostoDialog = ({ open, onClose, onCentroCostoCreado }) => {
   // Cargar centros macro existentes
   const cargarCentrosMacroExistentes = async () => {
     try {
-      const response = await apiCall('/api/centros-costos');
-      const data = await response.json();
+      const data = await apiCall('/api/centros-costos');
       
       // Extraer centros macro únicos (no vacíos)
       const macrosUnicos = [...new Set(
-        data
+        (Array.isArray(data) ? data : [])
           .map(c => c.centro_costo_macro)
           .filter(macro => macro && macro.trim() !== '')
       )].sort();

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiCall } from '@/config/api';
 import { 
   Target, 
   Code, 
@@ -18,8 +19,7 @@ const VerConceptoTransaccionDialog = ({ open, onOpenChange, concepto }) => {
     const cargarTipoTransaccion = async () => {
       if (concepto?.id_tipotransaccion) {
         try {
-          const response = await apiCall('/api/tipos-transaccion/${concepto.id_tipotransaccion}');
-          const data = await response.json();
+          const data = await apiCall(`/api/tipos-transaccion/${concepto.id_tipotransaccion}`);
           setTipoTransaccion(data);
         } catch (error) {
           console.error('Error al cargar tipo de transacción:', error);

@@ -26,7 +26,8 @@ const FilterableTableHeader = ({
   onSort, 
   onFilter, 
   sortDirection,
-  activeFilters = []
+  activeFilters = [],
+  valueConverter = null // Nueva prop para convertir valores
 }) => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,8 +56,12 @@ const FilterableTableHeader = ({
   const uniqueValues = [...new Set(data.map(item => {
     let value = getNestedValue(item, field);
     
+    // Usar el conversor de valores si está disponible (para campos con relaciones)
+    if (valueConverter && typeof valueConverter === 'function') {
+      value = valueConverter(field, value);
+    }
     // Manejar casos específicos según el campo
-    if (field === 'nombre_completo') {
+    else if (field === 'nombre_completo') {
       // Este campo es calculado, ya viene procesado
       value = value || '(Vacío)';
     }

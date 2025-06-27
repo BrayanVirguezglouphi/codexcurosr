@@ -7,7 +7,113 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { apiCall } from '@/config/api';
 import { useForm } from 'react-hook-form';
-import { FileText, User, Calendar, DollarSign, X } from 'lucide-react';
+import { FileText, User, Calendar, DollarSign, X, Search, ChevronDown } from 'lucide-react';
+
+// Componente de dropdown con búsqueda
+const SearchableSelect = ({ 
+  options = [], 
+  value, 
+  onChange, 
+  placeholder = "Seleccione una opción", 
+  searchPlaceholder = "Buscar...",
+  displayKey = "name",
+  valueKey = "id",
+  formatOption = null,
+  disabled = false
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = React.useRef(null);
+  
+  // Cerrar dropdown cuando se hace clic fuera
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  const filteredOptions = options.filter(option => {
+    const searchValue = formatOption ? formatOption(option) : option[displayKey];
+    return searchValue?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const selectedOption = options.find(option => option[valueKey] == value);
+  
+  const handleSelect = (option) => {
+    onChange(option[valueKey]);
+    setIsOpen(false);
+    setSearchTerm('');
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span className={selectedOption ? "text-foreground" : "text-muted-foreground"}>
+          {selectedOption 
+            ? (formatOption ? formatOption(selectedOption) : selectedOption[displayKey])
+            : placeholder
+          }
+        </span>
+        <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in slide-in-from-top-2">
+          <div className="flex items-center border-b px-3 py-2">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex h-8 w-full rounded-md bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
+              autoFocus
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="max-h-60 overflow-auto p-1">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
+                <div
+                  key={option[valueKey]}
+                  onClick={() => handleSelect(option)}
+                  className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent"
+                >
+                  {formatOption ? formatOption(option) : option[displayKey]}
+                </div>
+              ))
+            ) : (
+              <div className="px-2 py-1.5 text-sm text-muted-foreground text-center">
+                No se encontraron resultados
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) => {
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm();
@@ -152,36 +258,45 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
               
               <div className="grid gap-2">
                 <Label htmlFor="estatus_factura">Estado *</Label>
-                <select 
-                  id="estatus_factura" 
+                <SearchableSelect
+                  options={[
+                    { value: "PENDIENTE", label: "Pendiente" },
+                    { value: "PAGADA", label: "Pagada" },
+                    { value: "ANULADA", label: "Anulada" },
+                    { value: "VENCIDA", label: "Vencida" }
+                  ]}
+                  value={currentEstatus}
+                  onChange={(value) => setValue('estatus_factura', value)}
+                  placeholder="Seleccione estado"
+                  displayKey="label"
+                  valueKey="value"
+                  searchPlaceholder="Buscar estado..."
+                />
+                <input 
+                  type="hidden" 
                   {...register("estatus_factura", { required: "El estado es requerido" })}
                   value={currentEstatus || ''}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Seleccione estado</option>
-                  <option value="PENDIENTE">Pendiente</option>
-                  <option value="PAGADA">Pagada</option>
-                  <option value="ANULADA">Anulada</option>
-                  <option value="VENCIDA">Vencida</option>
-                </select>
+                />
                 {errors.estatus_factura && <span className="text-red-500 text-sm">{errors.estatus_factura.message}</span>}
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="id_contrato">Contrato</Label>
-                <select 
-                  id="id_contrato" 
+                <SearchableSelect
+                  options={contratos}
+                  value={currentContrato}
+                  onChange={(value) => setValue('id_contrato', value)}
+                  placeholder="Seleccione un contrato"
+                  displayKey="numero_contrato_os"
+                  valueKey="id_contrato"
+                  formatOption={(contrato) => `${contrato.numero_contrato_os} - ${contrato.descripcion_servicio_contratado?.substring(0, 30)}...`}
+                  searchPlaceholder="Buscar contrato..."
+                />
+                <input 
+                  type="hidden" 
                   {...register("id_contrato")}
                   value={currentContrato || ''}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Seleccione un contrato</option>
-                  {contratos.map(c => (
-                    <option key={c.id_contrato} value={c.id_contrato}>
-                      {c.numero_contrato_os} - {c.descripcion_servicio_contratado?.substring(0, 50)}...
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           </div>
@@ -250,32 +365,38 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
               
               <div className="grid gap-2">
                 <Label htmlFor="id_moneda">Moneda</Label>
-                <select 
-                  id="id_moneda" 
+                <SearchableSelect
+                  options={monedas}
+                  value={currentMoneda}
+                  onChange={(value) => setValue('id_moneda', value)}
+                  placeholder="Seleccione una moneda"
+                  displayKey="nombre_moneda"
+                  valueKey="id_moneda"
+                  searchPlaceholder="Buscar moneda..."
+                />
+                <input 
+                  type="hidden" 
                   {...register("id_moneda")}
                   value={currentMoneda || ''}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Seleccione una moneda</option>
-                  {monedas.map(m => (
-                    <option key={m.id_moneda} value={m.id_moneda}>{m.nombre_moneda}</option>
-                  ))}
-                </select>
+                />
               </div>
               
               <div className="grid gap-2">
                 <Label htmlFor="id_tax">Impuesto (Tax)</Label>
-                <select 
-                  id="id_tax" 
+                <SearchableSelect
+                  options={taxes}
+                  value={currentTax}
+                  onChange={(value) => setValue('id_tax', value)}
+                  placeholder="Seleccione un impuesto"
+                  displayKey="titulo_impuesto"
+                  valueKey="id_tax"
+                  searchPlaceholder="Buscar impuesto..."
+                />
+                <input 
+                  type="hidden" 
                   {...register("id_tax")}
                   value={currentTax || ''}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Seleccione un impuesto</option>
-                  {taxes.map(t => (
-                    <option key={t.id_tax} value={t.id_tax}>{t.titulo_impuesto}</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           </div>

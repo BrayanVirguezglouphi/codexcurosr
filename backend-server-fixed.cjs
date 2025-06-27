@@ -121,10 +121,10 @@ async function initializeDatabase() {
       console.log('🏠 Configuración local estándar (fallback)');
       dbConfig = {
         host: process.env.DB_HOST || 'localhost',
-        port: process.env.DB_PORT || 8321,
+        port: process.env.DB_PORT || 5432,
         database: process.env.DB_NAME || 'SQL_DDL_ADMCOT',
         user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || '00GP5673BD**$eG3Ve1101',
+        password: process.env.DB_PASSWORD || '12345',
         ssl: process.env.DB_SSL === 'true'
       };
     }
@@ -166,7 +166,7 @@ const testConnection = async () => {
 };
 
 // Middleware de autenticación JWT
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -174,13 +174,21 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Token de acceso requerido' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Token inválido' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Verificar que el usuario aún existe en la base de datos
+    const result = await pool.query('SELECT id, name, email, role FROM "Users" WHERE id = $1', [decoded.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(403).json({ error: 'Usuario no encontrado' });
     }
-    req.user = user;
+
+    req.user = result.rows[0];
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ error: 'Token inválido' });
+  }
 };
 
 // ENDPOINTS DE AUTENTICACIÓN
@@ -188,43 +196,33 @@ const authenticateToken = (req, res, next) => {
 // Login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    console.log('🔐 Intento de login para:', username);
+    console.log('🔐 Intento de login para:', email);
 
-    if (!username || !password) {
+    if (!email || !password) {
       return res.status(400).json({ 
-        error: 'Username y contraseña son requeridos' 
+        error: 'Email y contraseña son requeridos' 
       });
     }
 
-    // Buscar usuario por username
-    const query = 'SELECT * FROM "User" WHERE username = $1';
-    const result = await pool.query(query, [username]);
+    // Buscar usuario por email
+    const query = 'SELECT * FROM "Users" WHERE email = $1';
+    const result = await pool.query(query, [email]);
 
     if (result.rows.length === 0) {
-      console.log('❌ Usuario no encontrado:', username);
+      console.log('❌ Usuario no encontrado:', email);
       return res.status(401).json({ 
         error: 'Credenciales inválidas' 
       });
     }
 
     const user = result.rows[0];
-    console.log('👤 Usuario encontrado:', { id: user.id, username: user.username, email: user.email });
+    console.log('👤 Usuario encontrado:', { id: user.id, email: user.email, name: user.name });
 
-    // Verificar contraseña - verificar si está hasheada o no
-    let passwordMatch = false;
-    
-    // Primero intentar comparar con bcrypt (contraseña hasheada)
-    try {
-      passwordMatch = await bcrypt.compare(password, user.password);
-    } catch (bcryptError) {
-      // Si falla bcrypt, comparar directamente (contraseña en texto plano)
-      passwordMatch = password === user.password;
-    }
-    
-    if (!passwordMatch) {
-      console.log('❌ Contraseña incorrecta para:', username);
+    // Verificar contraseña
+    if (password !== user.password) {
+      console.log('❌ Contraseña incorrecta para:', email);
       return res.status(401).json({ 
         error: 'Credenciales inválidas' 
       });
@@ -233,22 +231,22 @@ app.post('/api/auth/login', async (req, res) => {
     // Generar JWT token
     const tokenPayload = {
       id: user.id,
-      username: user.username,
-      email: user.email
+      email: user.email,
+      name: user.name,
+      role: user.role
     };
 
     const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-    console.log('✅ Login exitoso para:', username);
+    console.log('✅ Login exitoso para:', email);
 
-    // Actualizar fecha de último acceso (usando created_at como referencia si no existe updatedAt)
+    // Actualizar fecha de último acceso
     try {
       await pool.query(
-        'UPDATE "User" SET created_at = NOW() WHERE id = $1',
+        'UPDATE "Users" SET "updatedAt" = NOW() WHERE id = $1',
         [user.id]
       );
     } catch (updateError) {
-      // Si no se puede actualizar, continuar sin error
       console.log('⚠️ No se pudo actualizar fecha de acceso');
     }
 
@@ -258,9 +256,11 @@ app.post('/api/auth/login', async (req, res) => {
       token,
       user: {
         id: user.id,
-        username: user.username,
         email: user.email,
-        created_at: user.created_at
+        name: user.name,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       }
     });
 
@@ -293,7 +293,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
 // Endpoint para obtener perfil de usuario
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
-    const query = 'SELECT id, username, email, created_at FROM "User" WHERE id = $1';
+    const query = 'SELECT id, name, email, role, "createdAt", "updatedAt" FROM "Users" WHERE id = $1';
     const result = await pool.query(query, [req.user.id]);
 
     if (result.rows.length === 0) {
@@ -317,58 +317,54 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
 // ENDPOINT PARA CREAR USUARIOS
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
-    if (!username || !email || !password) {
+    if (!name || !email || !password) {
       return res.status(400).json({ 
-        error: 'Username, email y contraseña son requeridos' 
-      });
-    }
-
-    // Verificar si el username ya existe
-    const existingUsername = await pool.query('SELECT id FROM "User" WHERE username = $1', [username]);
-    
-    if (existingUsername.rows.length > 0) {
-      return res.status(400).json({ 
-        error: 'El username ya está registrado' 
+        error: 'Nombre, email y contraseña son requeridos' 
       });
     }
 
     // Verificar si el email ya existe
-    const existingEmail = await pool.query('SELECT id FROM "User" WHERE email = $1', [email]);
+    const existingUser = await pool.query('SELECT id FROM "Users" WHERE email = $1', [email]);
     
-    if (existingEmail.rows.length > 0) {
+    if (existingUser.rows.length > 0) {
       return res.status(400).json({ 
         error: 'El email ya está registrado' 
       });
     }
 
-    // Hashear contraseña
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Insertar nuevo usuario
+    const result = await pool.query(
+      'INSERT INTO "Users" (name, email, password, role, "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id, name, email, role, "createdAt", "updatedAt"',
+      [name, email, password, role || 'user']
+    );
 
-    // Crear usuario
-    const query = `
-      INSERT INTO "User" (username, email, password, created_at)
-      VALUES ($1, $2, $3, NOW())
-      RETURNING id, username, email, created_at
-    `;
-
-    const result = await pool.query(query, [username, email, hashedPassword]);
     const newUser = result.rows[0];
 
-    console.log('✅ Usuario creado exitosamente:', { id: newUser.id, username: newUser.username });
+    // Generar JWT token
+    const token = jwt.sign(
+      { 
+        id: newUser.id, 
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     res.status(201).json({
       success: true,
-      message: 'Usuario creado exitosamente',
+      message: 'Usuario registrado exitosamente',
+      token,
       user: newUser
     });
 
   } catch (error) {
-    console.error('❌ Error al crear usuario:', error);
+    console.error('❌ Error al registrar usuario:', error);
     res.status(500).json({ 
-      error: 'Error al crear usuario',
+      error: 'Error al registrar usuario',
       details: error.message 
     });
   }
@@ -491,7 +487,7 @@ app.get('/api/transacciones', async (req, res) => {
         t.id_cuenta_destino_transf,
         t.id_concepto,
         tt.tipo_transaccion,
-        c.nombre_cuenta
+        c.titulo_cuenta
       FROM adcot_transacciones t
       LEFT JOIN adcot_tipo_transaccion tt ON t.id_tipotransaccion = tt.id_tipotransaccion
       LEFT JOIN adcot_cuentas c ON t.id_cuenta = c.id_cuenta
@@ -541,13 +537,13 @@ app.get('/api/transacciones', async (req, res) => {
       id_concepto: row.id_concepto || null,
       // Campos directos para la tabla
       tipo_transaccion: row.tipo_transaccion,
-      nombre_cuenta: row.nombre_cuenta,
+      titulo_cuenta: row.titulo_cuenta,
       // Mantener compatibilidad con tabla (estructurado para compatibilidad)
       tipoTransaccion: {
         tipo_transaccion: row.tipo_transaccion
       },
       cuenta: {
-        nombre_cuenta: row.nombre_cuenta
+        titulo_cuenta: row.titulo_cuenta
       }
     }));
     
@@ -760,32 +756,58 @@ app.get('/api/catalogos/tipos-transaccion', async (req, res) => {
   }
 });
 
-// 2. Catálogo de cuentas
+// 2. Catálogo de cuentas - FIJO DIRECTO A adcot_cuentas
 app.get('/api/catalogos/cuentas', async (req, res) => {
   try {
-    console.log('🔍 Consultando cuentas...');
+    console.log('🔍 Consultando cuentas directamente de adcot_cuentas...');
     
-    // Verificar tabla cuentas
-    const tablaCuentas = await pool.query(`
+    // Verificar que la tabla adcot_cuentas existe específicamente
+    const verificarTabla = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_name LIKE '%cuenta%'
+      WHERE table_name = 'adcot_cuentas'
     `);
     
-    if (tablaCuentas.rows.length === 0) {
-      console.log('⚠️  No se encontraron tablas de cuentas');
-      return res.json([]); // Retornar array vacío si no existe
+    if (verificarTabla.rows.length === 0) {
+      console.log('❌ Tabla adcot_cuentas no encontrada');
+      return res.json([]);
     }
     
-    const nombreTabla = tablaCuentas.rows[0].table_name;
-    console.log(`📋 Usando tabla: ${nombreTabla}`);
+    console.log('✅ Tabla adcot_cuentas encontrada');
     
-    const query = `SELECT * FROM ${nombreTabla} ORDER BY nombre_cuenta ASC`;
+    // Obtener columnas específicas de adcot_cuentas
+    const columnasResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'adcot_cuentas'
+      ORDER BY ordinal_position
+    `);
+    
+    const columnas = columnasResult.rows.map(r => r.column_name);
+    console.log('📋 Columnas de adcot_cuentas:', columnas);
+    
+    // Query específico usando solo columnas conocidas que existen
+    const query = `
+      SELECT 
+        id_cuenta,
+        tipo_titular,
+        titulo_cuenta,
+        titular_cuenta,
+        numero_cuenta,
+        url_certificado_cuenta
+      FROM adcot_cuentas 
+      ORDER BY titulo_cuenta ASC
+    `;
+    
+    console.log('🔍 Ejecutando query:', query);
     const result = await pool.query(query);
     console.log(`✅ Encontradas ${result.rows.length} cuentas`);
+    console.log('📋 Muestra de cuentas:', result.rows.slice(0, 2));
+    
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener cuentas:', error);
+    console.error('📋 Stack completo:', error.stack);
     res.json([]); // Retornar array vacío en caso de error
   }
 });
@@ -1277,6 +1299,17 @@ app.delete('/api/terceros/:id', async (req, res) => {
 app.get('/api/conceptos-transacciones', async (req, res) => {
   try {
     console.log('🔍 Consultando conceptos de transacciones...');
+    
+    // Obtener columnas de la tabla
+    const columnasResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'adcot_conceptos_transacciones'
+      ORDER BY ordinal_position
+    `);
+    const columnas = columnasResult.rows.map(r => r.column_name);
+    console.log('📋 Columnas de adcot_conceptos_transacciones:', columnas);
+    
     const query = `
       SELECT 
         c.*,
@@ -1287,6 +1320,7 @@ app.get('/api/conceptos-transacciones', async (req, res) => {
     `;
     const result = await pool.query(query);
     console.log(`✅ Encontrados ${result.rows.length} conceptos de transacciones`);
+    console.log('📋 Muestra de conceptos:', result.rows.slice(0, 3));
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener conceptos de transacciones:', error);
@@ -1318,9 +1352,21 @@ app.get('/api/tipos-transaccion', async (req, res) => {
 app.get('/api/etiquetas-contables', async (req, res) => {
   try {
     console.log('🔍 Consultando etiquetas contables...');
+    
+    // Obtener columnas de la tabla
+    const columnasResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'adcot_etiquetas_contables'
+      ORDER BY ordinal_position
+    `);
+    const columnas = columnasResult.rows.map(r => r.column_name);
+    console.log('📋 Columnas de adcot_etiquetas_contables:', columnas);
+    
     const query = 'SELECT * FROM adcot_etiquetas_contables ORDER BY etiqueta_contable ASC';
     const result = await pool.query(query);
     console.log(`✅ Encontradas ${result.rows.length} etiquetas contables`);
+    console.log('📋 Muestra de etiquetas:', result.rows.slice(0, 3));
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener etiquetas contables:', error);
@@ -1459,12 +1505,13 @@ app.put('/api/contratos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 Actualizando contrato ID: ${id}...`);
+    console.log('📦 Datos recibidos:', req.body);
     
     const nombreTabla = await getTablaContratos();
     
     // Obtener columnas de la tabla
     const columnas = await pool.query(`
-      SELECT column_name 
+      SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = '${nombreTabla}' 
       AND column_name != 'id_contrato'
@@ -1474,11 +1521,65 @@ app.put('/api/contratos/:id', async (req, res) => {
     const camposDelBody = Object.keys(req.body).filter(key => camposDisponibles.includes(key));
     
     if (camposDelBody.length === 0) {
+      console.log('❌ No se proporcionaron campos válidos');
       return res.status(400).json({ error: 'No se proporcionaron campos válidos para actualizar' });
     }
     
-    const setClause = camposDelBody.map((campo, index) => `${campo} = $${index + 1}`).join(', ');
-    const valores = camposDelBody.map(campo => req.body[campo]);
+    // Validar tipos de datos
+    const tiposDatos = {};
+    columnas.rows.forEach(col => {
+      tiposDatos[col.column_name] = col.data_type;
+    });
+    
+    // Formatear valores según el tipo de dato
+    const valores = [];
+    const setClause = camposDelBody.map((campo, index) => {
+      const valor = req.body[campo];
+      const tipoDato = tiposDatos[campo];
+      
+      // Si el valor es null, permitirlo
+      if (valor === null) {
+        valores.push(null);
+        return `${campo} = $${index + 1}`;
+      }
+      
+      try {
+        switch (tipoDato) {
+          case 'integer':
+          case 'bigint':
+            valores.push(parseInt(valor, 10));
+            break;
+          case 'numeric':
+          case 'decimal':
+          case 'double precision':
+            valores.push(parseFloat(valor));
+            break;
+          case 'date':
+            valores.push(new Date(valor).toISOString().split('T')[0]);
+            break;
+          case 'timestamp':
+          case 'timestamp with time zone':
+            valores.push(new Date(valor).toISOString());
+            break;
+          case 'boolean':
+            valores.push(Boolean(valor));
+            break;
+          default:
+            valores.push(valor);
+        }
+      } catch (error) {
+        console.error(`❌ Error al convertir valor para campo ${campo}:`, error);
+        throw new Error(`Error al convertir valor para campo ${campo}: ${error.message}`);
+      }
+      
+      return `${campo} = $${index + 1}`;
+    }).join(', ');
+    
+    console.log('🔧 Query a ejecutar:', {
+      setClause,
+      valores,
+      id
+    });
     
     const query = `
       UPDATE ${nombreTabla} 
@@ -1490,6 +1591,7 @@ app.put('/api/contratos/:id', async (req, res) => {
     const result = await pool.query(query, [...valores, id]);
     
     if (result.rows.length === 0) {
+      console.log('❌ Contrato no encontrado');
       return res.status(404).json({ error: 'Contrato no encontrado' });
     }
     
@@ -1497,8 +1599,24 @@ app.put('/api/contratos/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error al actualizar contrato:', error);
-    res.status(500).json({ 
-      error: 'Error al actualizar contrato',
+    
+    // Determinar tipo de error para mensaje más específico
+    let errorMessage = 'Error al actualizar contrato';
+    let statusCode = 500;
+    
+    if (error.message.includes('invalid input syntax')) {
+      errorMessage = 'Formato de datos inválido';
+      statusCode = 400;
+    } else if (error.message.includes('violates foreign key')) {
+      errorMessage = 'Referencia inválida a otro registro';
+      statusCode = 400;
+    } else if (error.message.includes('violates not-null')) {
+      errorMessage = 'Campos requeridos no pueden ser nulos';
+      statusCode = 400;
+    }
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
       details: error.message 
     });
   }
@@ -1760,25 +1878,31 @@ app.get('/api/impuestos', async (req, res) => {
   try {
     console.log('🔍 Consultando impuestos...');
     
-    // Verificar tablas de impuestos
-    const tablaImpuestos = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_name LIKE '%tax%' OR table_name LIKE '%impuesto%'
-    `);
-    
-    if (tablaImpuestos.rows.length === 0) {
-      return res.json([]);
-    }
-    
-    const nombreTabla = tablaImpuestos.rows[0].table_name;
-    const query = `SELECT * FROM ${nombreTabla} LIMIT 100`;
+    // Consultar directamente la tabla adcot_taxes
+    const query = `
+      SELECT 
+        id_tax,
+        titulo_impuesto,
+        tipo_obligacion,
+        institucion_reguladora,
+        formula_aplicacion,
+        periodicidad_declaracion,
+        estado,
+        fecha_inicio_impuesto,
+        fecha_final_impuesto
+      FROM adcot_taxes 
+      ORDER BY titulo_impuesto ASC
+    `;
     const result = await pool.query(query);
-    console.log(`✅ Encontrados ${result.rows.length} impuestos`);
+    console.log(`✅ Encontrados ${result.rows.length} impuestos en adcot_taxes`);
+    console.log('📋 Primeros 2 impuestos:', result.rows.slice(0, 2));
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error al obtener impuestos:', error);
-    res.json([]);
+    res.status(500).json({ 
+      error: 'Error al obtener impuestos',
+      details: error.message 
+    });
   }
 });
 

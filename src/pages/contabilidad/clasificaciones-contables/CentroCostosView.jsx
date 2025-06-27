@@ -73,10 +73,12 @@ const CentroCostosView = () => {
   // Cargar centros de costos
   const cargarCentrosCostos = async () => {
     try {
-      const response = await apiCall('/api/centros-costos');
-      const data = await response.json();
-      setCentrosCostos(data);
+      const data = await apiCall('/api/centros-costos');
+      setCentrosCostos(Array.isArray(data) ? data : []);
+      console.log('✅ Centros de costos cargados:', data);
     } catch (error) {
+      console.error('❌ Error al cargar centros de costos:', error);
+      setCentrosCostos([]);
       useToastToast({
         title: "Error",
         description: "No se pudieron cargar los centros de costos",
@@ -781,4 +783,4 @@ const CentroCostosView = () => {
   );
 };
 
-export default CentroCostosView; 
+export default CentroCostosView;

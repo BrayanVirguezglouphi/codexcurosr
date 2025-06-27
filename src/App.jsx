@@ -39,6 +39,10 @@ import CapacitacionesSkills from '@/pages/rrhh/CapacitacionesSkills';
 import AsignacionesEvaluaciones from '@/pages/rrhh/AsignacionesEvaluaciones';
 import ContratosRRHH from '@/pages/rrhh/ContratosRRHH';
 
+// Sistema de Gestión
+import GestionDashboard from '@/pages/gestion/GestionDashboard';
+import OKRView from '@/pages/gestion/okr/OKRView';
+
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   
@@ -110,6 +114,12 @@ function AppContent() {
               <Route path="cargos" element={<Cargos />} />
               <Route path="capacitaciones" element={<CapacitacionesSkills />} />
               <Route path="asignaciones" element={<AsignacionesEvaluaciones />} />
+            </Route>
+
+            {/* Sistema de Gestión Routes */}
+            <Route path="gestion">
+              <Route index element={<GestionDashboard />} />
+              <Route path="okr" element={<OKRView />} />
             </Route>
 
             {/* Ajustes Route */}

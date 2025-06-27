@@ -54,6 +54,30 @@ const LineasServicios = () => {
     { key: 'descripcion_servicio', label: 'Descripción' }
   ];
 
+  // Configuración de columnas para plantilla Excel (sin campos auto-incrementales)
+  const templateColumns = [
+    { key: 'servicio', label: 'Servicio', required: true, example: 'Desarrollo Web' },
+    { key: 'tipo_servicio', label: 'Tipo de Servicio', required: true, example: 'DESARROLLO', options: [
+      'Internet', 'Telefonía', 'Televisión', 'Streaming', 'Seguridad', 'Soporte', 'Cloud', 'IoT',
+      'CONSULTORIA', 'DESARROLLO', 'MANTENIMIENTO', 'CAPACITACION', 'ANALISIS', 'IMPLEMENTACION', 'OTRO'
+    ]},
+    { key: 'descripcion_servicio', label: 'Descripción', example: 'Desarrollo de aplicación web con React' }
+  ];
+
+  // Datos de ejemplo para la plantilla
+  const templateData = [
+    {
+      servicio: 'Desarrollo Web',
+      tipo_servicio: 'DESARROLLO',
+      descripcion_servicio: 'Desarrollo de aplicación web con React'
+    },
+    {
+      servicio: 'Soporte Técnico',
+      tipo_servicio: 'Soporte',
+      descripcion_servicio: 'Servicio de soporte técnico 24/7'
+    }
+  ];
+
   // Inicializar columnas visibles por defecto
   useEffect(() => {
     const defaultColumns = {};
@@ -672,39 +696,15 @@ const LineasServicios = () => {
               Modo Cuadrícula
             </Button>
           ) : (
-            <div className="flex gap-2">
-              {pendingChanges.size > 0 && (
-                <>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={saveAllPendingChanges}
-                    className="border-green-400 text-green-600 hover:bg-green-50"
-                  >
-                    <Save className="mr-1 h-3 w-3" />
-                    Guardar Todo ({pendingChanges.size})
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={discardChanges}
-                    className="border-orange-400 text-orange-600 hover:bg-orange-50"
-                  >
-                    <RotateCcw className="mr-1 h-3 w-3" />
-                    Descartar
-                  </Button>
-                </>
-              )}
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={toggleGridEditMode}
-                className="border-gray-400 text-gray-600 hover:bg-gray-50"
-              >
-                <X className="mr-1 h-3 w-3" />
-                Salir
-              </Button>
-            </div>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={toggleGridEditMode}
+              className="border-gray-400 text-gray-600 hover:bg-gray-50"
+            >
+              <X className="mr-1 h-3 w-3" />
+              Salir
+            </Button>
           )}
           
           <Button onClick={() => setIsCrearDialogOpen(true)} className="bg-red-600 hover:bg-red-700 text-white">
@@ -750,11 +750,11 @@ const LineasServicios = () => {
             <div className="flex items-center gap-2">
               <Grid3X3 className="h-4 w-4" />
               <span className="font-medium">Modo Edición Masiva Activo</span>
-              <span className="text-purple-600">- Haz clic en cualquier celda para editarla</span>
+              <span className="text-purple-600">- Haz clic en cualquier celda para editarla. Los cambios se guardan automáticamente al confirmar cada celda.</span>
             </div>
             {pendingChanges.size > 0 && (
               <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
-                {pendingChanges.size} cambio(s) pendiente(s)
+                {pendingChanges.size} celda(s) en edición
               </span>
             )}
           </div>
@@ -901,8 +901,9 @@ const LineasServicios = () => {
         onOpenChange={setIsImportDialogOpen}
         onImport={handleImport}
         loading={isImporting}
-        tableName="líneas de servicios"
-        templateColumns={['servicio', 'tipo_servicio', 'descripcion_servicio']}
+        entityName="líneas de servicio"
+        columns={templateColumns}
+        templateData={templateData}
       />
     </div>
   );

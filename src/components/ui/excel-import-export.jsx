@@ -12,6 +12,7 @@ const ExcelImportExport = ({
   templateColumns = null,
   filename = 'datos',
   onImport,
+  catalogData = {}, // Nuevo prop para datos de catálogos
   className = ""
 }) => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -23,20 +24,79 @@ const ExcelImportExport = ({
   // Usar templateColumns para la plantilla si está disponible, sino usar columns
   const columnsForTemplate = templateColumns || columns;
 
+  // Función para crear opciones de dropdown en formato "ID - Código - Nombre"
+  const createDropdownOptions = (catalogType, catalogItems) => {
+    if (!catalogItems || catalogItems.length === 0) return [];
+    
+    switch(catalogType) {
+      case 'moneda':
+        return catalogItems.map(item => 
+          `${item.id_moneda} - ${item.codigo_iso} - ${item.nombre_moneda}`
+        );
+      case 'contrato':
+        return catalogItems.map(item => 
+          `${item.id_contrato} - ${item.numero_contrato_os} - ${item.descripcion_servicio_contratado}`
+        );
+      case 'impuesto':
+        return catalogItems.map(item => 
+          `${item.id_tax} - ${item.tipo_obligacion} - ${item.titulo_impuesto}`
+        );
+      case 'tercero':
+        return catalogItems.map(item => {
+          const nombre = item.razon_social || `${item.primer_nombre} ${item.primer_apellido}`;
+          return `${item.id_tercero} - ${item.tipo_documento} - ${nombre}`;
+        });
+      default:
+        return catalogItems.map(item => {
+          const firstKey = Object.keys(item)[0];
+          const secondKey = Object.keys(item)[1];
+          return `${item[firstKey]} - ${item[secondKey]}`;
+        });
+    }
+  };
+
+  // Función para extraer ID de valores con formato "ID - Código - Nombre"
+  const extractIdFromDropdownValue = (value) => {
+    if (!value || typeof value !== 'string') return null;
+    const match = value.match(/^(\d+)\s*-/);
+    return match ? parseInt(match[1]) : null;
+  };
+
   // Exportar a Excel
   const exportToExcel = () => {
     try {
-      // Preparar datos para exportación
+      // Preparar datos para exportación con nombres legibles
       const exportData = data.map(row => {
         const exportRow = {};
         columns.forEach(col => {
           let value = row[col.key];
           
-          // Formatear valores especiales
+          // Formatear valores especiales con nombres legibles
           if (col.key.includes('fecha') && value) {
             value = new Date(value).toLocaleDateString('es-CO');
           } else if (col.key.includes('moneda') || col.key.includes('valor') || col.key.includes('subtotal')) {
             value = value ? parseFloat(value) : 0;
+          } else if (col.key.includes('id_moneda') && catalogData.monedas) {
+            const moneda = catalogData.monedas.find(m => m.id_moneda === value);
+            if (moneda) {
+              value = `${moneda.id_moneda} - ${moneda.codigo_iso} - ${moneda.nombre_moneda}`;
+            }
+          } else if (col.key.includes('id_contrato') && catalogData.contratos) {
+            const contrato = catalogData.contratos.find(c => c.id_contrato === value);
+            if (contrato) {
+              value = `${contrato.id_contrato} - ${contrato.numero_contrato_os} - ${contrato.descripcion_servicio_contratado}`;
+            }
+          } else if (col.key.includes('id_tax') && catalogData.impuestos) {
+            const impuesto = catalogData.impuestos.find(i => i.id_tax === value);
+            if (impuesto) {
+              value = `${impuesto.id_tax} - ${impuesto.tipo_obligacion} - ${impuesto.titulo_impuesto}`;
+            }
+          } else if (col.key.includes('id_tercero') && catalogData.terceros) {
+            const tercero = catalogData.terceros.find(t => t.id_tercero === value);
+            if (tercero) {
+              const nombre = tercero.razon_social || `${tercero.primer_nombre} ${tercero.primer_apellido}`;
+              value = `${tercero.id_tercero} - ${tercero.tipo_documento} - ${nombre}`;
+            }
           }
           
           exportRow[col.label] = value || '';
@@ -50,7 +110,7 @@ const ExcelImportExport = ({
       
       // Ajustar ancho de columnas
       const columnWidths = columns.map(col => ({
-        wch: Math.max(col.label.length, 15)
+        wch: Math.max(col.label.length, 20)
       }));
       ws['!cols'] = columnWidths;
       
@@ -134,13 +194,21 @@ const ExcelImportExport = ({
             } else {
               processedRow[col.key] = null;
             }
-          } else if (col.key.includes('moneda') || col.key.includes('valor') || col.key.includes('subtotal')) {
+          } else if (col.key.includes('valor') || col.key.includes('subtotal') || col.key.includes('precio')) {
             // Para campos numéricos, convertir a número o null
             if (value === null || value === '' || isNaN(value)) {
               processedRow[col.key] = null;
             } else {
               processedRow[col.key] = parseFloat(value);
             }
+          } else if (col.key.includes('id_moneda') || col.key.includes('id_contrato') || 
+                     col.key.includes('id_tax') || col.key.includes('id_tercero') ||
+                     col.key.includes('id_cuenta') || col.key.includes('id_tipotransaccion') ||
+                     col.key.includes('id_etiqueta') || col.key.includes('id_concepto')) {
+            // Para campos de ID con formato "ID - Código - Nombre", extraer solo el ID
+            const extractedId = extractIdFromDropdownValue(value);
+            processedRow[col.key] = extractedId;
+            console.log(`Extrayendo ID de "${value}": ${extractedId}`);
           } else {
             // Para otros campos, usar el valor limpio
             processedRow[col.key] = value;
@@ -192,41 +260,86 @@ const ExcelImportExport = ({
     setImportResults(null);
   };
 
-  // Descargar plantilla Excel
+  // Descargar plantilla Excel con dropdowns mejorados
   const downloadTemplate = () => {
     try {
-      console.log('🔄 Iniciando descarga de plantilla...');
+      console.log('🔄 Iniciando descarga de plantilla con dropdowns...');
       console.log('Columnas para plantilla:', columnsForTemplate);
+      console.log('Datos de catálogos:', catalogData);
 
       // Verificar que tenemos columnas
       if (!columnsForTemplate || columnsForTemplate.length === 0) {
         throw new Error('No hay columnas definidas para la plantilla');
       }
 
-      // Crear datos de ejemplo
+      // Crear datos de ejemplo con formato mejorado
       const templateData = columnsForTemplate.reduce((acc, col) => {
-        acc[col.label] = col.example || 'Ejemplo';
+        let example = col.example || 'Ejemplo';
+        
+        // Generar ejemplos específicos para campos de ID
+        if (col.key.includes('id_moneda') && catalogData.monedas && catalogData.monedas.length > 0) {
+          const primera = catalogData.monedas[0];
+          example = `${primera.id_moneda} - ${primera.codigo_iso} - ${primera.nombre_moneda}`;
+        } else if (col.key.includes('id_contrato') && catalogData.contratos && catalogData.contratos.length > 0) {
+          const primero = catalogData.contratos[0];
+          example = `${primero.id_contrato} - ${primero.numero_contrato_os} - ${primero.descripcion_servicio_contratado}`;
+        } else if (col.key.includes('id_tax') && catalogData.impuestos && catalogData.impuestos.length > 0) {
+          const primero = catalogData.impuestos[0];
+          example = `${primero.id_tax} - ${primero.tipo_obligacion} - ${primero.titulo_impuesto}`;
+        } else if (col.key.includes('id_tercero') && catalogData.terceros && catalogData.terceros.length > 0) {
+          const primero = catalogData.terceros[0];
+          const nombre = primero.razon_social || `${primero.primer_nombre} ${primero.primer_apellido}`;
+          example = `${primero.id_tercero} - ${primero.tipo_documento} - ${nombre}`;
+        } else if (col.key.includes('fecha')) {
+          example = new Date().toISOString().split('T')[0];
+        } else if (col.key.includes('valor') || col.key.includes('precio')) {
+          example = '1000.00';
+        }
+        
+        acc[col.label] = example;
         return acc;
       }, {});
 
-      console.log('Datos de plantilla:', templateData);
+      console.log('Datos de plantilla con ejemplos mejorados:', templateData);
 
-      // Verificar que XLSX está disponible
-      if (typeof XLSX === 'undefined') {
-        throw new Error('Librería XLSX no está disponible');
-      }
-
-      // Crear hoja con headers solamente
-      const ws = XLSX.utils.json_to_sheet([templateData]);
+      // Crear libro de trabajo
       const wb = XLSX.utils.book_new();
+      
+      // Hoja principal con la plantilla
+      const ws = XLSX.utils.json_to_sheet([templateData]);
       
       // Ajustar ancho de columnas
       const columnWidths = columnsForTemplate.map(col => ({
-        wch: Math.max(col.label.length, 15)
+        wch: Math.max(col.label.length, 25)
       }));
       ws['!cols'] = columnWidths;
       
       XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+
+      // Crear hojas auxiliares con opciones disponibles
+      if (catalogData.monedas && catalogData.monedas.length > 0) {
+        const monedasOptions = createDropdownOptions('moneda', catalogData.monedas);
+        const wsMonedas = XLSX.utils.aoa_to_sheet([['Opciones de Monedas'], ...monedasOptions.map(opt => [opt])]);
+        XLSX.utils.book_append_sheet(wb, wsMonedas, 'Opciones_Monedas');
+      }
+
+      if (catalogData.contratos && catalogData.contratos.length > 0) {
+        const contratosOptions = createDropdownOptions('contrato', catalogData.contratos);
+        const wsContratos = XLSX.utils.aoa_to_sheet([['Opciones de Contratos'], ...contratosOptions.map(opt => [opt])]);
+        XLSX.utils.book_append_sheet(wb, wsContratos, 'Opciones_Contratos');
+      }
+
+      if (catalogData.impuestos && catalogData.impuestos.length > 0) {
+        const impuestosOptions = createDropdownOptions('impuesto', catalogData.impuestos);
+        const wsImpuestos = XLSX.utils.aoa_to_sheet([['Opciones de Impuestos'], ...impuestosOptions.map(opt => [opt])]);
+        XLSX.utils.book_append_sheet(wb, wsImpuestos, 'Opciones_Impuestos');
+      }
+
+      if (catalogData.terceros && catalogData.terceros.length > 0) {
+        const tercerosOptions = createDropdownOptions('tercero', catalogData.terceros);
+        const wsTerceros = XLSX.utils.aoa_to_sheet([['Opciones de Terceros'], ...tercerosOptions.map(opt => [opt])]);
+        XLSX.utils.book_append_sheet(wb, wsTerceros, 'Opciones_Terceros');
+      }
       
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -234,21 +347,17 @@ const ExcelImportExport = ({
       console.log('Archivo Excel creado:', {
         tamaño: blob.size,
         tipo: blob.type,
-        nombre: `plantilla_${filename}.xlsx`
+        nombre: `plantilla_${filename}.xlsx`,
+        hojas: wb.SheetNames
       });
-
-      // Verificar que saveAs está disponible
-      if (typeof saveAs === 'undefined') {
-        throw new Error('Función saveAs no está disponible');
-      }
 
       saveAs(blob, `plantilla_${filename}.xlsx`);
       
-      console.log('✅ Plantilla descargada exitosamente');
+      console.log('✅ Plantilla con dropdowns descargada exitosamente');
       
       toast({
         title: "Éxito",
-        description: `Plantilla descargada: plantilla_${filename}.xlsx`,
+        description: `Plantilla descargada: plantilla_${filename}.xlsx - Incluye hojas con opciones disponibles`,
       });
     } catch (error) {
       console.error('❌ Error al crear plantilla:', error);

@@ -433,7 +433,7 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   value={currentCuenta}
                   onChange={(value) => setValue('id_cuenta', value)}
                   placeholder="Seleccione cuenta origen"
-                  displayKey="nombre_cuenta"
+                  displayKey="titulo_cuenta"
                   valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
                 />
@@ -452,7 +452,7 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   value={currentCuentaDestino}
                   onChange={(value) => setValue('id_cuenta_destino_transf', value)}
                   placeholder="Seleccione cuenta destino"
-                  displayKey="nombre_cuenta"
+                  displayKey="titulo_cuenta"
                   valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
                 />

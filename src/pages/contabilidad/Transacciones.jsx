@@ -48,6 +48,10 @@ const Transacciones = () => {
   // Estados para catálogos
   const [cuentas, setCuentas] = useState([]);
   const [tiposTransaccion, setTiposTransaccion] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [terceros, setTerceros] = useState([]);
+  const [etiquetasContables, setEtiquetasContables] = useState([]);
+  const [conceptos, setConceptos] = useState([]);
   
   const { toast } = useToast();
 
@@ -59,6 +63,10 @@ const Transacciones = () => {
     { key: 'valor_total_transaccion', label: 'Monto', required: true },
     { key: 'id_tipotransaccion', label: 'Tipo' },
     { key: 'id_cuenta', label: 'Cuenta Origen' },
+    { key: 'id_etiqueta_contable', label: 'Etiqueta' },
+    { key: 'id_concepto', label: 'Concepto DIAN' },
+    { key: 'id_tercero', label: 'Tercero' },
+    { key: 'id_moneda_transaccion', label: 'Moneda' },
     { key: 'registro_validado', label: 'Estado' },
     { key: 'observacion', label: 'Observación' },
     { key: 'trm_moneda_base', label: 'TRM' },
@@ -72,45 +80,98 @@ const Transacciones = () => {
     const defaultColumns = {};
     availableColumns.forEach(col => {
       // Mostrar solo las columnas principales por defecto
-      defaultColumns[col.key] = ['id_transaccion', 'fecha_transaccion', 'titulo_transaccion', 'valor_total_transaccion', 'id_tipotransaccion', 'id_cuenta', 'registro_validado'].includes(col.key);
+      defaultColumns[col.key] = ['id_transaccion', 'fecha_transaccion', 'titulo_transaccion', 'valor_total_transaccion', 'id_tipotransaccion', 'id_cuenta', 'id_etiqueta_contable', 'registro_validado'].includes(col.key);
     });
     setVisibleColumns(defaultColumns);
   }, []);
+
+  // Opciones predefinidas para Concepto DIAN
+  const conceptosDianOpciones = [
+    { id: 1, concepto_dian: 'Compra' },
+    { id: 2, concepto_dian: 'Venta' },
+    { id: 3, concepto_dian: 'Gasto' },
+    { id: 4, concepto_dian: 'Ingreso' },
+    { id: 5, concepto_dian: 'Transferencia' },
+    { id: 6, concepto_dian: 'Ajuste' },
+    { id: 7, concepto_dian: 'Devolución' },
+    { id: 8, concepto_dian: 'Descuento' },
+    { id: 9, concepto_dian: 'Interés' },
+    { id: 10, concepto_dian: 'Comisión' }
+  ];
 
   // Cargar catálogos
   const cargarCatalogos = async () => {
     try {
       console.log('🔄 Cargando catálogos...');
       
-      const [cuentasData, tiposData] = await Promise.all([
+      const [
+        cuentasData,
+        tiposTransaccionData,
+        monedasData,
+        tercerosData,
+        etiquetasData,
+        conceptosData
+      ] = await Promise.all([
         api.getCuentas(),
-        api.getTiposTransaccion()
+        api.getTiposTransaccion(),
+        api.getMonedas(),
+        api.getTerceros(),
+        api.getEtiquetasContables(),
+        api.getConceptos()
       ]);
-      
-      setCuentas(Array.isArray(cuentasData) ? cuentasData : []);
-      setTiposTransaccion(Array.isArray(tiposData) ? tiposData : []);
-      
-      console.log('✅ Catálogos cargados:', {
-        cuentas: Array.isArray(cuentasData) ? cuentasData.length : 0,
-        tipos: Array.isArray(tiposData) ? tiposData.length : 0
+
+      console.log('📋 Catálogos recibidos:', {
+        cuentas: Array.isArray(cuentasData) ? cuentasData.length : 'error',
+        tiposTransaccion: Array.isArray(tiposTransaccionData) ? tiposTransaccionData.length : 'error',
+        monedas: Array.isArray(monedasData) ? monedasData.length : 'error',
+        terceros: Array.isArray(tercerosData) ? tercerosData.length : 'error',
+        etiquetas: Array.isArray(etiquetasData) ? etiquetasData.length : 'error',
+        conceptos: Array.isArray(conceptosData) ? conceptosData.length : 'error'
       });
+
+      // Asegurar que todos los catálogos sean arrays
+      setCuentas(Array.isArray(cuentasData) ? cuentasData : []);
+      setTiposTransaccion(Array.isArray(tiposTransaccionData) ? tiposTransaccionData : []);
+      setMonedas(Array.isArray(monedasData) ? monedasData : []);
+      setTerceros(Array.isArray(tercerosData) ? tercerosData : []);
+      setEtiquetasContables(Array.isArray(etiquetasData) ? etiquetasData : []);
+      setConceptos(Array.isArray(conceptosData) ? conceptosData : []);
+      
+      // Logs de debugging de cada catálogo
+      console.log('🏦 Datos de cuentas:', Array.isArray(cuentasData) ? cuentasData.slice(0, 2) : cuentasData);
+      console.log('📋 Datos de tipos de transacción:', Array.isArray(tiposTransaccionData) ? tiposTransaccionData.slice(0, 2) : tiposTransaccionData);
+      console.log('💰 Datos de monedas:', Array.isArray(monedasData) ? monedasData.slice(0, 2) : monedasData);
+      console.log('👥 Datos de terceros:', Array.isArray(tercerosData) ? tercerosData.slice(0, 2) : tercerosData);
+      console.log('🏷️ Datos de etiquetas contables:', Array.isArray(etiquetasData) ? etiquetasData.slice(0, 2) : etiquetasData);
+      console.log('📝 Datos de conceptos:', Array.isArray(conceptosData) ? conceptosData.slice(0, 2) : conceptosData);
+      
+      console.log('✅ Todos los catálogos cargados exitosamente');
     } catch (error) {
       console.error('❌ Error al cargar catálogos:', error);
-      setCuentas([]);
-      setTiposTransaccion([]);
+      toast({
+        title: "Error",
+        description: `No se pudieron cargar los catálogos: ${error.message}`,
+        variant: "destructive",
+      });
     }
   };
 
   // Obtener nombre del tipo de transacción
   const getNombreTipoTransaccion = (id) => {
+    console.log('🔍 Buscando tipo transacción:', id, 'en:', tiposTransaccion);
     const tipo = tiposTransaccion.find(t => t.id_tipotransaccion === id);
-    return tipo ? tipo.tipo_transaccion : `ID: ${id}`;
+    const resultado = tipo ? tipo.tipo_transaccion : `ID: ${id}`;
+    console.log('✅ Resultado tipo transacción:', resultado);
+    return resultado;
   };
 
   // Obtener nombre de la cuenta
   const getNombreCuenta = (id) => {
+    console.log('🔍 Buscando cuenta:', id, 'en:', cuentas);
     const cuenta = cuentas.find(c => c.id_cuenta === id);
-    return cuenta ? (cuenta.titulo_cuenta || cuenta.nombre_cuenta || `ID: ${id}`) : `ID: ${id}`;
+    const resultado = cuenta ? (cuenta.titulo_cuenta || cuenta.numero_cuenta || `ID: ${id}`) : `ID: ${id}`;
+    console.log('✅ Resultado cuenta:', resultado);
+    return resultado;
   };
 
   // Cargar transacciones
@@ -227,7 +288,32 @@ const Transacciones = () => {
       case 'id_tipotransaccion':
         return getNombreTipoTransaccion(value);
       case 'id_cuenta':
+      case 'id_cuenta_destino_transf':
         return getNombreCuenta(value);
+      case 'id_moneda_transaccion':
+        // Obtener nombre de la moneda
+        const moneda = monedas.find(m => m.id_moneda === value);
+        return moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : (value || '-');
+      case 'id_tercero':
+        // Obtener nombre del tercero
+        const tercero = terceros.find(t => t.id_tercero === value);
+        return tercero ? `${tercero.primer_nombre} ${tercero.primer_apellido}` : (value || '-');
+      case 'id_etiqueta_contable':
+        // Obtener nombre de la etiqueta contable
+        const etiqueta = etiquetasContables.find(e => e.id_etiqueta_contable === value);
+        console.log('🏷️ Buscando etiqueta para ID:', value, 'Encontrada:', etiqueta);
+        return etiqueta ? (etiqueta.etiqueta_contable || etiqueta.descripcion_etiqueta) : `ID: ${value}`;
+      case 'id_concepto':
+        // Obtener descripción del concepto
+        const concepto = conceptos.find(c => c.id_concepto === value);
+        console.log('📝 Buscando concepto para ID:', value, 'Encontrado:', concepto);
+        // Intentar diferentes campos posibles
+        if (concepto) {
+          return concepto.descripcion_concepto || concepto.concepto_dian || concepto.concepto || `ID: ${value}`;
+        }
+        // Si no se encuentra en la base de datos, usar opciones predefinidas
+        const conceptoDian = conceptosDianOpciones.find(c => c.id === value);
+        return conceptoDian ? conceptoDian.concepto_dian : `ID: ${value}`;
       default:
         return value || '-';
     }
@@ -248,6 +334,13 @@ const Transacciones = () => {
       case 'aplica_retencion':
       case 'aplica_impuestos':
         return 'select';
+      case 'id_tipotransaccion':
+      case 'id_cuenta':
+      case 'id_etiqueta_contable':
+      case 'id_concepto':
+      case 'id_tercero':
+      case 'id_moneda_transaccion':
+        return 'select';
       case 'tipoTransaccion.tipo_transaccion':
       case 'cuenta.titulo_cuenta':
         return 'disabled'; // Por ahora, estos requieren relaciones complejas
@@ -267,6 +360,41 @@ const Transacciones = () => {
           { value: true, label: 'Sí' },
           { value: false, label: 'No' }
         ];
+      case 'id_tipotransaccion':
+        return tiposTransaccion.map(tipo => ({
+          value: tipo.id_tipotransaccion,
+          label: tipo.tipo_transaccion
+        }));
+      case 'id_cuenta':
+        return cuentas.map(cuenta => ({
+          value: cuenta.id_cuenta,
+          label: cuenta.titulo_cuenta || cuenta.numero_cuenta
+        }));
+      case 'id_etiqueta_contable':
+        return etiquetasContables.map(etiqueta => ({
+          value: etiqueta.id_etiqueta_contable,
+          label: etiqueta.etiqueta_contable || etiqueta.descripcion_etiqueta
+        }));
+      case 'id_concepto':
+        return [...conceptos.map(concepto => ({
+          value: concepto.id_concepto,
+          label: concepto.descripcion_concepto || concepto.concepto_dian || concepto.concepto
+        })), ...conceptosDianOpciones.map(opcion => ({
+          value: opcion.id,
+          label: opcion.concepto_dian
+        }))];
+      case 'id_tercero':
+        return terceros.map(tercero => ({
+          value: tercero.id_tercero,
+          label: tercero.tipo_personalidad === 'JURIDICA' && tercero.razon_social 
+            ? tercero.razon_social 
+            : `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim()
+        }));
+      case 'id_moneda_transaccion':
+        return monedas.map(moneda => ({
+          value: moneda.id_moneda,
+          label: `${moneda.codigo_iso} - ${moneda.nombre_moneda}`
+        }));
       default:
         return [];
     }
@@ -295,6 +423,12 @@ const Transacciones = () => {
               value = value ? 'Validada' : 'Pendiente';
             } else if (['registro_auxiliar', 'aplica_retencion', 'aplica_impuestos'].includes(col.key)) {
               value = value ? 'Sí' : 'No';
+            } else if (col.key === 'id_tipotransaccion') {
+              // Convertir ID de tipo de transacción a nombre
+              value = getNombreTipoTransaccion(value);
+            } else if (col.key === 'id_cuenta') {
+              // Convertir ID de cuenta a nombre
+              value = getNombreCuenta(value);
             }
             
             exportRow[col.label] = value || '';
@@ -355,44 +489,128 @@ const Transacciones = () => {
         throw new Error('El archivo está vacío');
       }
 
+      // Función para extraer ID de formato "ID - Nombre"
+      const extractIdFromDropdownValue = (value) => {
+        if (!value || typeof value !== 'string') return null;
+        const match = value.match(/^(\d+)\s*-/);
+        return match ? parseInt(match[1]) : null;
+      };
+
       // Procesar datos
       const processedData = jsonData.map((row, index) => {
         const processedRow = {};
         
-        // Mapear columnas del Excel a campos de la base de datos
-        availableColumns.forEach(col => {
-          let value = row[col.label];
+        // Mapear columnas según los encabezados de la plantilla
+        Object.keys(row).forEach(header => {
+          let value = row[header];
           
           if (value === undefined || value === '') {
             value = null;
           }
           
-          // Convertir tipos de datos
-          if (col.key.includes('fecha') && value !== null) {
-            if (typeof value === 'number') {
-              const excelDate = new Date((value - 25569) * 86400 * 1000);
-              processedRow[col.key] = excelDate.toISOString().split('T')[0];
-            } else if (typeof value === 'string') {
-              const parsedDate = new Date(value);
-              processedRow[col.key] = isNaN(parsedDate) ? null : parsedDate.toISOString().split('T')[0];
-            } else {
-              processedRow[col.key] = null;
-            }
-          } else if (col.key.includes('valor') || col.key.includes('trm')) {
-            if (value === null || value === '' || isNaN(value)) {
-              processedRow[col.key] = null;
-            } else {
-              processedRow[col.key] = parseFloat(value);
-            }
-          } else if (['registro_validado', 'registro_auxiliar', 'aplica_retencion', 'aplica_impuestos'].includes(col.key)) {
-            // Convertir valores booleanos
-            if (typeof value === 'string') {
-              processedRow[col.key] = ['true', '1', 'sí', 'si', 'validada'].includes(value.toLowerCase());
-            } else {
-              processedRow[col.key] = Boolean(value);
-            }
-          } else {
-            processedRow[col.key] = value;
+          // Mapear encabezados de la plantilla a campos de la BD
+          switch (header.toLowerCase()) {
+            case 'fecha':
+              if (value !== null) {
+                if (typeof value === 'number') {
+                  const excelDate = new Date((value - 25569) * 86400 * 1000);
+                  processedRow['fecha_transaccion'] = excelDate.toISOString().split('T')[0];
+                } else if (typeof value === 'string') {
+                  const parsedDate = new Date(value);
+                  processedRow['fecha_transaccion'] = isNaN(parsedDate) ? null : parsedDate.toISOString().split('T')[0];
+                }
+              }
+              break;
+              
+            case 'título':
+            case 'titulo':
+              processedRow['titulo_transaccion'] = value;
+              break;
+              
+            case 'tipo':
+              // Extraer ID del formato "ID - Nombre"
+              processedRow['id_tipotransaccion'] = extractIdFromDropdownValue(value);
+              break;
+              
+            case 'cuenta origen':
+            case 'cuenta_origen':
+              // Extraer ID del formato "ID - Nombre"
+              processedRow['id_cuenta'] = extractIdFromDropdownValue(value);
+              break;
+              
+            case 'moneda':
+              // Extraer ID del formato "ID - Codigo - Nombre"
+              processedRow['id_moneda_transaccion'] = extractIdFromDropdownValue(value);
+              break;
+              
+            case 'monto':
+              if (value !== null && !isNaN(value)) {
+                processedRow['valor_total_transaccion'] = parseFloat(value);
+              }
+              break;
+              
+            case 'trm':
+              if (value !== null && !isNaN(value)) {
+                processedRow['trm_moneda_base'] = parseFloat(value);
+              }
+              break;
+              
+            case 'estado':
+              // Convertir estado textual a booleano
+              processedRow['registro_validado'] = value && value.toLowerCase() === 'validada';
+              break;
+              
+            case 'auxiliar':
+              processedRow['registro_auxiliar'] = value && value.toLowerCase() === 'sí';
+              break;
+              
+            case 'retención':
+            case 'retencion':
+              processedRow['aplica_retencion'] = value && value.toLowerCase() === 'sí';
+              break;
+              
+            case 'impuestos':
+              processedRow['aplica_impuestos'] = value && value.toLowerCase() === 'sí';
+              break;
+              
+            case 'tercero':
+              // Extraer ID del formato "ID - Nombre Apellido"
+              processedRow['id_tercero'] = extractIdFromDropdownValue(value);
+              break;
+              
+            case 'etiqueta':
+              // Extraer ID del formato "ID - Nombre"
+              processedRow['id_etiqueta_contable'] = extractIdFromDropdownValue(value);
+              break;
+              
+            case 'concepto':
+              // Extraer ID del formato "ID - Descripción"
+              processedRow['id_concepto'] = extractIdFromDropdownValue(value);
+              break;
+              
+            case 'observación':
+            case 'observacion':
+              processedRow['observacion'] = value;
+              break;
+              
+            default:
+              // Para compatibilidad con plantillas anteriores
+              if (header.includes('fecha') && value !== null) {
+                if (typeof value === 'number') {
+                  const excelDate = new Date((value - 25569) * 86400 * 1000);
+                  processedRow[header] = excelDate.toISOString().split('T')[0];
+                } else if (typeof value === 'string') {
+                  const parsedDate = new Date(value);
+                  processedRow[header] = isNaN(parsedDate) ? null : parsedDate.toISOString().split('T')[0];
+                }
+              } else if (header.includes('valor') || header.includes('trm')) {
+                if (value !== null && !isNaN(value)) {
+                  processedRow[header] = parseFloat(value);
+                }
+              } else {
+                processedRow[header] = value;
+              }
+              break;
           }
         });
         
@@ -454,6 +672,42 @@ const Transacciones = () => {
     setCurrentPage(1);
   };
 
+  // Convertir valores de filtros para campos con relaciones
+  const convertFilterValue = (field, value) => {
+    if (field === 'id_tipotransaccion') {
+      const tipo = tiposTransaccion.find(t => t.id_tipotransaccion === value);
+      return tipo ? tipo.tipo_transaccion : `ID: ${value}`;
+    } else if (field === 'id_cuenta') {
+      const cuenta = cuentas.find(c => c.id_cuenta === value);
+      return cuenta ? (cuenta.titulo_cuenta || cuenta.numero_cuenta || `ID: ${value}`) : `ID: ${value}`;
+    } else if (field === 'id_etiqueta_contable') {
+      const etiqueta = etiquetasContables.find(e => e.id_etiqueta_contable === value);
+      return etiqueta ? (etiqueta.etiqueta_contable || etiqueta.descripcion_etiqueta || `ID: ${value}`) : `ID: ${value}`;
+    } else if (field === 'id_concepto') {
+      const concepto = conceptos.find(c => c.id_concepto === value);
+      if (concepto) {
+        return concepto.descripcion_concepto || concepto.concepto_dian || concepto.concepto || `ID: ${value}`;
+      }
+      // Fallback a opciones predefinidas
+      const opcionPredefinida = conceptosDianOpciones.find(o => o.id === value);
+      return opcionPredefinida ? opcionPredefinida.concepto_dian : `ID: ${value}`;
+    } else if (field === 'id_tercero') {
+      const tercero = terceros.find(t => t.id_tercero === value);
+      if (tercero) {
+        if (tercero.tipo_personalidad === 'JURIDICA' && tercero.razon_social) {
+          return tercero.razon_social;
+        } else {
+          return `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim() || `ID: ${value}`;
+        }
+      }
+      return `ID: ${value}`;
+    } else if (field === 'id_moneda_transaccion') {
+      const moneda = monedas.find(m => m.id_moneda === value);
+      return moneda ? (moneda.nombre_moneda || moneda.codigo_iso || `ID: ${value}`) : `ID: ${value}`;
+    }
+    return value;
+  };
+
   // Obtener datos para filtros
   const getFilterData = (targetField) => {
     let result = [...transacciones];
@@ -463,7 +717,10 @@ const Transacciones = () => {
         result = result.filter(transaccion => {
           let fieldValue = getNestedValue(transaccion, field);
           
-          if (field === 'fecha_transaccion') {
+          // Convertir IDs a nombres legibles para campos relacionales
+          if (['id_tipotransaccion', 'id_cuenta', 'id_etiqueta_contable', 'id_concepto', 'id_tercero', 'id_moneda_transaccion'].includes(field)) {
+            fieldValue = convertFilterValue(field, fieldValue);
+          } else if (field === 'fecha_transaccion') {
             fieldValue = formatearFecha(fieldValue);
           } else if (field === 'valor_total_transaccion' || field === 'trm_moneda_base') {
             fieldValue = formatearMonto(fieldValue);
@@ -507,7 +764,10 @@ const Transacciones = () => {
         result = result.filter(transaccion => {
           let fieldValue = getNestedValue(transaccion, field);
           
-          if (field === 'fecha_transaccion') {
+          // Convertir IDs a nombres legibles para campos relacionales
+          if (['id_tipotransaccion', 'id_cuenta', 'id_etiqueta_contable', 'id_concepto', 'id_tercero', 'id_moneda_transaccion'].includes(field)) {
+            fieldValue = convertFilterValue(field, fieldValue);
+          } else if (field === 'fecha_transaccion') {
             fieldValue = formatearFecha(fieldValue);
           } else if (field === 'valor_total_transaccion' || field === 'trm_moneda_base') {
             fieldValue = formatearMonto(fieldValue);
@@ -613,27 +873,8 @@ const Transacciones = () => {
     try {
       console.log('💾 Guardando cambio en celda:', { transaccionId, field, newValue });
       const updatedData = { [field]: newValue };
-      const response = await api.updateTransaccion(transaccionId, updatedData);
-
-      console.log('📡 PUT Response status:', response.status);
-      console.log('📡 PUT Content-Type:', response.headers.get('content-type'));
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ PUT Error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const responseText = await response.text();
-      console.log('📝 PUT Raw response:', responseText.substring(0, 200));
-      
-      // Verificar si es JSON válido
-      try {
-        const responseData = JSON.parse(responseText);
-        console.log('✅ PUT Parsed response:', responseData);
-      } catch (jsonError) {
-        console.warn('⚠️ PUT Response no es JSON válido:', jsonError);
-      }
+      const responseData = await api.updateTransaccion(transaccionId, updatedData);
+      console.log('✅ PUT Parsed response:', responseData);
 
       setTransacciones(prev => prev.map(t => 
         t.id_transaccion === transaccionId 
@@ -851,28 +1092,6 @@ const Transacciones = () => {
             </Button>
           ) : (
             <div className="flex gap-2">
-              {pendingChanges.size > 0 && (
-                <>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={saveAllPendingChanges}
-                    className="border-green-400 text-green-600 hover:bg-green-50"
-                  >
-                    <Save className="mr-1 h-3 w-3" />
-                    Guardar Todo ({pendingChanges.size})
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={discardChanges}
-                    className="border-orange-400 text-orange-600 hover:bg-orange-50"
-                  >
-                    <RotateCcw className="mr-1 h-3 w-3" />
-                    Descartar
-                  </Button>
-                </>
-              )}
               <Button 
                 variant="outline"
                 size="sm"
@@ -903,11 +1122,6 @@ const Transacciones = () => {
                 Haz clic en cualquier celda para editarla
               </span>
             </div>
-            {pendingChanges.size > 0 && (
-              <span className="text-sm text-purple-600 font-medium">
-                {pendingChanges.size} cambio(s) pendiente(s)
-              </span>
-            )}
           </div>
         </div>
       )}
@@ -929,6 +1143,7 @@ const Transacciones = () => {
                        onSort={handleSort}
                        sortDirection={sortConfig.field === column.key ? sortConfig.direction : null}
                        activeFilters={filters[column.key] || []}
+                       valueConverter={convertFilterValue}
                      />
                   </TableHead>
                 ))}
@@ -952,6 +1167,7 @@ const Transacciones = () => {
                       {isGridEditMode ? (
                         <EditableCell
                           value={getNestedValue(transaccion, column.key)}
+                          displayValue={renderColumnValue(transaccion, column.key)}
                           onSave={(newValue) => handleCellSave(transaccion.id_transaccion, column.key, newValue)}
                           type={getFieldType(column.key)}
                           options={getFieldOptions(column.key)}
@@ -1085,11 +1301,19 @@ const Transacciones = () => {
         onOpenChange={setIsImportDialogOpen}
         onImport={handleImport}
         loading={isImporting}
-        tableName="transacciones"
-        templateColumns={['fecha_transaccion', 'titulo_transaccion', 'valor_total_transaccion', 'observacion', 'trm_moneda_base', 'registro_validado', 'registro_auxiliar', 'aplica_retencion', 'aplica_impuestos']}
+        entityName="transacciones"
+        // Enviar todos los catálogos para generar plantilla con dropdowns
+        cuentas={cuentas}
+        tiposTransaccion={tiposTransaccion}
+        monedas={monedas}
+        terceros={terceros}
+        etiquetasContables={etiquetasContables}
+        conceptos={conceptos}
+        // Columnas completas de transacciones
+        columns={availableColumns}
       />
     </div>
   );
 };
 
-export default Transacciones; 
+export default Transacciones;

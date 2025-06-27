@@ -1,152 +1,146 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
+import ExcelJS from 'exceljs';
 
 const TemplateDownloader = ({ 
-  templateData = null, 
-  columns = null, 
+  templateData = [], 
+  columns = [], 
   entityName = "datos",
-  className = "" 
+  className = ""
 }) => {
   
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     try {
-      console.log('🔄 Iniciando descarga con TemplateDownloader...');
-      console.log('📋 Datos recibidos:', { templateData, columns, entityName });
-
-      // Verificar que XLSX esté disponible
-      if (!XLSX || !XLSX.utils) {
-        throw new Error('XLSX no está disponible');
-      }
-
-      if (!saveAs || typeof saveAs !== 'function') {
-        throw new Error('saveAs no está disponible');
-      }
-
-      console.log('✅ Librerías verificadas correctamente');
-
-      let dataToUse = [];
-
-      // Usar templateData si está disponible
-      if (templateData && Array.isArray(templateData) && templateData.length > 0) {
-        console.log('📝 Usando templateData proporcionado');
-        dataToUse = templateData;
-      } 
-      // Si hay columns, crear datos de ejemplo
-      else if (columns && Array.isArray(columns) && columns.length > 0) {
-        console.log('📝 Creando datos desde columns');
-        const exampleRow = {};
-        columns.forEach(col => {
-          if (col.example) {
-            exampleRow[col.label || col.key] = col.example;
-          } else {
-            exampleRow[col.label || col.key] = getExampleValue(col.key, col.label);
+      console.log('🔄 Iniciando descarga de plantilla...');
+      
+      const fileName = `plantilla_${entityName.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}`;
+      
+      // Crear nuevo workbook con ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      
+      // Crear hoja principal
+      const worksheet = workbook.addWorksheet('Plantilla');
+      
+      // Definir encabezados
+      const headers = columns.map(col => col.label || col.key);
+      
+      // Agregar encabezados
+      worksheet.addRow(headers);
+      
+      // Formatear encabezados
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F3FF' } };
+      
+      // Agregar datos de ejemplo si existen
+      if (Array.isArray(templateData) && templateData.length > 0) {
+        templateData.forEach(row => {
+          if (row && typeof row === 'object') {
+            const rowData = columns.map(col => {
+              const value = row[col.key];
+              return value !== undefined && value !== null ? value : '';
+            });
+            worksheet.addRow(rowData);
           }
         });
-        dataToUse = [exampleRow];
-      } 
-      // Fallback
-      else {
-        console.log('⚠️ Usando datos de fallback');
-        dataToUse = [{ 
-          'Campo1': 'Ejemplo1', 
-          'Campo2': 'Ejemplo2',
-          'Campo3': 'Ejemplo3'
-        }];
       }
-
-      console.log('📊 Datos finales para Excel:', dataToUse);
-
-      if (!dataToUse || dataToUse.length === 0) {
-        throw new Error('No hay datos para crear la plantilla');
-      }
-
-      // Crear archivo Excel
-      console.log('📁 Creando archivo Excel...');
-      const ws = XLSX.utils.json_to_sheet(dataToUse);
-      const wb = XLSX.utils.book_new();
       
-      // Ajustar ancho de columnas
-      const colKeys = Object.keys(dataToUse[0] || {});
-      const columnWidths = colKeys.map(col => ({
-        wch: Math.max(col.length, 15)
-      }));
-      ws['!cols'] = columnWidths;
+      // Configurar validaciones para campos con opciones
+      columns.forEach((col, index) => {
+        if (col.options && Array.isArray(col.options)) {
+          const colLetter = String.fromCharCode(65 + index);
+          const lastRow = Math.max(1000, templateData.length + 10);
+          
+          // Crear hoja de opciones
+          const optionsSheetName = `Opciones_${col.key}`;
+          const optionsSheet = workbook.addWorksheet(optionsSheetName);
+          optionsSheet.addRow(['Valores_Válidos']);
+          col.options.forEach(option => {
+            if (option && (typeof option === 'string' || typeof option === 'number')) {
+              optionsSheet.addRow([option.toString()]);
+            }
+          });
+          
+          // Configurar validación usando la hoja de opciones
+          for (let row = 2; row <= lastRow; row++) {
+            worksheet.getCell(`${colLetter}${row}`).dataValidation = {
+              type: 'list',
+              allowBlank: !col.required,
+              formulae: [`${optionsSheetName}!$A$2:$A$${col.options.length + 1}`],
+              showErrorMessage: true,
+              errorStyle: 'error',
+              errorTitle: 'Valor inválido',
+              error: `Por favor seleccione un valor válido de la lista`
+            };
+          }
+        }
+      });
       
-      XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+      // Agregar hoja de instrucciones
+      const instructionsSheet = workbook.addWorksheet('📋_Instrucciones');
+      const instructions = [
+        ['🎯 INSTRUCCIONES PARA USAR LA PLANTILLA'],
+        [''],
+        ['1. Use la pestaña "Plantilla" para ingresar sus datos'],
+        ['2. Los campos marcados con * son obligatorios'],
+        ['3. Algunos campos tienen listas desplegables (⬇️):'],
+        ...columns
+          .filter(col => col.options)
+          .map(col => [`   • ${col.label}: Seleccione una opción de la lista desplegable`]),
+        [''],
+        ['4. Para campos con dropdown:'],
+        ['   • Haga clic en la celda'],
+        ['   • Aparecerá una flecha ⬇️ a la derecha'],
+        ['   • Haga clic en la flecha para ver las opciones'],
+        ['   • Seleccione la opción deseada'],
+        [''],
+        ['5. Al importar:'],
+        ['   • Asegúrese de que los datos estén en el formato correcto'],
+        ['   • No modifique los nombres de las columnas'],
+        ['   • Los datos deben empezar en la fila 2'],
+        [''],
+        ['⚠️ IMPORTANTE:'],
+        ['• NO modifique las hojas auxiliares (Opciones_*)'],
+        ['• Use solo la hoja "Plantilla" para sus datos'],
+        ['• Los dropdowns funcionan hasta la fila 1000']
+      ];
+      
+      instructions.forEach((row, index) => {
+        const excelRow = instructionsSheet.addRow(row);
+        if (index === 0) {
+          excelRow.font = { bold: true, size: 14 };
+        }
+      });
       
       // Generar archivo
-      console.log('💾 Generando buffer...');
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
       
-      const fileName = `plantilla_${entityName.replace(/\s+/g, '_').toLowerCase()}.xlsx`;
+      // Descargar archivo
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${fileName}.xlsx`;
+      link.click();
       
-      console.log('📤 Descargando archivo:', {
-        nombre: fileName,
-        tamaño: blob.size,
-        tipo: blob.type
-      });
-      
-      // Descargar
-      saveAs(blob, fileName);
+      window.URL.revokeObjectURL(url);
       
       console.log('✅ Plantilla descargada exitosamente');
       
     } catch (error) {
-      console.error('❌ Error en TemplateDownloader:', error);
-      console.error('Stack trace:', error.stack);
-      alert(`Error al descargar plantilla: ${error.message}\nRevisa la consola para más detalles.`);
+      console.error('❌ Error al generar plantilla:', error);
     }
-  };
-
-  // Función para generar valores de ejemplo
-  const getExampleValue = (columnKey, columnLabel) => {
-    const key = (columnKey || columnLabel || '').toLowerCase();
-    
-    if (key.includes('fecha')) {
-      return '2024-01-15';
-    } else if (key.includes('numero') || key.includes('código') || key.includes('codigo')) {
-      return 'ABC-001';
-    } else if (key.includes('estado') || key.includes('estatus')) {
-      return 'ACTIVO';
-    } else if (key.includes('id')) {
-      return '1';
-    } else if (key.includes('valor') || key.includes('monto') || key.includes('precio')) {
-      return '1000000';
-    } else if (key.includes('descripcion') || key.includes('observacion')) {
-      return 'Descripción de ejemplo';
-    } else if (key.includes('nombre')) {
-      return 'Ejemplo Nombre';
-    } else if (key.includes('tipo')) {
-      return 'Tipo Ejemplo';
-    } else if (key.includes('personalidad')) {
-      return 'NATURAL';
-    } else if (key.includes('documento')) {
-      return 'CC';
-    } else if (key.includes('telefono')) {
-      return '3001234567';
-    } else if (key.includes('email')) {
-      return 'ejemplo@email.com';
-    } else if (key.includes('direccion')) {
-      return 'Calle 123 # 45-67';
-    }
-    return 'Ejemplo';
   };
 
   return (
-    <Button 
-      variant="outline" 
-      size="sm"
+    <Button
       onClick={downloadTemplate}
-      className={`border-blue-300 text-blue-700 hover:bg-blue-100 ${className}`}
+      variant="outline"
+      className={className}
     >
       <Download className="w-4 h-4 mr-2" />
-      Plantilla
+      Descargar Plantilla
     </Button>
   );
 };

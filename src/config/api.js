@@ -1,7 +1,7 @@
 // Configuración de API para diferentes entornos
 const API_CONFIG = {
   development: {
-    baseURL: 'http://localhost:8081'
+    baseURL: '' // Usar rutas relativas para aprovechar el proxy de Vite
   },
   production: {
     baseURL: 'https://pros-backend-996366858087.us-central1.run.app'
@@ -160,6 +160,8 @@ export const api = {
   getContratos: () => apiCall('/api/contratos'),
   getMonedas: () => apiCall('/api/catalogos/monedas'),
   getTaxes: () => apiCall('/api/impuestos'),
+  getEtiquetasContables: () => apiCall('/api/etiquetas-contables'),
+  getConceptos: () => apiCall('/api/conceptos-transacciones'),
   
   // Health check
   health: () => apiCall('/api/health')
