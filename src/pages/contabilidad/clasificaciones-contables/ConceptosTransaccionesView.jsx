@@ -75,7 +75,7 @@ const ConceptosTransaccionesView = () => {
     try {
       const [conceptos, tipos] = await Promise.all([
         apiCall('/api/conceptos-transacciones'),
-        apiCall('/api/tipos-transaccion')
+        apiCall('/api/catalogos/tipos-transaccion')
       ]);
       
       // Guardar tipos de transacción en el estado
@@ -83,10 +83,10 @@ const ConceptosTransaccionesView = () => {
       
       // Agregar el nombre del tipo de transacción a cada concepto
       const conceptosConTipos = (Array.isArray(conceptos) ? conceptos : []).map(concepto => {
-        const tipo = (Array.isArray(tipos) ? tipos : []).find(t => t.id_tipotransaccion === concepto.id_tipotransaccion);
+        const tipo = (Array.isArray(tipos) ? tipos : []).find(t => t.id === concepto.id_tipo_transaccion);
         return {
           ...concepto,
-          nombre_tipo_transaccion: tipo ? tipo.tipo_transaccion : 'No asignado'
+          nombre_tipo_transaccion: tipo ? tipo.nombre : 'No asignado'
         };
       });
       
@@ -795,6 +795,7 @@ const ConceptosTransaccionesView = () => {
         open={dialogoVer}
         onOpenChange={setDialogoVer}
         concepto={conceptoSeleccionado}
+        tiposTransaccion={tiposTransaccion}
       />
 
       {/* Diálogos de Importación/Exportación */}

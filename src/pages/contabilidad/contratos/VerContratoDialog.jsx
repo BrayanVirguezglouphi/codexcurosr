@@ -33,9 +33,9 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
       // Cargar el contrato y los catálogos en paralelo
       const [contratoData, tercerosData, monedasData, impuestosData] = await Promise.all([
         apiCall(`/api/contratos/${contratoId}`),
-        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/terceros'),
         apiCall('/api/catalogos/monedas'),
-        apiCall('/api/catalogos/taxes')
+        apiCall('/api/impuestos')
       ]);
 
       setContrato(contratoData);

@@ -1,6 +1,6 @@
-import { DataTypes } from 'sequelize';
-import sequelize from '../config/database-gcp.js';
-import Transaccion from './Transaccion.js';
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database.cjs');
+const Transaccion = require('./Transaccion.js');
 
 const EtiquetaContable = sequelize.define('EtiquetaContable', {
   id_etiqueta_contable: {
@@ -24,4 +24,4 @@ const EtiquetaContable = sequelize.define('EtiquetaContable', {
 EtiquetaContable.hasMany(Transaccion, { foreignKey: 'id_etiqueta_contable', as: 'transacciones' });
 Transaccion.belongsTo(EtiquetaContable, { foreignKey: 'id_etiqueta_contable', as: 'etiquetaContable' });
 
-export default EtiquetaContable; 
+module.exports = EtiquetaContable; 

@@ -104,9 +104,9 @@ const SearchableSelect = ({
           </div>
           <div className="max-h-60 overflow-auto p-1">
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
+              filteredOptions.map((option, idx) => (
                 <div
-                  key={option[valueKey]}
+                  key={option[valueKey] ?? idx}
                   onClick={() => handleSelect(option)}
                   className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent"
                 >
@@ -152,9 +152,9 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
     try {
       const [contrato, tercerosData, monedasData, taxesData] = await Promise.all([
         apiCall(`/api/contratos/${contratoId}`),
-        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/terceros'),
         apiCall('/api/catalogos/monedas'),
-        apiCall('/api/catalogos/taxes')
+        apiCall('/api/impuestos')
       ]);
 
       setTerceros(tercerosData);
@@ -368,8 +368,9 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
                     onChange={(value) => setValue('id_moneda_cotizacion', value)}
                     placeholder="Seleccione moneda"
                     searchPlaceholder="Buscar moneda..."
-                    displayKey="nombre_moneda"
-                    valueKey="id_moneda"
+                    displayKey="nombre"
+                    valueKey="id"
+                    formatOption={(moneda) => moneda ? `${moneda.codigo_iso} - ${moneda.nombre}` : 'Moneda no válida'}
                   />
                   <input type="hidden" {...register("id_moneda_cotizacion")} />
                 </div>
@@ -432,6 +433,7 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
                     searchPlaceholder="Buscar impuesto..."
                     displayKey="titulo_impuesto"
                     valueKey="id_tax"
+                    formatOption={(impuesto) => impuesto ? `${impuesto.titulo_impuesto}${impuesto.tipo_obligacion ? ' - ' + impuesto.tipo_obligacion : ''}` : 'Impuesto no válido'}
                   />
                   <input type="hidden" {...register("id_tax")} />
                 </div>

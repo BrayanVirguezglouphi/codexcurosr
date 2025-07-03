@@ -1,15 +1,25 @@
 import express from 'express';
 import Tercero from '../models/Tercero.js';
+import { pool } from '../config/database.js';
 
 const router = express.Router();
 
 // Obtener todos los terceros
 router.get('/', async (req, res) => {
   try {
-    const terceros = await Tercero.findAll({
-      order: [['id_tercero', 'DESC']]
-    });
-    res.json(terceros);
+    const query = `
+      SELECT 
+        t.*,
+        r.tipo_relacion as nombre_tipo_relacion,
+        d.tipo_documento as nombre_tipo_documento
+      FROM adcot_terceros_exogenos t
+      LEFT JOIN adcot_relacion_contractual r ON t.tipo_relacion = r.id_tiporelacion
+      LEFT JOIN adcot_tipo_documento d ON t.tipo_documento = d.id_tipodocumento
+      ORDER BY t.id_tercero DESC
+    `;
+    
+    const result = await pool.query(query);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error al obtener terceros:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -19,11 +29,22 @@ router.get('/', async (req, res) => {
 // Obtener un tercero por ID
 router.get('/:id', async (req, res) => {
   try {
-    const tercero = await Tercero.findByPk(req.params.id);
-    if (!tercero) {
+    const query = `
+      SELECT 
+        t.*,
+        r.tipo_relacion as nombre_tipo_relacion,
+        d.tipo_documento as nombre_tipo_documento
+      FROM adcot_terceros_exogenos t
+      LEFT JOIN adcot_relacion_contractual r ON t.tipo_relacion = r.id_tiporelacion
+      LEFT JOIN adcot_tipo_documento d ON t.tipo_documento = d.id_tipodocumento
+      WHERE t.id_tercero = $1
+    `;
+    
+    const result = await pool.query(query, [req.params.id]);
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Tercero no encontrado' });
     }
-    res.json(tercero);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Error al obtener tercero:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -82,16 +103,51 @@ router.post('/bulk-create', async (req, res) => {
 // Actualizar un tercero
 router.put('/:id', async (req, res) => {
   try {
-    const [filasActualizadas] = await Tercero.update(req.body, {
-      where: { id_tercero: req.params.id }
-    });
+    const { nombre_consolidado, ...datosActualizar } = req.body;
     
-    if (filasActualizadas === 0) {
+    // Construir la consulta de actualización
+    const setClauses = [];
+    const values = [];
+    let paramCount = 1;
+    
+    for (const [key, value] of Object.entries(datosActualizar)) {
+      if (value !== undefined && value !== null) {
+        setClauses.push(`${key} = $${paramCount}`);
+        values.push(value);
+        paramCount++;
+      }
+    }
+    
+    // Agregar el ID a los valores
+    values.push(req.params.id);
+    
+    const updateQuery = `
+      UPDATE adcot_terceros_exogenos 
+      SET ${setClauses.join(', ')}
+      WHERE id_tercero = $${paramCount}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(updateQuery, values);
+    
+    if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Tercero no encontrado' });
     }
     
-    const terceroActualizado = await Tercero.findByPk(req.params.id);
-    res.json(terceroActualizado);
+    // Obtener el tercero actualizado con los datos de las tablas relacionadas
+    const selectQuery = `
+      SELECT 
+        t.*,
+        r.tipo_relacion as nombre_tipo_relacion,
+        d.tipo_documento as nombre_tipo_documento
+      FROM adcot_terceros_exogenos t
+      LEFT JOIN adcot_relacion_contractual r ON t.tipo_relacion = r.id_tiporelacion
+      LEFT JOIN adcot_tipo_documento d ON t.tipo_documento = d.id_tipodocumento
+      WHERE t.id_tercero = $1
+    `;
+    
+    const terceroActualizado = await pool.query(selectQuery, [req.params.id]);
+    res.json(terceroActualizado.rows[0]);
   } catch (error) {
     console.error('Error al actualizar tercero:', error);
     res.status(400).json({ message: 'Error al actualizar tercero', error: error.message });

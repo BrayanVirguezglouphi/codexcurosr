@@ -56,7 +56,7 @@ const VerLineaServicioDialog = ({ open, onClose, lineaServicio }) => {
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-gray-600">ID:</span>
                 <Badge variant="outline" className="text-xs">
-                  #{lineaServicio.id_servicio}
+                  #{lineaServicio.id}
                 </Badge>
               </div>
             </div>
@@ -74,35 +74,35 @@ const VerLineaServicioDialog = ({ open, onClose, lineaServicio }) => {
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-500">ID del Servicio</label>
                 <p className="text-base font-semibold text-gray-900">
-                  {lineaServicio.id_servicio}
+                  {lineaServicio.id}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-500">Nombre del Servicio</label>
                 <p className="text-base font-semibold text-gray-900">
-                  {lineaServicio.servicio}
+                  {lineaServicio.nombre}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Clasificación del Servicio */}
+          {/* Modelo de Negocio */}
           <div className="bg-white border rounded-lg p-4">
             <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
               <Tag className="w-5 h-5" />
-              🏷️ Clasificación del Servicio
+              🏷️ Modelo de Negocio
             </h3>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-500">Tipo de Servicio</label>
+              <label className="text-sm font-medium text-gray-500">Modelo de Negocio</label>
               <div className="mt-2">
-                {lineaServicio.tipo_servicio ? (
-                  <Badge variant={getTipoServicioVariant(lineaServicio.tipo_servicio)} className="text-sm">
-                    {getTipoServicioLabel(lineaServicio.tipo_servicio)}
+                {lineaServicio.nombre_modelonegocio ? (
+                  <Badge variant="secondary" className="text-sm">
+                    {lineaServicio.nombre_modelonegocio}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-sm text-gray-500">
-                    Sin tipo especificado
+                    Sin modelo de negocio
                   </Badge>
                 )}
               </div>

@@ -94,15 +94,21 @@ const SearchableSelect = ({
           </div>
           <div className="max-h-60 overflow-auto p-1">
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
-                <div
-                  key={option[valueKey]}
-                  onClick={() => handleSelect(option)}
-                  className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent"
-                >
-                  {formatOption ? formatOption(option) : option[displayKey]}
-                </div>
-              ))
+              filteredOptions.map((option, index) => {
+                const optionKey = option[valueKey] 
+                  ? `${option[valueKey]}-${option[displayKey] || ''}`
+                  : `option-${index}`;
+                return (
+                  <div
+                    key={optionKey}
+                    onClick={() => handleSelect(option)}
+                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent"
+                    data-selected={option[valueKey] === value}
+                  >
+                    {formatOption ? formatOption(option) : option[displayKey] || 'Sin nombre'}
+                  </div>
+                );
+              })
             ) : (
               <div className="px-2 py-1.5 text-sm text-muted-foreground text-center">
                 No se encontraron resultados
@@ -133,11 +139,12 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
     if (open) {
       console.log('🔄 Cargando catálogos en EditarFactura...');
       Promise.all([
-        apiCall('/api/catalogos/contratos'),
+        apiCall('/api/contratos'),
         apiCall('/api/catalogos/monedas'),
-        apiCall('/api/catalogos/taxes')
+        apiCall('/api/impuestos')
       ]).then(([contratosData, monedasData, taxesData]) => {
-        console.log('✅ Catálogos cargados en EditarFactura:', { contratos: contratosData.length, monedas: monedasData.length, taxes: taxesData.length });
+        console.log('✅ Datos de monedas recibidos:', monedasData);
+        console.log('✅ Ejemplo de primera moneda:', monedasData[0]);
         setContratos(contratosData);
         setMonedas(monedasData);
         setTaxes(taxesData);
@@ -364,38 +371,30 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="id_moneda">Moneda</Label>
+                <Label htmlFor="id_moneda">Moneda *</Label>
                 <SearchableSelect
                   options={monedas}
                   value={currentMoneda}
                   onChange={(value) => setValue('id_moneda', value)}
                   placeholder="Seleccione una moneda"
-                  displayKey="nombre_moneda"
-                  valueKey="id_moneda"
                   searchPlaceholder="Buscar moneda..."
-                />
-                <input 
-                  type="hidden" 
-                  {...register("id_moneda")}
-                  value={currentMoneda || ''}
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(moneda) => moneda ? `${moneda.codigo_iso} - ${moneda.nombre}` : 'Moneda no válida'}
                 />
               </div>
-              
+
               <div className="grid gap-2">
-                <Label htmlFor="id_tax">Impuesto (Tax)</Label>
+                <Label htmlFor="id_tax">Impuesto</Label>
                 <SearchableSelect
                   options={taxes}
                   value={currentTax}
                   onChange={(value) => setValue('id_tax', value)}
                   placeholder="Seleccione un impuesto"
+                  searchPlaceholder="Buscar impuesto..."
                   displayKey="titulo_impuesto"
                   valueKey="id_tax"
-                  searchPlaceholder="Buscar impuesto..."
-                />
-                <input 
-                  type="hidden" 
-                  {...register("id_tax")}
-                  value={currentTax || ''}
+                  formatOption={(impuesto) => impuesto ? `${impuesto.titulo_impuesto}${impuesto.tipo_obligacion ? ' - ' + impuesto.tipo_obligacion : ''}` : 'Impuesto no válido'}
                 />
               </div>
             </div>

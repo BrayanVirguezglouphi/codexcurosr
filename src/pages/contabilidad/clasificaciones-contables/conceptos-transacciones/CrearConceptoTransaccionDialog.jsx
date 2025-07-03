@@ -159,7 +159,7 @@ const CrearConceptoTransaccionDialog = ({ open, onOpenChange, onConceptoCreado }
     const cargarDatos = async () => {
       if (open) {
         try {
-          const tipos = await apiCall('/api/tipos-transaccion');
+          const tipos = await apiCall('/api/catalogos/tipos-transaccion');
           setTiposTransaccion(Array.isArray(tipos) ? tipos : []);
         } catch (error) {
           console.error('Error al cargar tipos de transacción:', error);

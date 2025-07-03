@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
+import { toast } from "@/components/ui/use-toast";
 
 export default function VerTransaccionDialog({ open, onClose, transaccion }) {
   
@@ -70,10 +71,10 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
       ] = await Promise.all([
         apiCall('/api/catalogos/cuentas'),
         apiCall('/api/catalogos/monedas'),
-        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/terceros'),
         apiCall('/api/catalogos/etiquetas-contables'),
         apiCall('/api/catalogos/tipos-transaccion'),
-        apiCall('/api/catalogos/conceptos')
+        apiCall('/api/catalogos/conceptos-transacciones')
       ]);
 
       console.log('✅ Catálogos cargados en VerTransaccion:', {
@@ -93,6 +94,11 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
       setConceptos(conceptosData || []);
     } catch (error) {
       console.error('❌ Error al cargar catálogos:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los catálogos",
+        variant: "destructive",
+      });
     } finally {
       setCargando(false);
     }
@@ -102,7 +108,7 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
   const getNombreCuenta = (id) => {
     if (!id) return '—';
     const cuenta = cuentas.find(c => c.id_cuenta === parseInt(id));
-    return cuenta ? (cuenta.titulo_cuenta || cuenta.nombre_cuenta) : `ID: ${id}`;
+    return cuenta ? cuenta.titulo_cuenta : `ID: ${id}`;
   };
 
   const getNombreMoneda = (id) => {
@@ -143,7 +149,7 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
   const getNombreConcepto = (id) => {
     if (!id) return '—';
     const concepto = conceptos.find(c => c.id_concepto === parseInt(id));
-    return concepto ? (concepto.nombre_concepto || concepto.descripcion_concepto || concepto.concepto_dian) : `ID: ${id}`;
+    return concepto ? concepto.concepto_dian : `ID: ${id}`;
   };
 
   if (!transaccion) return null;

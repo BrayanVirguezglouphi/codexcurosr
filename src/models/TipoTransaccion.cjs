@@ -1,5 +1,5 @@
-import { DataTypes } from 'sequelize';
-import sequelize from '../config/database-gcp.js';
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database.cjs');
 
 const TipoTransaccion = sequelize.define('TipoTransaccion', {
   id_tipotransaccion: {
@@ -20,4 +20,4 @@ const TipoTransaccion = sequelize.define('TipoTransaccion', {
   timestamps: false
 });
 
-export default TipoTransaccion; 
+module.exports = TipoTransaccion; 

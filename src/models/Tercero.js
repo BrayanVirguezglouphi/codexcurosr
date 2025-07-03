@@ -9,7 +9,11 @@ const Tercero = sequelize.define('Tercero', {
     autoIncrement: true
   },
   tipo_relacion: {
-    type: DataTypes.STRING(50)
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'adcot_relacion_contractual',
+      key: 'id_tiporelacion'
+    }
   },
   tipo_personalidad: {
     type: DataTypes.STRING(50)
@@ -30,7 +34,11 @@ const Tercero = sequelize.define('Tercero', {
     type: DataTypes.STRING(150)
   },
   tipo_documento: {
-    type: DataTypes.STRING(10)
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'adcot_tipo_documento',
+      key: 'id_tipodocumento'
+    }
   },
   numero_documento: {
     type: DataTypes.STRING(50)

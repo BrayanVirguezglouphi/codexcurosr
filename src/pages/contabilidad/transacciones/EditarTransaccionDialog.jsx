@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { apiCall } from '@/config/api';
 import { useForm } from 'react-hook-form';
@@ -160,8 +161,8 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         apiCall('/api/catalogos/tipos-transaccion'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/etiquetas-contables'),
-        apiCall('/api/catalogos/terceros'),
-        apiCall('/api/catalogos/conceptos')
+        apiCall('/api/terceros'),
+        apiCall('/api/catalogos/conceptos-transacciones')
       ]).then(([cuentasData, tiposData, monedasData, etiquetasData, tercerosData, conceptosData]) => {
         console.log('✅ Catálogos cargados en EditarTransaccion:', {
           cuentas: cuentasData?.length || 0,
@@ -180,6 +181,11 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         setConceptos(conceptosData || []);
       }).catch(error => {
         console.error('❌ Error al cargar catálogos:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los catálogos",
+          variant: "destructive",
+        });
       });
     }
   }, [open]);
@@ -231,20 +237,11 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
 
   const onSubmit = async (data) => {
     try {
-      console.log('📋 Datos del formulario antes de formatear:', {
-        registro_auxiliar: data.registro_auxiliar,
-        registro_validado: data.registro_validado,
-        aplica_retencion: data.aplica_retencion,
-        aplica_impuestos: data.aplica_impuestos,
-        registro_auxiliar_type: typeof data.registro_auxiliar,
-        registro_validado_type: typeof data.registro_validado,
-        aplica_retencion_type: typeof data.aplica_retencion,
-        aplica_impuestos_type: typeof data.aplica_impuestos
-      });
+      console.log('📋 Datos del formulario antes de formatear:', data);
       
       const formattedData = {
-        titulo_transaccion: data.titulo_transaccion,
-        fecha_transaccion: data.fecha_transaccion,
+        titulo_transaccion: data.titulo_transaccion?.trim() || '',
+        fecha_transaccion: data.fecha_transaccion || null,
         valor_total_transaccion: data.valor_total_transaccion ? parseFloat(data.valor_total_transaccion) : null,
         id_cuenta: data.id_cuenta ? parseInt(data.id_cuenta) : null,
         id_tipotransaccion: data.id_tipotransaccion ? parseInt(data.id_tipotransaccion) : null,
@@ -253,45 +250,44 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         id_tercero: data.id_tercero ? parseInt(data.id_tercero) : null,
         id_cuenta_destino_transf: data.id_cuenta_destino_transf ? parseInt(data.id_cuenta_destino_transf) : null,
         id_concepto: data.id_concepto ? parseInt(data.id_concepto) : null,
-        observacion: data.observacion || '',
+        observacion: data.observacion?.trim() || '',
         trm_moneda_base: data.trm_moneda_base ? parseFloat(data.trm_moneda_base) : null,
-        registro_auxiliar: data.registro_auxiliar === true,
-        registro_validado: data.registro_validado === true,
-        aplica_retencion: data.aplica_retencion === true,
-        aplica_impuestos: data.aplica_impuestos === true,
-        url_soporte_adjunto: data.url_soporte_adjunto || null,
+        registro_auxiliar: Boolean(data.registro_auxiliar),
+        registro_validado: Boolean(data.registro_validado),
+        aplica_retencion: Boolean(data.aplica_retencion),
+        aplica_impuestos: Boolean(data.aplica_impuestos),
+        url_soporte_adjunto: data.url_soporte_adjunto?.trim() || ''
       };
 
-      console.log('📤 Enviando datos de transacción:', {
-        ...formattedData,
-        'BOOLEANOS': {
-          registro_auxiliar: formattedData.registro_auxiliar,
-          registro_validado: formattedData.registro_validado,
-          aplica_retencion: formattedData.aplica_retencion,
-          aplica_impuestos: formattedData.aplica_impuestos
-        }
-      });
+      console.log('📤 Datos formateados para enviar:', formattedData);
       
-      const responseData = await apiCall(`/api/transacciones/${transaccion.id_transaccion}`, {
+      const response = await apiCall(`/api/transacciones/${transaccion.id_transaccion}`, {
         method: 'PUT',
-        body: JSON.stringify(formattedData),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formattedData)
       });
-
-      console.log('📨 Respuesta recibida:', responseData);
       
-      // Si llegamos aquí, la actualización fue exitosa
-      toast({
-        title: "Éxito",
-        description: "Transacción actualizada correctamente",
-      });
-      onTransaccionActualizada();
-      onClose();
+      console.log('📨 Respuesta recibida:', response);
+      
+      if (response && response.success !== false) {
+        toast({
+          title: "Éxito",
+          description: "Transacción actualizada correctamente"
+        });
+        onTransaccionActualizada();
+        onClose();
+        reset();
+      } else {
+        throw new Error(response?.message || 'Error al actualizar la transacción');
+      }
     } catch (error) {
-      console.error('Error al actualizar transacción:', error);
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo actualizar la transacción",
-        variant: "destructive",
+      console.error('❌ Error en onSubmit:', error);
+      toast({ 
+        title: "Error", 
+        description: `No se pudo actualizar la transacción: ${error.message}`, 
+        variant: "destructive" 
       });
     }
   };
@@ -300,351 +296,249 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-bold text-gray-900">
-                Editar Transacción
-              </DialogTitle>
-              <DialogDescription className="text-sm text-gray-600 mt-1">
-                Transacción #{transaccion.id_transaccion} - {transaccion.titulo_transaccion}
-              </DialogDescription>
-            </div>
-          </div>
+      <DialogContent className="max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Editar Transacción</DialogTitle>
+          <DialogDescription>
+            Modifique los detalles de la transacción
+          </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Información Básica */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Información Básica
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="grid gap-2">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="titulo_transaccion">Título de la Transacción *</Label>
-                <Input 
-                  id="titulo_transaccion" 
-                  {...register("titulo_transaccion", { required: "El título es requerido" })}
-                  placeholder="Ej: Pago a proveedor"
+                <Input
+                  id="titulo_transaccion"
+                  {...register('titulo_transaccion', { required: true })}
+                  placeholder="Ingrese el título"
                 />
-                {errors.titulo_transaccion && <span className="text-red-500 text-sm">{errors.titulo_transaccion.message}</span>}
               </div>
-              
-              <div className="grid gap-2">
+
+              <div className="space-y-2">
                 <Label htmlFor="id_tipotransaccion">Tipo de Transacción *</Label>
                 <SearchableSelect
                   options={tiposTransaccion}
                   value={currentTipo}
                   onChange={(value) => setValue('id_tipotransaccion', value)}
                   placeholder="Seleccione un tipo"
-                  displayKey="tipo_transaccion"
-                  valueKey="id_tipotransaccion"
                   searchPlaceholder="Buscar tipo..."
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(option) => `${option.nombre}${option.descripcion ? ` - ${option.descripcion}` : ''}`}
                 />
-                <input 
-                  type="hidden" 
-                  {...register("id_tipotransaccion", { required: "El tipo es requerido" })}
-                  value={currentTipo || ''}
-                />
-                {errors.id_tipotransaccion && <span className="text-red-500 text-sm">El tipo de transacción es requerido</span>}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="fecha_transaccion">Fecha *</Label>
-                <Input 
-                  id="fecha_transaccion" 
-                  type="date" 
-                  {...register("fecha_transaccion", { required: "La fecha es requerida" })}
-                />
-                {errors.fecha_transaccion && <span className="text-red-500 text-sm">{errors.fecha_transaccion.message}</span>}
               </div>
             </div>
-          </div>
 
-          {/* Información Financiera */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <DollarSign className="w-5 h-5" />
-              Información Financiera
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="valor_total_transaccion">Valor Total *</Label>
-                <Input 
-                  id="valor_total_transaccion" 
-                  type="number" 
-                  step="0.01" 
-                  placeholder="0.00"
-                  {...register("valor_total_transaccion", { 
-                    required: "El valor es requerido",
-                    min: { value: 0, message: "El valor debe ser mayor o igual a 0" }
-                  })}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fecha_transaccion">Fecha *</Label>
+                <Input
+                  id="fecha_transaccion"
+                  type="date"
+                  {...register('fecha_transaccion', { required: true })}
                 />
-                {errors.valor_total_transaccion && <span className="text-red-500 text-sm">{errors.valor_total_transaccion.message}</span>}
               </div>
-              
-              <div className="grid gap-2">
+
+              <div className="space-y-2">
                 <Label htmlFor="id_moneda_transaccion">Moneda *</Label>
                 <SearchableSelect
                   options={monedas}
                   value={currentMoneda}
                   onChange={(value) => setValue('id_moneda_transaccion', value)}
                   placeholder="Seleccione moneda"
-                  displayKey="nombre_moneda"
-                  valueKey="id_moneda"
                   searchPlaceholder="Buscar moneda..."
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(option) => `${option.codigo_iso} - ${option.nombre}`}
                 />
-                <input 
-                  type="hidden" 
-                  {...register("id_moneda_transaccion", { required: "La moneda es requerida" })}
-                  value={currentMoneda || ''}
-                />
-                {errors.id_moneda_transaccion && <span className="text-red-500 text-sm">La moneda es requerida</span>}
               </div>
-              
-              <div className="grid gap-2">
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="valor_total_transaccion">Valor Total *</Label>
+                <Input
+                  id="valor_total_transaccion"
+                  type="number"
+                  step="0.01"
+                  {...register('valor_total_transaccion', { required: true })}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="trm_moneda_base">TRM Moneda Base</Label>
-                <Input 
-                  id="trm_moneda_base" 
-                  type="number" 
-                  step="0.000001" 
-                  placeholder="0.000000"
-                  {...register("trm_moneda_base")}
+                <Input
+                  id="trm_moneda_base"
+                  type="number"
+                  step="0.000001"
+                  {...register('trm_moneda_base')}
+                  placeholder="1.000000"
                 />
               </div>
             </div>
           </div>
 
-          {/* Cuentas Contables */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <Building2 className="w-5 h-5" />
-              Cuentas Contables
-            </h3>
+          {/* Cuentas */}
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
+              <div className="space-y-2">
                 <Label htmlFor="id_cuenta">Cuenta Origen *</Label>
                 <SearchableSelect
                   options={cuentas}
                   value={currentCuenta}
                   onChange={(value) => setValue('id_cuenta', value)}
                   placeholder="Seleccione cuenta origen"
-                  displayKey="titulo_cuenta"
-                  valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(option) => `${option.nombre}${option.numero_cuenta ? ` - ${option.numero_cuenta}` : ''}`}
                 />
-                <input 
-                  type="hidden" 
-                  {...register("id_cuenta", { required: "La cuenta origen es requerida" })}
-                  value={currentCuenta || ''}
-                />
-                {errors.id_cuenta && <span className="text-red-500 text-sm">La cuenta origen es requerida</span>}
               </div>
-              
-              <div className="grid gap-2">
+
+              <div className="space-y-2">
                 <Label htmlFor="id_cuenta_destino_transf">Cuenta Destino</Label>
                 <SearchableSelect
                   options={cuentas}
                   value={currentCuentaDestino}
                   onChange={(value) => setValue('id_cuenta_destino_transf', value)}
                   placeholder="Seleccione cuenta destino"
-                  displayKey="titulo_cuenta"
-                  valueKey="id_cuenta"
                   searchPlaceholder="Buscar cuenta..."
-                />
-                <input 
-                  type="hidden" 
-                  {...register("id_cuenta_destino_transf")}
-                  value={currentCuentaDestino || ''}
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(option) => `${option.nombre}${option.numero_cuenta ? ` - ${option.numero_cuenta}` : ''}`}
                 />
               </div>
             </div>
           </div>
 
-          {/* Tercero y Conceptos */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <User className="w-5 h-5" />
-              Tercero y Conceptos
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="id_tercero">Tercero</Label>
+          {/* Tercero y Concepto */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="id_tercero">Tercero *</Label>
                 <SearchableSelect
                   options={terceros}
                   value={currentTercero}
                   onChange={(value) => setValue('id_tercero', value)}
                   placeholder="Seleccione tercero"
+                  searchPlaceholder="Buscar tercero..."
                   displayKey="razon_social"
                   valueKey="id_tercero"
-                  formatOption={(tercero) => tercero.razon_social ? tercero.razon_social : `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim()}
-                  searchPlaceholder="Buscar tercero..."
-                />
-                <input 
-                  type="hidden" 
-                  {...register("id_tercero")}
-                  value={currentTercero || ''}
+                  formatOption={(option) => option.razon_social || `${option.primer_nombre} ${option.primer_apellido}`}
                 />
               </div>
-              
-              <div className="grid gap-2">
+
+              <div className="space-y-2">
                 <Label htmlFor="id_concepto">Concepto DIAN</Label>
                 <SearchableSelect
                   options={conceptos}
                   value={currentConcepto}
                   onChange={(value) => setValue('id_concepto', value)}
                   placeholder="Seleccione concepto"
+                  searchPlaceholder="Buscar concepto..."
                   displayKey="concepto_dian"
                   valueKey="id_concepto"
-                  searchPlaceholder="Buscar concepto..."
-                />
-                <input 
-                  type="hidden" 
-                  {...register("id_concepto")}
-                  value={currentConcepto || ''}
                 />
               </div>
-              
-              <div className="grid gap-2">
+            </div>
+          </div>
+
+          {/* Etiqueta Contable */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="id_etiqueta_contable">Etiqueta Contable</Label>
                 <SearchableSelect
                   options={etiquetas}
                   value={currentEtiqueta}
                   onChange={(value) => setValue('id_etiqueta_contable', value)}
                   placeholder="Seleccione etiqueta"
-                  displayKey="etiqueta_contable"
-                  valueKey="id_etiqueta_contable"
                   searchPlaceholder="Buscar etiqueta..."
-                />
-                <input 
-                  type="hidden" 
-                  {...register("id_etiqueta_contable")}
-                  value={currentEtiqueta || ''}
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(option) => `${option.nombre}${option.descripcion_etiqueta ? ` - ${option.descripcion_etiqueta}` : ''}`}
                 />
               </div>
             </div>
           </div>
 
-          {/* Configuraciones */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <Settings className="w-5 h-5" />
-              Configuraciones
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="registro_auxiliar">Registro Auxiliar</Label>
-                <select 
+          {/* Observaciones */}
+          <div className="space-y-2">
+            <Label htmlFor="observacion">Observaciones</Label>
+            <Textarea
+              id="observacion"
+              {...register('observacion')}
+              placeholder="Ingrese observaciones adicionales"
+              className="min-h-[100px]"
+            />
+          </div>
+
+          {/* Opciones Adicionales */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="url_soporte_adjunto">URL Soporte</Label>
+                <Input
+                  id="url_soporte_adjunto"
+                  {...register('url_soporte_adjunto')}
+                  placeholder="URL del documento soporte"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
                   id="registro_auxiliar"
-                  value={currentRegistroAuxiliar ? 'true' : 'false'}
-                  onChange={(e) => {
-                    console.log('🔄 Cambiando registro_auxiliar:', e.target.value, '→', e.target.value === 'true');
-                    setValue('registro_auxiliar', e.target.value === 'true');
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                >
-                  <option value="false">No</option>
-                  <option value="true">Sí</option>
-                </select>
+                  checked={currentRegistroAuxiliar}
+                  onCheckedChange={(checked) => setValue('registro_auxiliar', checked)}
+                />
+                <Label htmlFor="registro_auxiliar">Registro Auxiliar</Label>
               </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="registro_validado">Registro Validado</Label>
-                <select 
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
                   id="registro_validado"
-                  value={currentRegistroValidado ? 'true' : 'false'}
-                  onChange={(e) => {
-                    console.log('🔄 Cambiando registro_validado:', e.target.value, '→', e.target.value === 'true');
-                    setValue('registro_validado', e.target.value === 'true');
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                >
-                  <option value="false">No</option>
-                  <option value="true">Sí</option>
-                </select>
+                  checked={currentRegistroValidado}
+                  onCheckedChange={(checked) => setValue('registro_validado', checked)}
+                />
+                <Label htmlFor="registro_validado">Registro Validado</Label>
               </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="aplica_retencion">Aplica Retención</Label>
-                <select 
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
                   id="aplica_retencion"
-                  value={currentAplicaRetencion ? 'true' : 'false'}
-                  onChange={(e) => {
-                    console.log('🔄 Cambiando aplica_retencion:', e.target.value, '→', e.target.value === 'true');
-                    setValue('aplica_retencion', e.target.value === 'true');
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                >
-                  <option value="false">No</option>
-                  <option value="true">Sí</option>
-                </select>
+                  checked={currentAplicaRetencion}
+                  onCheckedChange={(checked) => setValue('aplica_retencion', checked)}
+                />
+                <Label htmlFor="aplica_retencion">Aplica Retención</Label>
               </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="aplica_impuestos">Aplica Impuestos</Label>
-                <select 
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
                   id="aplica_impuestos"
-                  value={currentAplicaImpuestos ? 'true' : 'false'}
-                  onChange={(e) => {
-                    console.log('🔄 Cambiando aplica_impuestos:', e.target.value, '→', e.target.value === 'true');
-                    setValue('aplica_impuestos', e.target.value === 'true');
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                >
-                  <option value="false">No</option>
-                  <option value="true">Sí</option>
-                </select>
+                  checked={currentAplicaImpuestos}
+                  onCheckedChange={(checked) => setValue('aplica_impuestos', checked)}
+                />
+                <Label htmlFor="aplica_impuestos">Aplica Impuestos</Label>
               </div>
             </div>
           </div>
 
-          {/* Observaciones y Documentos */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Observaciones y Documentos
-            </h3>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="observacion">Observaciones</Label>
-                <Textarea 
-                  id="observacion" 
-                  {...register("observacion")}
-                  placeholder="Observaciones adicionales sobre la transacción"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="url_soporte_adjunto">URL Soporte Adjunto</Label>
-                <Input 
-                  id="url_soporte_adjunto" 
-                  {...register("url_soporte_adjunto", {
-                    pattern: {
-                      value: /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
-                      message: "Ingrese una URL válida"
-                    }
-                  })}
-                  placeholder="https://ejemplo.com/documento"
-                />
-                {errors.url_soporte_adjunto && <span className="text-red-500 text-sm">{errors.url_soporte_adjunto.message}</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* Botones */}
-          <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-              <Save className="w-4 h-4 mr-2" />
-              Actualizar Transacción
+            <Button type="submit">
+              Guardar Cambios
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

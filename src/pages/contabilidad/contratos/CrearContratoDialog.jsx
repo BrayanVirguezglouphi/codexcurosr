@@ -172,9 +172,9 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
     setLoading(true);
     try {
       const [tercerosData, monedasData, taxesData] = await Promise.all([
-        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/terceros'),
         apiCall('/api/catalogos/monedas'),
-        apiCall('/api/catalogos/taxes')
+        apiCall('/api/impuestos')
       ]);
       
       setTerceros(tercerosData);

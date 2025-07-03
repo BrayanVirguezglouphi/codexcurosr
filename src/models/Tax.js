@@ -1,27 +1,32 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/database-gcp.js';
+import sequelize from '../config/database.js';
 
 const Tax = sequelize.define('Tax', {
   id_tax: {
     type: DataTypes.INTEGER,
     primaryKey: true,
-    autoIncrement: true
+    autoIncrement: true,
+    field: 'id_tax'
   },
   tipo_obligacion: {
     type: DataTypes.STRING(100),
-    allowNull: true
+    allowNull: true,
+    field: 'tipo_obligacion'
   },
   institucion_reguladora: {
     type: DataTypes.STRING(200),
-    allowNull: true
+    allowNull: true,
+    field: 'institucion_reguladora'
   },
   titulo_impuesto: {
     type: DataTypes.STRING(100),
-    allowNull: false
+    allowNull: false,
+    field: 'titulo_impuesto'
   },
   formula_aplicacion: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    field: 'formula_aplicacion'
   },
   oportunidades_optimizacion: {
     type: DataTypes.TEXT,
@@ -29,7 +34,8 @@ const Tax = sequelize.define('Tax', {
   },
   periodicidad_declaracion: {
     type: DataTypes.STRING(50),
-    allowNull: true
+    allowNull: true,
+    field: 'periodicidad_declaracion'
   },
   fecha_fin: {
     type: DataTypes.DATE,
@@ -62,7 +68,9 @@ const Tax = sequelize.define('Tax', {
   }
 }, {
   tableName: 'adcot_taxes',
-  timestamps: false
+  schema: 'public',
+  timestamps: false,
+  freezeTableName: true
 });
 
 export default Tax; 

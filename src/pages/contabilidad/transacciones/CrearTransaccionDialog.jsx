@@ -179,7 +179,7 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
         apiCall('/api/catalogos/tipos-transaccion'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/etiquetas-contables'),
-        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/terceros'),
         apiCall('/api/catalogos/conceptos')
       ]).then(([cuentasData, tiposData, monedasData, etiquetasData, tercerosData, conceptosData]) => {
         setCuentas(cuentasData);

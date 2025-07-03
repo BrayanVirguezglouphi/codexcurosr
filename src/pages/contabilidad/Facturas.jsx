@@ -459,79 +459,181 @@ const Facturas = () => {
   // Función para manejar la exportación
   const handleExport = async (exportType) => {
     try {
-      const dataToExport = exportType === 'filtered' ? processedFacturas : facturas;
+      // Determinar qué datos exportar
+      let dataToExport;
+      if (exportType === 'filtered') {
+        // Obtener todas las facturas filtradas (sin paginación)
+        let result = [...facturas];
+        
+        // Aplicar filtros
+        Object.entries(filters).forEach(([field, values]) => {
+          if (values && values.length > 0) {
+            result = result.filter(factura => {
+              let fieldValue = factura[field];
+              
+              // Manejar fechas
+              if (field === 'fecha_radicado' || field === 'fecha_estimada_pago') {
+                fieldValue = formatearFecha(fieldValue);
+              }
+              // Manejar monedas
+              else if (field === 'subtotal_facturado_moneda' || field === 'valor_tax') {
+                fieldValue = formatearMoneda(fieldValue);
+              }
+              // Manejar catálogos
+              else if (field === 'id_contrato') {
+                fieldValue = getNombreContrato(fieldValue);
+              }
+              else if (field === 'id_moneda') {
+                fieldValue = getNombreMoneda(fieldValue);
+              }
+              else if (field === 'id_tax') {
+                fieldValue = getNombreTax(fieldValue);
+              }
+              
+              if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+                fieldValue = '(Vacío)';
+              } else {
+                fieldValue = String(fieldValue);
+              }
+              
+              return values.includes(fieldValue);
+            });
+          }
+        });
+
+        // Aplicar ordenamiento
+        if (sortConfig.field && sortConfig.direction) {
+          result.sort((a, b) => {
+            let aValue = a[sortConfig.field];
+            let bValue = b[sortConfig.field];
+
+            // Manejar fechas
+            if (sortConfig.field === 'fecha_radicado' || sortConfig.field === 'fecha_estimada_pago') {
+              aValue = new Date(aValue || 0);
+              bValue = new Date(bValue || 0);
+            }
+            // Manejar números
+            else if (sortConfig.field === 'subtotal_facturado_moneda' || sortConfig.field === 'valor_tax') {
+              aValue = parseFloat(aValue || 0);
+              bValue = parseFloat(bValue || 0);
+            }
+            // Manejar strings
+            else {
+              aValue = String(aValue || '').toLowerCase();
+              bValue = String(bValue || '').toLowerCase();
+            }
+
+            if (aValue < bValue) {
+              return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+              return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+          });
+        }
+        
+        dataToExport = result;
+      } else {
+        // Exportar todas las facturas sin filtros
+        dataToExport = facturas;
+      }
+
       const fileName = `facturas-${new Date().toISOString().split('T')[0]}`;
       
-      // Preparar datos para exportación con nombres legibles
-      const exportData = dataToExport.map(factura => {
-        const exportRow = {};
-        availableColumns
-          .filter(col => visibleColumns[col.key])
-          .forEach(col => {
-            let value = factura[col.key];
-            let labelToUse = col.label;
-            
-            // Convertir IDs a nombres legibles
-            if (col.key === 'id_contrato' && value) {
-              value = getNombreContrato(value);
-              labelToUse = 'Contrato';
-            } else if (col.key === 'id_moneda' && value) {
-              value = getNombreMoneda(value);
-              labelToUse = 'Moneda';
-            } else if (col.key === 'id_tax' && value) {
-              value = getNombreTax(value);
-              labelToUse = 'Impuesto';
-            } else if (col.key.includes('fecha') && value) {
-              // Formatear fechas
-              value = new Date(value).toLocaleDateString('es-CO');
-            } else if (col.key.includes('valor') || col.key.includes('subtotal')) {
-              // Formatear valores monetarios
-              value = value ? parseFloat(value) : 0;
-            }
-            
-            exportRow[labelToUse] = value || '';
-          });
-        return exportRow;
-      });
-
-      // Crear libro de trabajo
-      const ws = XLSX.utils.json_to_sheet(exportData);
+      // Crear libro de Excel
       const wb = XLSX.utils.book_new();
       
-      // Ajustar ancho de columnas dinámicamente
-      const columnWidths = availableColumns
-        .filter(col => visibleColumns[col.key])
-        .map(col => {
-          let labelToUse = col.label;
-          // Usar los nombres reales de las columnas
-          if (col.key === 'id_contrato') labelToUse = 'Contrato';
-          else if (col.key === 'id_moneda') labelToUse = 'Moneda';
-          else if (col.key === 'id_tax') labelToUse = 'Impuesto';
-          
-          return {
-            wch: Math.max(labelToUse.length, 15)
-          };
-        });
-      ws['!cols'] = columnWidths;
+      // Obtener columnas visibles
+      const visibleCols = availableColumns.filter(col => visibleColumns[col.key]);
       
-      // Agregar hoja al libro
+      // Crear datos para Excel con nombres legibles en lugar de IDs
+      const excelData = dataToExport.map(factura => {
+        const row = {};
+        visibleCols.forEach(col => {
+          const value = renderColumnValue(factura, col.key);
+          // Si es una fecha, formatearla correctamente para Excel
+          if (col.key.includes('fecha') && factura[col.key]) {
+            row[col.label] = formatearFecha(factura[col.key]);
+          } else {
+            row[col.label] = value;
+          }
+        });
+        return row;
+      });
+      
+      // Crear hoja principal
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // Ajustar el ancho de las columnas
+      const colWidths = visibleCols.map(col => {
+        const maxLength = Math.max(
+          col.label.length,
+          ...excelData.map(row => String(row[col.label] || '').length)
+        );
+        return { wch: Math.min(Math.max(maxLength + 2, 10), 50) };
+      });
+      ws['!cols'] = colWidths;
+      
+      // Crear hojas de catálogos para las opciones de dropdown
+      
+      // Hoja de contratos
+      if (contratos.length > 0) {
+        const contratosData = contratos.map(c => ({
+          'ID': c.id_contrato,
+          'Número': c.numero_contrato_os || '',
+          'Descripción': c.descripcion_servicio_contratado || '',
+          'Estado': c.estatus_contrato || '',
+          'Valor': `${c.id_contrato} - ${c.numero_contrato_os} - ${c.descripcion_servicio_contratado}`
+        }));
+        const wsContratos = XLSX.utils.json_to_sheet(contratosData);
+        XLSX.utils.book_append_sheet(wb, wsContratos, 'Opciones_Contratos');
+      }
+
+      // Hoja de monedas
+      if (monedas.length > 0) {
+        const monedasData = monedas.map(m => ({
+          'ID': m.id_moneda,
+          'Código': m.codigo_iso || '',
+          'Nombre': m.nombre_moneda || '',
+          'Símbolo': m.simbolo || '',
+          'Valor': `${m.id_moneda} - ${m.codigo_iso} - ${m.nombre_moneda}`
+        }));
+        const wsMonedas = XLSX.utils.json_to_sheet(monedasData);
+        XLSX.utils.book_append_sheet(wb, wsMonedas, 'Opciones_Monedas');
+      }
+
+      // Hoja de impuestos
+      if (taxes.length > 0) {
+        const taxesData = taxes.map(t => ({
+          'ID': t.id_tax,
+          'Tipo': t.tipo_obligacion || '',
+          'Título': t.titulo_impuesto || '',
+          'Estado': t.estado || '',
+          'Valor': `${t.id_tax} - ${t.tipo_obligacion} - ${t.titulo_impuesto}`
+        }));
+        const wsTaxes = XLSX.utils.json_to_sheet(taxesData);
+        XLSX.utils.book_append_sheet(wb, wsTaxes, 'Opciones_Impuestos');
+      }
+      
+      // Agregar la hoja principal al libro
       XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
       
-      // Generar archivo y descargar
+      // Guardar archivo
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       
       saveAs(blob, `${fileName}.xlsx`);
       
       toast({
-        title: "Éxito",
-        description: `${dataToExport.length} facturas exportadas correctamente`,
+        title: "Exportación exitosa",
+        description: `Se exportaron ${dataToExport.length} facturas con hojas de opciones`,
       });
     } catch (error) {
       console.error('Error al exportar:', error);
       toast({
-        title: "Error",
-        description: "No se pudo exportar el archivo Excel",
+        title: "Error en la exportación",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -729,107 +831,6 @@ const Facturas = () => {
       toast({
         title: "Error",
         description: `Error al importar facturas: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Función para manejar la exportación con dropdowns
-  const handleExportWithDropdowns = async () => {
-    try {
-      const dataToExport = processedFacturas;
-      const fileName = `facturas-con-dropdowns-${new Date().toISOString().split('T')[0]}`;
-      
-      // Crear libro de Excel
-      const wb = XLSX.utils.book_new();
-      
-      // Obtener columnas visibles
-      const visibleCols = availableColumns.filter(col => visibleColumns[col.key]);
-      
-      // Crear datos para Excel con nombres legibles en lugar de IDs
-      const excelData = dataToExport.map(factura => {
-        const row = {};
-        visibleCols.forEach(col => {
-          const value = renderColumnValue(factura, col.key);
-          // Si es una fecha, formatearla correctamente para Excel
-          if (col.key.includes('fecha') && factura[col.key]) {
-            row[col.label] = formatearFecha(factura[col.key]);
-          } else {
-            row[col.label] = value;
-          }
-        });
-        return row;
-      });
-      
-      // Crear hoja principal
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      
-      // Ajustar el ancho de las columnas
-      const colWidths = visibleCols.map(col => {
-        const maxLength = Math.max(
-          col.label.length,
-          ...excelData.map(row => String(row[col.label] || '').length)
-        );
-        return { wch: Math.min(Math.max(maxLength + 2, 10), 50) };
-      });
-      ws['!cols'] = colWidths;
-      
-      // Crear hojas de catálogos para las opciones de dropdown
-      
-      // Hoja de contratos
-      if (contratos.length > 0) {
-        const contratosData = contratos.map(c => ({
-          'ID': c.id_contrato,
-          'Número': c.numero_contrato_os || '',
-          'Descripción': c.descripcion_servicio_contratado || '',
-          'Estado': c.estatus_contrato || '',
-          'Valor': `${c.id_contrato} - ${c.numero_contrato_os} - ${c.descripcion_servicio_contratado}`
-        }));
-        const wsContratos = XLSX.utils.json_to_sheet(contratosData);
-        XLSX.utils.book_append_sheet(wb, wsContratos, 'Opciones_Contratos');
-      }
-
-      // Hoja de monedas
-      if (monedas.length > 0) {
-        const monedasData = monedas.map(m => ({
-          'ID': m.id_moneda,
-          'Código': m.codigo_iso || '',
-          'Nombre': m.nombre_moneda || '',
-          'Símbolo': m.simbolo || '',
-          'Valor': `${m.id_moneda} - ${m.codigo_iso} - ${m.nombre_moneda}`
-        }));
-        const wsMonedas = XLSX.utils.json_to_sheet(monedasData);
-        XLSX.utils.book_append_sheet(wb, wsMonedas, 'Opciones_Monedas');
-      }
-
-      // Hoja de impuestos
-      if (taxes.length > 0) {
-        const taxesData = taxes.map(t => ({
-          'ID': t.id_tax,
-          'Tipo': t.tipo_obligacion || '',
-          'Título': t.titulo_impuesto || '',
-          'Estado': t.estado || '',
-          'Valor': `${t.id_tax} - ${t.tipo_obligacion} - ${t.titulo_impuesto}`
-        }));
-        const wsTaxes = XLSX.utils.json_to_sheet(taxesData);
-        XLSX.utils.book_append_sheet(wb, wsTaxes, 'Opciones_Impuestos');
-      }
-      
-      // Agregar la hoja principal al libro
-      XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
-      
-      // Guardar archivo
-      XLSX.writeFile(wb, `${fileName}.xlsx`);
-      
-      toast({
-        title: "Exportación exitosa",
-        description: `Se exportaron ${dataToExport.length} facturas con hojas de opciones`,
-      });
-    } catch (error) {
-      console.error('Error al exportar:', error);
-      toast({
-        title: "Error en la exportación",
-        description: error.message,
         variant: "destructive",
       });
     }
@@ -1709,7 +1710,7 @@ const Facturas = () => {
 
           {/* Botones de importación/exportación */}
           <Button
-            onClick={() => handleExportWithDropdowns()}
+            onClick={() => setIsExportDialogOpen(true)}
             variant="outline"
             className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
           >

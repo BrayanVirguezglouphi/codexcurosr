@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const FormField = ({ 
+export const FormField = ({ 
   label, 
   name, 
   type = 'text', 
@@ -13,7 +12,9 @@ const FormField = ({
   onChange, 
   required = false,
   options = [],
-  className = ''
+  className = '',
+  error = null,
+  children
 }) => {
   const handleChange = (e) => {
     onChange({ target: { name, value: e.target ? e.target.value : e } });
@@ -23,7 +24,7 @@ const FormField = ({
     <div className={`space-y-2 ${className}`}>
       <Label htmlFor={name}>{label}{required && <span className="text-destructive ml-1">*</span>}</Label>
       
-      {type === 'select' ? (
+      {children ? children : type === 'select' ? (
         <Select name={name} value={value} onValueChange={(val) => handleChange(val)}>
           <SelectTrigger id={name}>
             <SelectValue placeholder={placeholder} />
@@ -57,8 +58,11 @@ const FormField = ({
           required={required}
         />
       )}
+      
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
     </div>
   );
 };
 
-export default FormField;

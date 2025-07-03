@@ -12,27 +12,9 @@ import {
   Tag
 } from 'lucide-react';
 
-const VerConceptoTransaccionDialog = ({ open, onOpenChange, concepto }) => {
-  const [tipoTransaccion, setTipoTransaccion] = useState(null);
-
-  useEffect(() => {
-    const cargarTipoTransaccion = async () => {
-      if (concepto?.id_tipotransaccion) {
-        try {
-          const data = await apiCall(`/api/tipos-transaccion/${concepto.id_tipotransaccion}`);
-          setTipoTransaccion(data);
-        } catch (error) {
-          console.error('Error al cargar tipo de transacción:', error);
-        }
-      }
-    };
-
-    if (open && concepto) {
-      cargarTipoTransaccion();
-    }
-  }, [open, concepto]);
-
+const VerConceptoTransaccionDialog = ({ open, onOpenChange, concepto, tiposTransaccion = [] }) => {
   if (!concepto) return null;
+  const tipoTransaccion = tiposTransaccion.find(t => t.id === concepto.id_tipo_transaccion);
 
   const getTipoTransaccionVariant = (tipo) => {
     switch (tipo) {
@@ -96,16 +78,16 @@ const VerConceptoTransaccionDialog = ({ open, onOpenChange, concepto }) => {
                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                   {tipoTransaccion ? (
                     <div className="flex items-center gap-2">
-                      <Badge variant={getTipoTransaccionVariant(tipoTransaccion.tipo_transaccion)}>
-                        {tipoTransaccion.tipo_transaccion}
+                      <Badge variant={getTipoTransaccionVariant(tipoTransaccion.nombre)}>
+                        {tipoTransaccion.nombre}
                       </Badge>
                       <span className="text-sm text-gray-600">
-                        (ID: {concepto.id_tipotransaccion})
+                        (ID: {concepto.id_tipo_transaccion})
                       </span>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500">
-                      {concepto.id_tipotransaccion ? 'Cargando...' : 'No asignado'}
+                      {'No asignado'}
                     </p>
                   )}
                 </div>

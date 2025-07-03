@@ -48,9 +48,9 @@ const LineasServicios = () => {
 
   // Definir columnas disponibles
   const availableColumns = [
-    { key: 'id_servicio', label: 'ID', required: true },
-    { key: 'servicio', label: 'Servicio', required: true },
-    { key: 'tipo_servicio', label: 'Tipo de Servicio', required: true },
+    { key: 'id', label: 'ID', required: true },
+    { key: 'nombre', label: 'Servicio', required: true },
+    { key: 'nombre_modelonegocio', label: 'Tipo de Servicio', required: false },
     { key: 'descripcion_servicio', label: 'Descripción' }
   ];
 
@@ -143,18 +143,12 @@ const LineasServicios = () => {
     const value = getNestedValue(lineaServicio, columnKey);
     
     switch (columnKey) {
-      case 'id_servicio':
+      case 'id':
         return <span className="font-medium">{value}</span>;
-      case 'servicio':
+      case 'nombre':
         return <span className="font-medium">{value}</span>;
-      case 'tipo_servicio':
-        return value ? (
-          <Badge className={getTipoServicioColor(value)}>
-            {getTipoServicioLabel(value)}
-          </Badge>
-        ) : (
-          <span className="text-gray-400">Sin tipo</span>
-        );
+      case 'nombre_modelonegocio':
+        return value ? value : <span className="text-gray-400">Sin tipo</span>;
       case 'descripcion_servicio':
         return (
           <div className="max-w-xs truncate" title={value}>
@@ -169,7 +163,7 @@ const LineasServicios = () => {
   // Obtener tipo de campo para edición
   const getFieldType = (columnKey) => {
     switch (columnKey) {
-      case 'id_servicio':
+      case 'id':
         return 'disabled';
       case 'tipo_servicio':
         return 'select';
@@ -218,8 +212,8 @@ const LineasServicios = () => {
       
       // Formatear datos para exportación
       const formattedData = dataToExport.map(linea => ({
-        'ID': linea.id_servicio,
-        'Servicio': linea.servicio,
+        'ID': linea.id,
+        'Servicio': linea.nombre,
         'Tipo de Servicio': getTipoServicioLabel(linea.tipo_servicio),
         'Descripción': linea.descripcion_servicio || ''
       }));
@@ -466,7 +460,7 @@ const LineasServicios = () => {
         let aValue = getNestedValue(a, sortConfig.field);
         let bValue = getNestedValue(b, sortConfig.field);
 
-        if (sortConfig.field === 'id_servicio') {
+        if (sortConfig.field === 'id') {
           aValue = parseInt(aValue || 0);
           bValue = parseInt(bValue || 0);
         } else {
@@ -542,7 +536,7 @@ const LineasServicios = () => {
       });
 
       setLineasServicios(prev => prev.map(ls => 
-        ls.id_servicio === lineaServicioId 
+        ls.id === lineaServicioId 
           ? { ...ls, [field]: newValue }
           : ls
       ));
@@ -611,7 +605,7 @@ const LineasServicios = () => {
   const cantidadServicios = totalFilteredItems;
   const tiposServicios = [...new Set(processedLineasServicios.map(s => s.tipo_servicio).filter(Boolean))].length;
   const servicioMasReciente = processedLineasServicios.length > 0 ? processedLineasServicios[0] : null;
-  const nombreMasReciente = servicioMasReciente ? servicioMasReciente.servicio : '-';
+  const nombreMasReciente = servicioMasReciente ? servicioMasReciente.nombre : '-';
   const tipoMasReciente = servicioMasReciente?.tipo_servicio ? getTipoServicioLabel(servicioMasReciente.tipo_servicio) : '-';
 
   return (
@@ -785,27 +779,27 @@ const LineasServicios = () => {
           <TableBody>
             {paginatedLineasServicios.map((lineaServicio, idx) => (
               <TableRow 
-                key={lineaServicio.id_servicio} 
+                key={lineaServicio.id} 
                 className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition
-                  ${pendingChanges.has(lineaServicio.id_servicio) ? 'bg-yellow-50 border-l-2 border-yellow-400' : ''}
+                  ${pendingChanges.has(lineaServicio.id) ? 'bg-yellow-50 border-l-2 border-yellow-400' : ''}
                 `}
               >
                 {availableColumns.map(column => {
                   if (!visibleColumns[column.key]) return null;
                   
                   const fieldType = getFieldType(column.key);
-                  const currentValue = editedLineasServicios[lineaServicio.id_servicio]?.[column.key] ?? getNestedValue(lineaServicio, column.key);
-                  const hasChanges = pendingChanges.has(lineaServicio.id_servicio);
+                  const currentValue = editedLineasServicios[lineaServicio.id]?.[column.key] ?? getNestedValue(lineaServicio, column.key);
+                  const hasChanges = pendingChanges.has(lineaServicio.id);
                   
                   return (
                     <TableCell 
-                      key={`${lineaServicio.id_servicio}-${column.key}`}
+                      key={`${lineaServicio.id}-${column.key}`}
                       className={hasChanges ? 'bg-yellow-50 border-l-2 border-yellow-400' : ''}
                     >
                       {isGridEditMode ? (
                         <EditableCell
                           value={currentValue}
-                          onSave={(newValue) => handleCellSave(lineaServicio.id_servicio, column.key, newValue)}
+                          onSave={(newValue) => handleCellSave(lineaServicio.id, column.key, newValue)}
                           field={column.key}
                           type={fieldType}
                           options={getFieldOptions(column.key)}
@@ -845,7 +839,7 @@ const LineasServicios = () => {
                       variant="outline"
                       size="icon"
                       className="border-red-400 hover:bg-red-100"
-                      onClick={() => eliminarLineaServicio(lineaServicio.id_servicio)}
+                      onClick={() => eliminarLineaServicio(lineaServicio.id)}
                     >
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>

@@ -22,9 +22,9 @@ export default function VerFacturaDialog({ open, onClose, factura }) {
     try {
       console.log('🔄 Cargando catálogos en VerFactura...');
       const [contratosData, monedasData, taxesData] = await Promise.all([
-        apiCall('/api/catalogos/contratos'),
+        apiCall('/api/contratos'),
         apiCall('/api/catalogos/monedas'),
-        apiCall('/api/catalogos/taxes')
+        apiCall('/api/impuestos')
       ]);
 
       console.log('✅ Catálogos cargados:', { contratos: contratosData.length, monedas: monedasData.length, taxes: taxesData.length });

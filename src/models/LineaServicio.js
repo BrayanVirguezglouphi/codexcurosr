@@ -7,16 +7,16 @@ const LineaServicio = sequelize.define('LineaServicio', {
     primaryKey: true,
     autoIncrement: true
   },
-  tipo_servicio: {
-    type: DataTypes.STRING(100),
-    allowNull: true
-  },
   servicio: {
     type: DataTypes.STRING(200),
     allowNull: false
   },
   descripcion_servicio: {
     type: DataTypes.TEXT,
+    allowNull: true
+  },
+  id_modelonegocio: {
+    type: DataTypes.INTEGER,
     allowNull: true
   }
 }, {

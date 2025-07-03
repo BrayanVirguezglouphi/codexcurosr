@@ -127,31 +127,23 @@ const EditarLineaServicioDialog = ({ open, onClose, lineaServicio, onLineaServic
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm();
   const { toast } = useToast();
 
-  // Watch para campos controlados
-  const currentTipoServicio = watch('tipo_servicio');
+  // Estado para modelos de negocio
+  const [modelosNegocio, setModelosNegocio] = useState([]);
+  const currentModeloNegocio = watch('id_modelonegocio');
 
-  const tiposServicio = [
-    { id: 'Internet', name: 'Internet' },
-    { id: 'Telefonía', name: 'Telefonía' },
-    { id: 'Televisión', name: 'Televisión' },
-    { id: 'Streaming', name: 'Streaming' },
-    { id: 'Seguridad', name: 'Seguridad' },
-    { id: 'Soporte', name: 'Soporte' },
-    { id: 'Cloud', name: 'Cloud' },
-    { id: 'IoT', name: 'IoT' },
-    { id: 'CONSULTORIA', name: 'Consultoría' },
-    { id: 'DESARROLLO', name: 'Desarrollo' },
-    { id: 'MANTENIMIENTO', name: 'Mantenimiento' },
-    { id: 'CAPACITACION', name: 'Capacitación' },
-    { id: 'ANALISIS', name: 'Análisis' },
-    { id: 'IMPLEMENTACION', name: 'Implementación' },
-    { id: 'OTRO', name: 'Otro' }
-  ];
+  useEffect(() => {
+    // Cargar modelos de negocio al abrir el diálogo
+    if (open) {
+      apiCall('/api/modelos-negocio').then(data => {
+        setModelosNegocio(data);
+      });
+    }
+  }, [open]);
 
   useEffect(() => {
     if (lineaServicio && open) {
-      setValue('servicio', lineaServicio.servicio || '');
-      setValue('tipo_servicio', lineaServicio.tipo_servicio || '');
+      setValue('nombre', lineaServicio.nombre || '');
+      setValue('id_modelonegocio', lineaServicio.id_modelonegocio || '');
       setValue('descripcion_servicio', lineaServicio.descripcion_servicio || '');
     }
   }, [lineaServicio, open, setValue]);
@@ -159,7 +151,7 @@ const EditarLineaServicioDialog = ({ open, onClose, lineaServicio, onLineaServic
   const onSubmit = async (data) => {
     try {
       console.log('📝 Actualizando línea de servicio:', data);
-      await apiCall(`/api/lineas-servicios/${lineaServicio.id_servicio}`, {
+      await apiCall(`/api/lineas-servicios/${lineaServicio.id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
@@ -203,40 +195,41 @@ const EditarLineaServicioDialog = ({ open, onClose, lineaServicio, onLineaServic
             </h3>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="servicio">Nombre del Servicio *</Label>
+                <Label htmlFor="nombre">Nombre del Servicio *</Label>
                 <Input 
-                  id="servicio" 
-                  {...register("servicio", { 
+                  id="nombre" 
+                  {...register("nombre", { 
                     required: "El nombre del servicio es requerido",
                     maxLength: { value: 200, message: "El servicio no puede exceder 200 caracteres" }
                   })} 
                   placeholder="Ej: Consultoría en sistemas, Desarrollo web, Soporte técnico..."
                 />
-                {errors.servicio && (
-                  <p className="text-sm text-red-500">{errors.servicio.message}</p>
+                {errors.nombre && (
+                  <p className="text-sm text-red-500">{errors.nombre.message}</p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Clasificación del Servicio */}
+          {/* Modelo de Negocio */}
           <div className="bg-white border rounded-lg p-4">
             <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
               <Tag className="w-5 h-5" />
-              🏷️ Clasificación del Servicio
+              🏷️ Modelo de Negocio
             </h3>
             <div className="space-y-2">
-              <Label htmlFor="tipo_servicio">Tipo de Servicio</Label>
+              <Label htmlFor="id_modelonegocio">Modelo de Negocio</Label>
               <SearchableSelect
-                options={tiposServicio}
-                value={currentTipoServicio}
-                onChange={(value) => setValue('tipo_servicio', value)}
-                placeholder="Seleccione el tipo de servicio"
-                searchPlaceholder="Buscar tipo de servicio..."
-                displayKey="name"
-                valueKey="id"
+                options={modelosNegocio}
+                value={currentModeloNegocio}
+                onChange={(value) => setValue('id_modelonegocio', value)}
+                placeholder="Seleccione el modelo de negocio"
+                searchPlaceholder="Buscar modelo..."
+                displayKey="modelo"
+                valueKey="id_modelonegocio"
+                formatOption={(option) => option.modelo}
               />
-              <input type="hidden" {...register("tipo_servicio")} />
+              <input type="hidden" {...register("id_modelonegocio")} />
             </div>
           </div>
 

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useForm } from 'react-hook-form';
-import { apiCall } from '@/config/api';
+import { api } from '@/config/api';
 import { 
   Users, 
   FileText, 
@@ -21,6 +21,8 @@ import {
   Search,
   X
 } from 'lucide-react';
+import { Select } from '@/components/ui/select';
+import { FormField } from '@/components/FormField';
 
 // Componente SearchableSelect idéntico al de facturas
 const SearchableSelect = ({ 
@@ -29,7 +31,7 @@ const SearchableSelect = ({
   onChange, 
   placeholder = "Seleccione una opción", 
   searchPlaceholder = "Buscar...",
-  displayKey = "name",
+  displayKey = "nombre",
   valueKey = "id",
   formatOption = null,
   disabled = false
@@ -132,90 +134,146 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm();
   const { toast } = useToast();
   
-  // Estado para tipos de documento dinámicos
+  // Estado para tipos de documento y relación dinámicos
   const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [tiposRelacion, setTiposRelacion] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Watch para campos controlados
   const currentTipoRelacion = watch('tipo_relacion');
   const currentTipoPersonalidad = watch('tipo_personalidad');
   const currentTipoDocumento = watch('tipo_documento');
 
-  const tiposRelacion = [
-    { id: 'CLIENTE', name: 'Cliente' },
-    { id: 'PROVEEDOR', name: 'Proveedor' },
-    { id: 'EMPLEADO', name: 'Empleado' },
-    { id: 'ACCIONISTA', name: 'Accionista' },
-    { id: 'CONTRATISTA', name: 'Contratista' },
-    { id: 'OTRO', name: 'Otro' }
-  ];
-
   const tiposPersonalidad = [
-    { id: 'NATURAL', name: 'Persona Natural' },
-    { id: 'JURIDICA', name: 'Persona Jurídica' }
+    { id: 'NATURAL', nombre: 'Persona Natural' },
+    { id: 'JURIDICA', nombre: 'Persona Jurídica' }
   ];
 
-  // Cargar tipos de documento de la base de datos
+  // Cargar tipos de documento y relación de la base de datos
   useEffect(() => {
-    const cargarTiposDocumento = async () => {
-      try {
-        const data = await apiCall('/api/catalogos/tipos-documento');
-        console.log('📋 Tipos de documento cargados en diálogo:', data);
-        
-        // Mapear los datos para el formato esperado por SearchableSelect
-        const tiposFormateados = data.map(tipo => ({
-          id: tipo.id_tipodocumento || tipo.id_tipo_documento,
-          name: tipo.tipo_documento || tipo.codigo || `Tipo ${tipo.id_tipodocumento || tipo.id_tipo_documento}`
-        }));
-        
-        setTiposDocumento(tiposFormateados);
-      } catch (error) {
-        console.error('Error al cargar tipos de documento:', error);
-        // Fallback a tipos hardcodeados
-        setTiposDocumento([
-          { id: 'CC', name: 'Cédula de Ciudadanía' },
-          { id: 'CE', name: 'Cédula de Extranjería' },
-          { id: 'NIT', name: 'NIT' },
-          { id: 'TI', name: 'Tarjeta de Identidad' },
-          { id: 'RC', name: 'Registro Civil' },
-          { id: 'PA', name: 'Pasaporte' },
-          { id: 'RUT', name: 'RUT' }
-        ]);
-      }
-    };
-
     if (open) {
-      cargarTiposDocumento();
+      console.log('🔄 Cargando catálogos en EditarTercero...');
+      setIsLoading(true);
+      setError(null);
+      
+      Promise.all([
+        api.getCatalogos('tipos-documento'),
+        api.getCatalogos('tipos-relacion')
+      ]).then(([tiposDoc, tiposRel]) => {
+        console.log('📦 Datos recibidos:', { 
+          tiposDocumento: tiposDoc, 
+          tiposRelacion: tiposRel 
+        });
+        
+        // Usar los datos directamente ya que vienen en el formato correcto
+        setTiposDocumento(tiposDoc || []);
+        setTiposRelacion(tiposRel || []);
+        setIsLoading(false);
+      }).catch(error => {
+        console.error('❌ Error cargando catálogos en EditarTercero:', error);
+        setError(error.message);
+        setIsLoading(false);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los catálogos",
+          variant: "destructive",
+        });
+      });
     }
   }, [open]);
 
   useEffect(() => {
     if (tercero) {
-      setValue('tipo_relacion', tercero.tipo_relacion || '');
-      setValue('tipo_personalidad', tercero.tipo_personalidad || '');
-      setValue('tipo_documento', tercero.tipo_documento || '');
-      setValue('numero_documento', tercero.numero_documento || '');
-      setValue('dv', tercero.dv || '');
-      setValue('razon_social', tercero.razon_social || '');
-      setValue('primer_nombre', tercero.primer_nombre || '');
-      setValue('otros_nombres', tercero.otros_nombres || '');
-      setValue('primer_apellido', tercero.primer_apellido || '');
-      setValue('segundo_apellido', tercero.segundo_apellido || '');
-      setValue('pais', tercero.pais || '');
-      setValue('departamento_region', tercero.departamento_region || '');
-      setValue('municipio_ciudad', tercero.municipio_ciudad || '');
-      setValue('direccion', tercero.direccion || '');
-      setValue('telefono', tercero.telefono || '');
-      setValue('email', tercero.email || '');
-      setValue('observaciones', tercero.observaciones || '');
+      console.log('📝 Estableciendo valores iniciales del tercero:', tercero);
+      
+      // Extraer solo los campos que necesitamos
+      const {
+        id_tiporelacion,
+        tipo_personalidad,
+        id_tipodocumento,
+        numero_documento,
+        dv,
+        razon_social,
+        primer_nombre,
+        otros_nombres,
+        primer_apellido,
+        segundo_apellido,
+        direccion,
+        telefono,
+        email,
+        observaciones,
+        departamento_region,
+        municipio_ciudad,
+        pais
+      } = tercero;
+      
+      // Establecer valores iniciales usando los campos extraídos
+      setValue('tipo_relacion', id_tiporelacion || '');
+      setValue('tipo_personalidad', tipo_personalidad || '');
+      setValue('tipo_documento', id_tipodocumento || '');
+      setValue('numero_documento', numero_documento || '');
+      setValue('dv', dv || '');
+      setValue('razon_social', razon_social || '');
+      setValue('primer_nombre', primer_nombre || '');
+      setValue('otros_nombres', otros_nombres || '');
+      setValue('primer_apellido', primer_apellido || '');
+      setValue('segundo_apellido', segundo_apellido || '');
+      setValue('direccion', direccion || '');
+      setValue('telefono', telefono || '');
+      setValue('email', email || '');
+      setValue('observaciones', observaciones || '');
+      setValue('departamento_region', departamento_region || '');
+      setValue('municipio_ciudad', municipio_ciudad || '');
+      setValue('pais', pais || '');
     }
-  }, [tercero, setValue]);
+  }, [tercero]);
 
   const onSubmit = async (data) => {
     try {
-      await apiCall(`/api/terceros/${tercero.id_tercero}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
+      // Extraer solo los campos que queremos actualizar
+      const {
+        tipo_relacion,
+        tipo_personalidad,
+        tipo_documento,
+        numero_documento,
+        dv,
+        razon_social,
+        primer_nombre,
+        otros_nombres,
+        primer_apellido,
+        segundo_apellido,
+        direccion,
+        telefono,
+        email,
+        observaciones,
+        departamento_region,
+        municipio_ciudad,
+        pais
+      } = data;
+
+      // Crear objeto con solo los campos necesarios
+      const datosActualizar = {
+        id_tiporelacion: tipo_relacion,
+        tipo_personalidad,
+        id_tipodocumento: tipo_documento,
+        numero_documento,
+        dv,
+        razon_social,
+        primer_nombre,
+        otros_nombres,
+        primer_apellido,
+        segundo_apellido,
+        direccion,
+        telefono,
+        email,
+        observaciones,
+        departamento_region,
+        municipio_ciudad,
+        pais
+      };
+
+      await api.updateTercero(tercero.id_tercero, datosActualizar);
 
       toast({ title: "Éxito", description: "Tercero actualizado correctamente" });
       onTerceroActualizado();
@@ -226,87 +284,74 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
     }
   };
 
+  if (!open) return null;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-bold text-gray-900">
-                Editar Tercero
-              </DialogTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                Modifique los datos del tercero seleccionado
-              </p>
-            </div>
-          </div>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-6 w-6" />
+            Editar Tercero
+          </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
-          {/* Información Básica */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <FileText className="w-5 h-5" />
-              📋 Información Básica
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tipo_relacion">Tipo de Relación</Label>
+        {isLoading ? (
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : error ? (
+          <div className="text-red-500 p-4 text-center">
+            {error}
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tipo de Relación */}
+              <div className="col-span-2">
+                <Label>Tipo de Relación</Label>
                 <SearchableSelect
                   options={tiposRelacion}
                   value={currentTipoRelacion}
                   onChange={(value) => setValue('tipo_relacion', value)}
                   placeholder="Seleccione el tipo de relación"
                   searchPlaceholder="Buscar tipo de relación..."
-                  displayKey="name"
-                  valueKey="id"
+                  disabled={isLoading}
                 />
-                <input type="hidden" {...register("tipo_relacion")} />
+                {errors.tipo_relacion && (
+                  <span className="text-sm text-destructive">{errors.tipo_relacion.message}</span>
+                )}
               </div>
 
+              {/* Tipo de Personalidad */}
               <div className="space-y-2">
-                <Label htmlFor="tipo_personalidad">Tipo de Personalidad</Label>
+                <Label htmlFor="tipo_personalidad">Tipo de Personalidad *</Label>
                 <SearchableSelect
                   options={tiposPersonalidad}
                   value={currentTipoPersonalidad}
                   onChange={(value) => setValue('tipo_personalidad', value)}
                   placeholder="Seleccione el tipo de personalidad"
                   searchPlaceholder="Buscar tipo de personalidad..."
-                  displayKey="name"
-                  valueKey="id"
                 />
-                <input type="hidden" {...register("tipo_personalidad")} />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tipo_documento">Tipo de Documento *</Label>
+              {/* Tipo de Documento */}
+              <div className="col-span-2">
+                <Label>Tipo de Documento</Label>
                 <SearchableSelect
                   options={tiposDocumento}
                   value={currentTipoDocumento}
                   onChange={(value) => setValue('tipo_documento', value)}
                   placeholder="Seleccione el tipo de documento"
                   searchPlaceholder="Buscar tipo de documento..."
-                  displayKey="name"
-                  valueKey="id"
+                  disabled={isLoading}
                 />
-                <input type="hidden" {...register("tipo_documento", { required: "El tipo de documento es requerido" })} />
                 {errors.tipo_documento && (
-                  <p className="text-sm text-red-500">{errors.tipo_documento.message}</p>
+                  <span className="text-sm text-destructive">{errors.tipo_documento.message}</span>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Identificación */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <CreditCard className="w-5 h-5" />
-              🆔 Identificación
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Identificación */}
               <div className="space-y-2">
                 <Label htmlFor="numero_documento">Número de Documento *</Label>
                 <Input 
@@ -322,6 +367,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 )}
               </div>
 
+              {/* Dígito de Verificación */}
               <div className="space-y-2">
                 <Label htmlFor="dv">Dígito de Verificación</Label>
                 <Input 
@@ -336,6 +382,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 )}
               </div>
 
+              {/* Razón Social */}
               <div className="space-y-2">
                 <Label htmlFor="razon_social">Razón Social</Label>
                 <Input 
@@ -349,16 +396,8 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                   <p className="text-sm text-red-500">{errors.razon_social.message}</p>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Nombres y Apellidos */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <User className="w-5 h-5" />
-              👤 Nombres y Apellidos
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nombres y Apellidos */}
               <div className="space-y-2">
                 <Label htmlFor="primer_nombre">Primer Nombre</Label>
                 <Input 
@@ -373,6 +412,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 )}
               </div>
 
+              {/* Otros Nombres */}
               <div className="space-y-2">
                 <Label htmlFor="otros_nombres">Otros Nombres</Label>
                 <Input 
@@ -387,6 +427,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 )}
               </div>
 
+              {/* Primer Apellido */}
               <div className="space-y-2">
                 <Label htmlFor="primer_apellido">Primer Apellido</Label>
                 <Input 
@@ -401,6 +442,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 )}
               </div>
 
+              {/* Segundo Apellido */}
               <div className="space-y-2">
                 <Label htmlFor="segundo_apellido">Segundo Apellido</Label>
                 <Input 
@@ -414,60 +456,53 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                   <p className="text-sm text-red-500">{errors.segundo_apellido.message}</p>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Información de Ubicación */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <MapPin className="w-5 h-5" />
-              📍 Información de Ubicación
-            </h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pais">País</Label>
-                  <Input 
-                    id="pais" 
-                    {...register("pais", { 
-                      maxLength: { value: 50, message: "No puede exceder 50 caracteres" }
-                    })} 
-                    placeholder="País de residencia"
-                  />
-                  {errors.pais && (
-                    <p className="text-sm text-red-500">{errors.pais.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="departamento_region">Departamento/Región</Label>
-                  <Input 
-                    id="departamento_region" 
-                    {...register("departamento_region", { 
-                      maxLength: { value: 50, message: "No puede exceder 50 caracteres" }
-                    })} 
-                    placeholder="Departamento o región"
-                  />
-                  {errors.departamento_region && (
-                    <p className="text-sm text-red-500">{errors.departamento_region.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="municipio_ciudad">Municipio/Ciudad</Label>
-                  <Input 
-                    id="municipio_ciudad" 
-                    {...register("municipio_ciudad", { 
-                      maxLength: { value: 50, message: "No puede exceder 50 caracteres" }
-                    })} 
-                    placeholder="Municipio o ciudad"
-                  />
-                  {errors.municipio_ciudad && (
-                    <p className="text-sm text-red-500">{errors.municipio_ciudad.message}</p>
-                  )}
-                </div>
+              {/* Información de Ubicación */}
+              <div className="space-y-2">
+                <Label htmlFor="pais">País</Label>
+                <Input 
+                  id="pais" 
+                  {...register("pais", { 
+                    maxLength: { value: 50, message: "No puede exceder 50 caracteres" }
+                  })} 
+                  placeholder="País de residencia"
+                />
+                {errors.pais && (
+                  <p className="text-sm text-red-500">{errors.pais.message}</p>
+                )}
               </div>
 
+              {/* Departamento/Región */}
+              <div className="space-y-2">
+                <Label htmlFor="departamento_region">Departamento/Región</Label>
+                <Input 
+                  id="departamento_region" 
+                  {...register("departamento_region", { 
+                    maxLength: { value: 50, message: "No puede exceder 50 caracteres" }
+                  })} 
+                  placeholder="Departamento o región"
+                />
+                {errors.departamento_region && (
+                  <p className="text-sm text-red-500">{errors.departamento_region.message}</p>
+                )}
+              </div>
+
+              {/* Municipio/Ciudad */}
+              <div className="space-y-2">
+                <Label htmlFor="municipio_ciudad">Municipio/Ciudad</Label>
+                <Input 
+                  id="municipio_ciudad" 
+                  {...register("municipio_ciudad", { 
+                    maxLength: { value: 50, message: "No puede exceder 50 caracteres" }
+                  })} 
+                  placeholder="Municipio o ciudad"
+                />
+                {errors.municipio_ciudad && (
+                  <p className="text-sm text-red-500">{errors.municipio_ciudad.message}</p>
+                )}
+              </div>
+
+              {/* Dirección */}
               <div className="space-y-2">
                 <Label htmlFor="direccion">Dirección</Label>
                 <Input 
@@ -481,16 +516,8 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                   <p className="text-sm text-red-500">{errors.direccion.message}</p>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Información de Contacto */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <Phone className="w-5 h-5" />
-              📞 Información de Contacto
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Teléfono */}
               <div className="space-y-2">
                 <Label htmlFor="telefono">Teléfono</Label>
                 <Input 
@@ -505,6 +532,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 )}
               </div>
 
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input 
@@ -523,36 +551,30 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                   <p className="text-sm text-red-500">{errors.email.message}</p>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Observaciones */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <Info className="w-5 h-5" />
-              📝 Observaciones
-            </h3>
-            <div className="space-y-2">
-              <Label htmlFor="observaciones">Observaciones Adicionales</Label>
-              <Textarea 
-                id="observaciones" 
-                {...register("observaciones")} 
-                placeholder="Observaciones adicionales sobre el tercero, notas importantes, etc."
-                rows={3}
-              />
+              {/* Observaciones */}
+              <div className="space-y-2">
+                <Label htmlFor="observaciones">Observaciones Adicionales</Label>
+                <Textarea 
+                  id="observaciones" 
+                  {...register("observaciones")} 
+                  placeholder="Observaciones adicionales sobre el tercero, notas importantes, etc."
+                  rows={3}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Botones */}
-          <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-              Actualizar Tercero
-            </Button>
-          </div>
-        </form>
+            {/* Botones */}
+            <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
+                Actualizar Tercero
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1,5 +1,5 @@
-import express from 'express';
-import TipoTransaccion from '../models/TipoTransaccion.js';
+const express = require('express');
+const TipoTransaccion = require('../models/TipoTransaccion.cjs');
 
 const router = express.Router();
 
@@ -30,6 +30,6 @@ router.get('/:id', async (req, res) => {
     console.error('Error al obtener tipo de transacción:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
-  });
+});
 
-export default router; 
+module.exports = router; 

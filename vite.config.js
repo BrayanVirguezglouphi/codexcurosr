@@ -191,41 +191,26 @@ export default defineConfig({
 		},
 		allowedHosts: true,
 		proxy: {
-			'/api': {
-				target: 'http://localhost:8081',
-				changeOrigin: true,
-				secure: false,
-				timeout: 30000,
-				proxyTimeout: 30000,
-				ws: false,
-				configure: (proxy, options) => {
-					proxy.on('error', (err, req, res) => {
-						console.log('Proxy error:', err);
-						// Enviar respuesta de error si es posible
-						if (!res.headersSent) {
-							res.writeHead(500, {
-								'Content-Type': 'application/json'
-							});
-							res.end(JSON.stringify({
-								error: 'Error de conexión con el backend',
-								details: err.message
-							}));
-						}
-					});
-					proxy.on('proxyReq', (proxyReq, req, res) => {
-						console.log('Sending Request to the Target:', req.method, req.url);
-					});
-					proxy.on('proxyRes', (proxyRes, req, res) => {
-						console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-					});
-				}
-			}
+			'/api': 'http://localhost:8081'
 		}
 	},
 	resolve: {
 		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json', ],
 		alias: {
 			'@': path.resolve(__dirname, './src'),
+		},
+	},
+	build: {
+		outDir: 'dist',
+		assetsDir: 'assets',
+		sourcemap: true,
+		chunkSizeWarningLimit: 1000,
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					vendor: ['react', 'react-dom']
+				}
+			}
 		},
 	},
 });

@@ -22,7 +22,8 @@
     "gcp:deploy": "gcloud run deploy pros-app --image gcr.io/pros-sistema-empresarial/pros-app --region us-central1 --platform managed --allow-unauthenticated",
     "db:init": "node scripts/init-cloud-database.js",
     "db:reset": "node scripts/init-cloud-database.js",
-    "db:tables": "node scripts/create-tables-only.js"
+    "db:tables": "node scripts/create-tables-only.js",
+    "back": "node back.cjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

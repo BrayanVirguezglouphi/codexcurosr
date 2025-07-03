@@ -42,17 +42,12 @@ export const apiCall = async (endpoint, options = {}) => {
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers
     },
     ...options
   };
-
-  console.log('📡 Request options:', {
-    method: defaultOptions.method || 'GET',
-    headers: defaultOptions.headers,
-    hasBody: !!defaultOptions.body
-  });
 
   try {
     console.log('🚀 Enviando petición...');
@@ -65,23 +60,21 @@ export const apiCall = async (endpoint, options = {}) => {
       ok: response.ok
     });
     
-    // Si es una respuesta JSON, parsearla automáticamente
-    if (response.headers.get('content-type')?.includes('application/json')) {
+    // Intentar parsear como JSON siempre
+    try {
       const data = await response.json();
-      console.log('✅ JSON parseado exitosamente:', Array.isArray(data) ? `Array[${data.length}]` : typeof data);
+      console.log('✅ JSON parseado:', Array.isArray(data) ? `Array[${data.length}]` : typeof data);
       
       // Si hay error de autenticación, limpiar token
       if (response.status === 401 || response.status === 403) {
         console.warn('🔒 Error de autenticación, limpiando token...');
         localStorage.removeItem('authToken');
-        // Opcional: redirigir al login
         if (window.location.pathname !== '/login') {
-          console.log('🔄 Redirigiendo al login...');
           window.location.href = '/login';
         }
       }
       
-      // Si hay un error del servidor (4xx, 5xx), lanzar excepción con el mensaje del servidor
+      // Si hay un error del servidor, lanzar excepción
       if (!response.ok) {
         const errorMessage = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
         console.error('❌ Error del servidor:', errorMessage);
@@ -89,17 +82,12 @@ export const apiCall = async (endpoint, options = {}) => {
       }
       
       return data;
+    } catch (parseError) {
+      console.error('❌ Error parseando JSON:', parseError);
+      throw new Error('Error parseando respuesta del servidor');
     }
-    
-    console.log('📄 Respuesta no JSON, devolviendo response object');
-    return response;
   } catch (error) {
     console.error(`❌ Error en API call a ${url}:`, error);
-    console.error('❌ Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
     throw error;
   }
 };
@@ -156,12 +144,12 @@ export const api = {
   
   // Catálogos específicos
   getCuentas: () => apiCall('/api/catalogos/cuentas'),
-  getTiposTransaccion: () => apiCall('/api/tipos-transaccion'),
+  getTiposTransaccion: () => apiCall('/api/catalogos/tipos-transaccion'),
   getContratos: () => apiCall('/api/contratos'),
   getMonedas: () => apiCall('/api/catalogos/monedas'),
   getTaxes: () => apiCall('/api/impuestos'),
-  getEtiquetasContables: () => apiCall('/api/etiquetas-contables'),
-  getConceptos: () => apiCall('/api/conceptos-transacciones'),
+  getEtiquetasContables: () => apiCall('/api/catalogos/etiquetas-contables'),
+  getConceptos: () => apiCall('/api/catalogos/conceptos-transacciones'),
   
   // Health check
   health: () => apiCall('/api/health')

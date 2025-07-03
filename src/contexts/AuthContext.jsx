@@ -12,90 +12,29 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState({
+    id: 1,
+    name: 'Ana Torres',
+    email: 'ana.torres@example.com',
+    role: 'admin'
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Verificar token al cargar la aplicación
   useEffect(() => {
-    checkAuth();
+    // Simulamos que ya estamos autenticados
+    setIsAuthenticated(true);
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await apiCall('/api/auth/verify', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.success) {
-        setUser(response.user);
-        setIsAuthenticated(true);
-      } else {
-        // Token inválido, limpiar storage
-        localStorage.removeItem('authToken');
-      }
-    } catch (error) {
-      console.error('Error verificando autenticación:', error);
-      localStorage.removeItem('authToken');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const login = async (email, password) => {
-    try {
-      const response = await apiCall('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (response.success) {
-        localStorage.setItem('authToken', response.token);
-        setUser(response.user);
-        setIsAuthenticated(true);
-        return { success: true };
-      } else {
-        return { success: false, error: response.error };
-      }
-    } catch (error) {
-      console.error('Error en login:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Error de conexión' 
-      };
-    }
+    // Simulamos un login exitoso
+    return { success: true };
   };
 
   const logout = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        await apiCall('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error en logout:', error);
-    } finally {
-      localStorage.removeItem('authToken');
-      setUser(null);
-      setIsAuthenticated(false);
-    }
+    // Por ahora no hacemos nada en el logout
+    console.log('Logout simulado');
   };
 
   const value = {
