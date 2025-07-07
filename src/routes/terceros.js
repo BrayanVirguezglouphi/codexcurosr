@@ -103,6 +103,7 @@ router.post('/bulk-create', async (req, res) => {
 // Actualizar un tercero
 router.put('/:id', async (req, res) => {
   try {
+    console.log('BODY PUT TERCERO:', JSON.stringify(req.body, null, 2)); // Log completo
     const { nombre_consolidado, ...datosActualizar } = req.body;
     
     // Construir la consulta de actualización
@@ -117,7 +118,11 @@ router.put('/:id', async (req, res) => {
         paramCount++;
       }
     }
-    
+
+    // LOG de depuración para ver qué campos y valores se van a actualizar
+    console.log('🟡 CAMPOS A ACTUALIZAR:', setClauses);
+    console.log('🟡 VALORES A ACTUALIZAR:', values);
+
     // Agregar el ID a los valores
     values.push(req.params.id);
     
@@ -162,6 +167,7 @@ router.delete('/:id', async (req, res) => {
     });
     
     if (filasEliminadas === 0) {
+      console.warn(`⚠️ Intento de eliminar un tercero que no existe o ya fue eliminado. ID: ${req.params.id}`);
       return res.status(404).json({ message: 'Tercero no encontrado' });
     }
     

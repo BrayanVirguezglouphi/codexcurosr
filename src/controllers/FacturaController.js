@@ -138,15 +138,22 @@ export const updateFactura = async (req, res) => {
 
 export const deleteFactura = async (req, res) => {
   try {
+    console.log(`🗑️ Intentando eliminar factura con ID: ${req.params.id}`);
     const factura = await Factura.findByPk(req.params.id);
+    console.log(`🔍 Factura encontrada:`, factura ? 'SÍ' : 'NO');
+    
     if (factura) {
       await factura.destroy();
+      console.log(`✅ Factura ${req.params.id} eliminada correctamente`);
+      res.setHeader('Content-Type', 'application/json');
       res.json({ message: 'Factura eliminada correctamente' });
     } else {
+      console.log(`❌ Factura ${req.params.id} no encontrada - respondiendo 404`);
+      res.setHeader('Content-Type', 'application/json');
       res.status(404).json({ message: 'Factura no encontrada' });
     }
   } catch (error) {
-    console.error('Error al eliminar factura:', error);
+    console.error('💥 Error al eliminar factura:', error);
     res.status(500).json({ message: error.message });
   }
 };

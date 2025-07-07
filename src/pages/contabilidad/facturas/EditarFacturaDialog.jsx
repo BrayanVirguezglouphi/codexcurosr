@@ -378,9 +378,9 @@ const EditarFacturaDialog = ({ open, onClose, factura, onFacturaActualizada }) =
                   onChange={(value) => setValue('id_moneda', value)}
                   placeholder="Seleccione una moneda"
                   searchPlaceholder="Buscar moneda..."
-                  displayKey="nombre"
-                  valueKey="id"
-                  formatOption={(moneda) => moneda ? `${moneda.codigo_iso} - ${moneda.nombre}` : 'Moneda no válida'}
+                  displayKey="nombre_moneda"
+                  valueKey="id_moneda"
+                  formatOption={(moneda) => moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : 'Moneda no válida'}
                 />
               </div>
 

@@ -14,7 +14,10 @@ import {
 
 const VerConceptoTransaccionDialog = ({ open, onOpenChange, concepto, tiposTransaccion = [] }) => {
   if (!concepto) return null;
-  const tipoTransaccion = tiposTransaccion.find(t => t.id === concepto.id_tipo_transaccion);
+  const tipoTransaccion = tiposTransaccion.find(t =>
+    t.id_tipotransaccion === concepto.id_tipo_transaccion ||
+    t.id === concepto.id_tipo_transaccion // compatibilidad
+  );
 
   const getTipoTransaccionVariant = (tipo) => {
     switch (tipo) {
@@ -78,8 +81,8 @@ const VerConceptoTransaccionDialog = ({ open, onOpenChange, concepto, tiposTrans
                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                   {tipoTransaccion ? (
                     <div className="flex items-center gap-2">
-                      <Badge variant={getTipoTransaccionVariant(tipoTransaccion.nombre)}>
-                        {tipoTransaccion.nombre}
+                      <Badge variant={getTipoTransaccionVariant(tipoTransaccion.tipo_transaccion)}>
+                        {tipoTransaccion.tipo_transaccion}
                       </Badge>
                       <span className="text-sm text-gray-600">
                         (ID: {concepto.id_tipo_transaccion})

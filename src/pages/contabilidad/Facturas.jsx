@@ -325,6 +325,7 @@ const Facturas = () => {
     { key: 'id_contrato', label: 'ID Contrato', required: false },
     { key: 'fecha_radicado', label: 'Fecha Radicado', required: true },
     { key: 'fecha_estimada_pago', label: 'Fecha Est. Pago', required: false },
+    { key: 'moneda', label: 'Moneda', required: true },
     { key: 'id_moneda', label: 'ID Moneda', required: false },
     { key: 'subtotal_facturado_moneda', label: 'Subtotal', required: true },
     { key: 'id_tax', label: 'ID Tax', required: false },
@@ -341,6 +342,7 @@ const Facturas = () => {
     fecha_radicado: true,
     fecha_estimada_pago: true,
     id_moneda: false,
+    moneda: true,
     subtotal_facturado_moneda: true,
     id_tax: false,
     valor_tax: true,
@@ -1078,16 +1080,14 @@ const Facturas = () => {
   const eliminarFactura = async (id) => {
     if (window.confirm('¿Está seguro de que desea eliminar esta factura?')) {
       try {
-        const response = await apiCall(`/api/facturas/${id}`, {
+        await apiCall(`/api/facturas/${id}`, {
           method: 'DELETE',
         });
-        if (response.ok) {
-          toast({
-            title: "Éxito",
-            description: "Factura eliminada correctamente",
-          });
-          cargarFacturas();
-        }
+        toast({
+          title: "Éxito",
+          description: "Factura eliminada correctamente",
+        });
+        cargarFacturas(); // Recargar la tabla
       } catch (error) {
         toast({
           title: "Error",
@@ -1136,6 +1136,9 @@ const Facturas = () => {
 
   // Función para renderizar el valor de una columna
   const renderColumnValue = (factura, columnKey) => {
+    if (columnKey === 'moneda') {
+      return getNombreMoneda(factura.id_moneda);
+    }
     const value = factura[columnKey];
     
     switch (columnKey) {
@@ -1148,7 +1151,7 @@ const Facturas = () => {
       case 'id_contrato':
         return getNombreContrato(value);
       case 'id_moneda':
-        return getNombreMoneda(value);
+        return value || '—';
       case 'id_tax':
         return getNombreTax(value);
       case 'id_factura':

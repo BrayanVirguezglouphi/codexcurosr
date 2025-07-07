@@ -10,7 +10,6 @@ import {
   User,
   MapPin,
   Phone,
-  Mail,
   Info,
   Building
 } from 'lucide-react';
@@ -294,22 +293,6 @@ const VerTerceroDialog = ({ open, onClose, tercero }) => {
                       className="text-blue-600 hover:text-blue-800 underline text-sm font-medium"
                     >
                       {tercero.telefono}
-                    </a>
-                  ) : (
-                    <span className="text-gray-500 text-sm">No especificado</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-500">Email</label>
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  {tercero.email ? (
-                    <a 
-                      href={`mailto:${tercero.email}`} 
-                      className="text-blue-600 hover:text-blue-800 underline break-all text-sm font-medium"
-                    >
-                      {tercero.email}
                     </a>
                   ) : (
                     <span className="text-gray-500 text-sm">No especificado</span>

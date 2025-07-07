@@ -83,10 +83,13 @@ const ConceptosTransaccionesView = () => {
       
       // Agregar el nombre del tipo de transacción a cada concepto
       const conceptosConTipos = (Array.isArray(conceptos) ? conceptos : []).map(concepto => {
-        const tipo = (Array.isArray(tipos) ? tipos : []).find(t => t.id === concepto.id_tipo_transaccion);
+        const tipo = (Array.isArray(tipos) ? tipos : []).find(t =>
+          t.id_tipotransaccion === concepto.id_tipo_transaccion ||
+          t.id === concepto.id_tipo_transaccion // por compatibilidad
+        );
         return {
           ...concepto,
-          nombre_tipo_transaccion: tipo ? tipo.nombre : 'No asignado'
+          nombre_tipo_transaccion: tipo ? tipo.tipo_transaccion : 'No asignado'
         };
       });
       

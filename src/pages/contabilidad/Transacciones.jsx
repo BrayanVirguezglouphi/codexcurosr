@@ -286,36 +286,34 @@ const Transacciones = () => {
       case 'aplica_impuestos':
         return value ? 'Sí' : 'No';
       case 'id_tipotransaccion':
+        if (value == null || value === '' || value === undefined) return 'No seleccionado';
         return getNombreTipoTransaccion(value);
       case 'id_cuenta':
       case 'id_cuenta_destino_transf':
+        if (value == null || value === '' || value === undefined) return 'No seleccionado';
         return getNombreCuenta(value);
       case 'id_moneda_transaccion':
-        // Obtener nombre de la moneda
+        if (value == null || value === '' || value === undefined) return 'No seleccionado';
         const moneda = monedas.find(m => m.id_moneda === value);
-        return moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : (value || '-');
+        return moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : 'No seleccionado';
       case 'id_tercero':
-        // Obtener nombre del tercero
+        if (value == null || value === '' || value === undefined) return 'No seleccionado';
         const tercero = terceros.find(t => t.id_tercero === value);
-        return tercero ? `${tercero.primer_nombre} ${tercero.primer_apellido}` : (value || '-');
+        return tercero ? `${tercero.primer_nombre} ${tercero.primer_apellido}` : 'No seleccionado';
       case 'id_etiqueta_contable':
-        // Obtener nombre de la etiqueta contable
+        if (value == null || value === '' || value === undefined) return 'No seleccionado';
         const etiqueta = etiquetasContables.find(e => e.id_etiqueta_contable === value);
-        console.log('🏷️ Buscando etiqueta para ID:', value, 'Encontrada:', etiqueta);
-        return etiqueta ? (etiqueta.etiqueta_contable || etiqueta.descripcion_etiqueta) : `ID: ${value}`;
+        return etiqueta ? (etiqueta.etiqueta_contable || etiqueta.descripcion_etiqueta) : 'No seleccionado';
       case 'id_concepto':
-        // Obtener descripción del concepto
+        if (value == null || value === '' || value === undefined) return 'No seleccionado';
         const concepto = conceptos.find(c => c.id_concepto === value);
-        console.log('📝 Buscando concepto para ID:', value, 'Encontrado:', concepto);
-        // Intentar diferentes campos posibles
         if (concepto) {
-          return concepto.descripcion_concepto || concepto.concepto_dian || concepto.concepto || `ID: ${value}`;
+          return concepto.descripcion_concepto || concepto.concepto_dian || concepto.concepto || 'No seleccionado';
         }
-        // Si no se encuentra en la base de datos, usar opciones predefinidas
         const conceptoDian = conceptosDianOpciones.find(c => c.id === value);
-        return conceptoDian ? conceptoDian.concepto_dian : `ID: ${value}`;
+        return conceptoDian ? conceptoDian.concepto_dian : 'No seleccionado';
       default:
-        return value || '-';
+        return value || 'No seleccionado';
     }
   };
 

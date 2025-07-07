@@ -325,9 +325,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   onChange={(value) => setValue('id_tipotransaccion', value)}
                   placeholder="Seleccione un tipo"
                   searchPlaceholder="Buscar tipo..."
-                  displayKey="nombre"
-                  valueKey="id"
-                  formatOption={(option) => `${option.nombre}${option.descripcion ? ` - ${option.descripcion}` : ''}`}
+                  displayKey="tipo_transaccion"
+                  valueKey="id_tipotransaccion"
+                  formatOption={(option) => `${option.tipo_transaccion}${option.descripcion_tipo_transaccion ? ` - ${option.descripcion_tipo_transaccion}` : ''}`}
                 />
               </div>
             </div>
@@ -350,9 +350,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   onChange={(value) => setValue('id_moneda_transaccion', value)}
                   placeholder="Seleccione moneda"
                   searchPlaceholder="Buscar moneda..."
-                  displayKey="nombre"
-                  valueKey="id"
-                  formatOption={(option) => `${option.codigo_iso} - ${option.nombre}`}
+                  displayKey="nombre_moneda"
+                  valueKey="id_moneda"
+                  formatOption={(option) => `${option.codigo_iso} - ${option.nombre_moneda}`}
                 />
               </div>
             </div>
@@ -393,9 +393,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   onChange={(value) => setValue('id_cuenta', value)}
                   placeholder="Seleccione cuenta origen"
                   searchPlaceholder="Buscar cuenta..."
-                  displayKey="nombre"
-                  valueKey="id"
-                  formatOption={(option) => `${option.nombre}${option.numero_cuenta ? ` - ${option.numero_cuenta}` : ''}`}
+                  displayKey="titulo_cuenta"
+                  valueKey="id_cuenta"
+                  formatOption={(option) => `${option.titulo_cuenta}${option.numero_cuenta ? ` - ${option.numero_cuenta}` : ''}`}
                 />
               </div>
 
@@ -407,9 +407,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   onChange={(value) => setValue('id_cuenta_destino_transf', value)}
                   placeholder="Seleccione cuenta destino"
                   searchPlaceholder="Buscar cuenta..."
-                  displayKey="nombre"
-                  valueKey="id"
-                  formatOption={(option) => `${option.nombre}${option.numero_cuenta ? ` - ${option.numero_cuenta}` : ''}`}
+                  displayKey="titulo_cuenta"
+                  valueKey="id_cuenta"
+                  formatOption={(option) => `${option.titulo_cuenta}${option.numero_cuenta ? ` - ${option.numero_cuenta}` : ''}`}
                 />
               </div>
             </div>

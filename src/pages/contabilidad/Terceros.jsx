@@ -64,7 +64,6 @@ const Terceros = () => {
     { key: 'dv', label: 'DV' },
     { key: 'tipo_relacion', label: 'Relación', required: true },
     { key: 'telefono', label: 'Teléfono' },
-    { key: 'email', label: 'Email' },
     { key: 'direccion', label: 'Dirección' },
     { key: 'municipio_ciudad', label: 'Ciudad' },
     { key: 'departamento_region', label: 'Departamento' },
@@ -142,11 +141,6 @@ const Terceros = () => {
       example: '3001234567'
     },
     { 
-      key: 'email', 
-      label: 'Email', 
-      example: 'ejemplo@email.com'
-    },
-    { 
       key: 'direccion', 
       label: 'Dirección', 
       example: 'Calle 123 # 45-67'
@@ -187,7 +181,6 @@ const Terceros = () => {
       primer_apellido: 'Pérez',
       segundo_apellido: 'García',
       telefono: '3001234567',
-      email: 'juan.perez@email.com',
       direccion: 'Calle 123 # 45-67',
       municipio_ciudad: 'Bogotá',
       departamento_region: 'Cundinamarca',
@@ -202,7 +195,6 @@ const Terceros = () => {
       tipo_relacion: 'PROVEEDOR',
       razon_social: 'Empresa Ejemplo S.A.S.',
       telefono: '6011234567',
-      email: 'contacto@empresa.com',
       direccion: 'Av Principal # 100-200',
       municipio_ciudad: 'Medellín',
       departamento_region: 'Antioquia',
@@ -221,7 +213,7 @@ const Terceros = () => {
     const defaultColumns = {};
     availableColumns.forEach(col => {
       // Mostrar solo las columnas principales por defecto
-      defaultColumns[col.key] = ['id_tercero', 'nombre_completo', 'tipo_personalidad', 'numero_documento', 'tipo_relacion', 'telefono', 'email'].includes(col.key);
+      defaultColumns[col.key] = ['id_tercero', 'nombre_completo', 'tipo_personalidad', 'numero_documento', 'tipo_relacion', 'telefono', 'direccion'].includes(col.key);
     });
     setVisibleColumns(defaultColumns);
   }, []);
@@ -229,8 +221,10 @@ const Terceros = () => {
   // Cargar tipos de documento
   const cargarTiposDocumento = async () => {
     try {
+      console.log('🔄 Cargando tipos de documento...');
       const data = await apiCall('/api/catalogos/tipos-documento');
       console.log('📋 Tipos de documento cargados:', data);
+      console.log('📊 Estructura del primer tipo:', data[0]);
       setTiposDocumento(data);
     } catch (error) {
       console.error('Error al cargar tipos de documento:', error);
@@ -241,7 +235,10 @@ const Terceros = () => {
   // Cargar terceros
   const cargarTerceros = async () => {
     try {
+      console.log('🔄 Cargando terceros...');
       const data = await apiCall('/api/terceros');
+      console.log('👥 Terceros cargados:', data.length);
+      console.log('📊 Estructura del primer tercero:', data[0]);
       setTerceros(data);
     } catch (error) {
       console.error('Error al cargar terceros:', error);
@@ -284,7 +281,6 @@ const Terceros = () => {
         'DV': tercero.dv || '',
         'Tipo Relación': tercero.tipo_relacion || '',
         'Teléfono': tercero.telefono || '',
-        'Email': tercero.email || '',
         'Dirección': tercero.direccion || '',
         'Ciudad': tercero.municipio_ciudad || '',
         'Departamento': tercero.departamento_region || '',
@@ -362,7 +358,6 @@ const Terceros = () => {
             'tipo_documento': ['tipo_documento', 'tipo_doc', 'document_type'],
             'dv': ['dv', 'digito_verificacion'],
             'telefono': ['telefono', 'phone', 'celular'],
-            'email': ['email', 'correo', 'mail'],
             'direccion': ['direccion', 'address', 'domicilio'],
             'municipio_ciudad': ['municipio_ciudad', 'ciudad', 'city', 'municipio'],
             'departamento_region': ['departamento_region', 'departamento', 'region', 'state'],
@@ -400,7 +395,6 @@ const Terceros = () => {
               tipo_documento: mappedRow.tipo_documento?.toString().trim() || 'CC',
               dv: mappedRow.dv?.toString().trim() || null,
               telefono: mappedRow.telefono?.toString().trim() || null,
-              email: mappedRow.email?.toString().trim() || null,
               direccion: mappedRow.direccion?.toString().trim() || null,
               municipio_ciudad: mappedRow.municipio_ciudad?.toString().trim() || null,
               departamento_region: mappedRow.departamento_region?.toString().trim() || null,
@@ -455,23 +449,32 @@ const Terceros = () => {
 
   // Eliminar tercero
   const eliminarTercero = async (id) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este tercero?')) {
-      try {
-        await apiCall(`/api/terceros/${id}`, {
-          method: 'DELETE',
-        });
-        toast({
-          title: "Éxito",
-          description: "Tercero eliminado correctamente",
-        });
-        cargarTerceros();
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "No se pudo eliminar el tercero",
-          variant: "destructive",
-        });
+    // Agregar confirmación antes de eliminar
+    if (!window.confirm('¿Está seguro de que desea eliminar este tercero? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      await apiCall(`/api/terceros/${id}`, {
+        method: 'DELETE',
+      });
+      toast({
+        title: "Eliminado",
+        description: "Tercero eliminado correctamente",
+        variant: "success",
+      });
+      cargarTerceros();
+    } catch (error) {
+      let mensaje = "No se pudo eliminar el tercero.";
+      if (error.message && error.message.includes('no encontrado')) {
+        mensaje = "El tercero no existe o ya fue eliminado.";
       }
+      toast({
+        title: "Error",
+        description: mensaje,
+        variant: "destructive",
+      });
+      console.error('❌ Error al eliminar tercero:', error);
     }
   };
 
@@ -555,9 +558,11 @@ const Terceros = () => {
       case 'tipo_documento':
         // Buscar el nombre del tipo de documento en el catálogo
         if (value && tiposDocumento.length > 0) {
+          console.log('🔍 Buscando tipo documento:', value, 'en catálogo:', tiposDocumento);
           const tipoDoc = tiposDocumento.find(tipo => 
-            (tipo.id_tipodocumento == value) || (tipo.id_tipo_documento == value)
+            (tipo.id_tipodocumento == value) || (tipo.id_tipo_documento == value) || (tipo.codigo == value)
           );
+          console.log('✅ Tipo documento encontrado:', tipoDoc);
           const displayValue = tipoDoc ? 
             (tipoDoc.tipo_documento || tipoDoc.codigo || value) : 
             value;
@@ -567,6 +572,7 @@ const Terceros = () => {
             </span>
           );
         }
+        console.log('⚠️ No se encontró tipo documento para:', value, 'Catálogo cargado:', tiposDocumento.length > 0);
         return value || '-';
       case 'numero_documento':
         return (
@@ -575,12 +581,6 @@ const Terceros = () => {
             {tercero.dv && <span className="ml-1 text-gray-500">-{tercero.dv}</span>}
           </div>
         );
-      case 'email':
-        return value ? (
-          <a href={`mailto:${value}`} className="text-blue-600 hover:text-blue-800 underline">
-            {value}
-          </a>
-        ) : '-';
       case 'telefono':
         return value ? (
           <a href={`tel:${value}`} className="text-green-600 hover:text-green-800">
@@ -609,8 +609,6 @@ const Terceros = () => {
       case 'tipo_relacion':
       case 'tipo_documento':
         return 'select';
-      case 'email':
-        return 'email';
       case 'telefono':
         return 'tel';
       case 'direccion':
@@ -638,11 +636,13 @@ const Terceros = () => {
       case 'tipo_documento':
         // Usar tipos de documento dinámicos de la base de datos
         if (tiposDocumento.length > 0) {
+          console.log('📋 Generando opciones para tipo documento desde catálogo:', tiposDocumento);
           return tiposDocumento.map(tipo => ({
-            value: tipo.id_tipodocumento || tipo.id_tipo_documento, // Usar el ID como value (con y sin underscore)
-            label: `${tipo.tipo_documento || tipo.codigo || tipo.id_tipodocumento || tipo.id_tipo_documento}`
+            value: tipo.id_tipodocumento, // Usar el ID correcto del catálogo
+            label: tipo.tipo_documento || tipo.codigo || tipo.id_tipodocumento
           }));
         }
+        console.log('⚠️ Usando opciones hardcodeadas para tipo documento');
         // Fallback a opciones hardcodeadas si no se han cargado los tipos
         return [
           { value: 'CC', label: 'Cédula de Ciudadanía' },

@@ -165,7 +165,11 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
           tiposDocumento: tiposDoc, 
           tiposRelacion: tiposRel 
         });
-        
+        if (!tiposDoc || tiposDoc.length === 0) {
+          console.warn('⚠️ No se cargaron tipos de documento o el array está vacío:', tiposDoc);
+        } else {
+          console.log('✅ Tipos de documento cargados:', tiposDoc.length, tiposDoc);
+        }
         // Usar los datos directamente ya que vienen en el formato correcto
         setTiposDocumento(tiposDoc || []);
         setTiposRelacion(tiposRel || []);
@@ -201,7 +205,6 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
         segundo_apellido,
         direccion,
         telefono,
-        email,
         observaciones,
         departamento_region,
         municipio_ciudad,
@@ -221,7 +224,6 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
       setValue('segundo_apellido', segundo_apellido || '');
       setValue('direccion', direccion || '');
       setValue('telefono', telefono || '');
-      setValue('email', email || '');
       setValue('observaciones', observaciones || '');
       setValue('departamento_region', departamento_region || '');
       setValue('municipio_ciudad', municipio_ciudad || '');
@@ -245,7 +247,6 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
         segundo_apellido,
         direccion,
         telefono,
-        email,
         observaciones,
         departamento_region,
         municipio_ciudad,
@@ -256,7 +257,7 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
       const datosActualizar = {
         id_tiporelacion: tipo_relacion,
         tipo_personalidad,
-        id_tipodocumento: tipo_documento,
+        id_tipo_documento: tipo_documento, // <--- CAMBIO AQUÍ
         numero_documento,
         dv,
         razon_social,
@@ -266,12 +267,13 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
         segundo_apellido,
         direccion,
         telefono,
-        email,
         observaciones,
         departamento_region,
         municipio_ciudad,
         pais
       };
+
+      console.log('🟢 DATOS QUE SE ENVIAN AL BACKEND (PUT tercero):', datosActualizar);
 
       await api.updateTercero(tercero.id_tercero, datosActualizar);
 
@@ -341,11 +343,16 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 <SearchableSelect
                   options={tiposDocumento}
                   value={currentTipoDocumento}
-                  onChange={(value) => setValue('tipo_documento', value)}
-                  placeholder="Seleccione el tipo de documento"
+                  onChange={(value) => setValue('tipo_documento', Number(value))}
+                  placeholder={tiposDocumento.length === 0 ? "No hay tipos de documento disponibles" : "Seleccione el tipo de documento"}
                   searchPlaceholder="Buscar tipo de documento..."
                   disabled={isLoading}
+                  valueKey="id"
+                  displayKey="nombre"
                 />
+                {tiposDocumento.length === 0 && (
+                  <span className="text-sm text-yellow-600">No hay tipos de documento cargados. Revisa la consola para más información.</span>
+                )}
                 {errors.tipo_documento && (
                   <span className="text-sm text-destructive">{errors.tipo_documento.message}</span>
                 )}
@@ -529,26 +536,6 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
                 />
                 {errors.telefono && (
                   <p className="text-sm text-red-500">{errors.telefono.message}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email"
-                  {...register("email", { 
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: "Debe ser un email válido"
-                    },
-                    maxLength: { value: 100, message: "No puede exceder 100 caracteres" }
-                  })} 
-                  placeholder="correo@ejemplo.com"
-                />
-                {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email.message}</p>
                 )}
               </div>
 

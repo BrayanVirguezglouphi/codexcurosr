@@ -146,7 +146,7 @@ const EditarConceptoTransaccionDialog = ({ open, onOpenChange, concepto, onConce
     reset
   } = useForm({
     defaultValues: {
-      id_tipotransaccion: '',
+      id_tipo_transaccion: '',
       codigo_dian: '',
       concepto_dian: ''
     }
@@ -178,7 +178,7 @@ const EditarConceptoTransaccionDialog = ({ open, onOpenChange, concepto, onConce
   // Precargar datos del concepto cuando se abre el diálogo
   useEffect(() => {
     if (open && concepto) {
-      setValue('id_tipotransaccion', concepto.id_tipotransaccion?.toString() || concepto.id || '');
+      setValue('id_tipo_transaccion', concepto.id_tipo_transaccion?.toString() || concepto.id || '');
       setValue('codigo_dian', concepto.codigo_dian || '');
       setValue('concepto_dian', concepto.concepto_dian || '');
     }
@@ -187,12 +187,17 @@ const EditarConceptoTransaccionDialog = ({ open, onOpenChange, concepto, onConce
   const onSubmit = async (data) => {
     setLoading(true);
     try {
+      // Asegurarse de enviar el id_tipo_transaccion como número
+      const payload = {
+        ...data,
+        id_tipo_transaccion: data.id_tipo_transaccion ? parseInt(data.id_tipo_transaccion, 10) : null
+      };
       const response = await fetch(`/api/conceptos-transacciones/${concepto.id_concepto}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -248,23 +253,24 @@ const EditarConceptoTransaccionDialog = ({ open, onOpenChange, concepto, onConce
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="id_tipotransaccion">Tipo de Transacción *</Label>
+                <Label htmlFor="id_tipo_transaccion">Tipo de Transacción *</Label>
                 <SearchableSelect
                   options={tiposTransaccion}
-                  value={watchedFields.id_tipotransaccion}
-                  onChange={(value) => setValue('id_tipotransaccion', value)}
+                  value={watchedFields.id_tipo_transaccion}
+                  onChange={(value) => setValue('id_tipo_transaccion', value)}
                   placeholder="Seleccione un tipo de transacción"
-                  displayKey="nombre"
-                  valueKey="id"
+                  displayKey="tipo_transaccion"
+                  valueKey="id_tipotransaccion"
+                  formatOption={(option) => option ? `${option.tipo_transaccion}${option.descripcion_tipo_transaccion ? ` - ${option.descripcion_tipo_transaccion}` : ''}` : ''}
                 />
                 <input
                   type="hidden"
-                  {...register("id_tipotransaccion", { 
+                  {...register("id_tipo_transaccion", { 
                     required: "El tipo de transacción es requerido" 
                   })}
                 />
-                {errors.id_tipotransaccion && (
-                  <p className="text-sm text-red-500">{errors.id_tipotransaccion.message}</p>
+                {errors.id_tipo_transaccion && (
+                  <p className="text-sm text-red-500">{errors.id_tipo_transaccion.message}</p>
                 )}
               </div>
 
