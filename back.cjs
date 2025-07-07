@@ -1376,6 +1376,393 @@ app.delete('/api/conceptos-transacciones/:id', async (req, res) => {
   }
 });
 
+// ==================== ENDPOINTS OKR ====================
+
+// Staff OKR - Obtener todo el staff
+app.get('/api/okr/staff', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_staff,
+        nombre,
+        correo,
+        rol,
+        id_tercero
+      FROM okr_staff
+      ORDER BY nombre
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando staff OKR:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Staff OKR - Crear nuevo staff
+app.post('/api/okr/staff', async (req, res) => {
+  const { nombre, correo, rol, id_tercero } = req.body;
+  try {
+    const result = await pool.query(`
+      INSERT INTO okr_staff (nombre, correo, rol, id_tercero)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [nombre, correo, rol, id_tercero]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando staff OKR:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Objetivos - Obtener todos los objetivos con sus key results
+app.get('/api/okr/objetivos', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        o.id_objetivo,
+        o.titulo,
+        o.descripcion,
+        o.nivel,
+        o.id_responsable,
+        s.nombre as responsable_nombre,
+        o.fecha_inicio,
+        o.fecha_fin,
+        o.estado,
+        o.id_objetivo_preexistente,
+        o.nivel_impacto,
+        COUNT(kr.id_kr) as total_key_results,
+        COALESCE(AVG(kr.porcentaje_cumplimiento), 0) as promedio_cumplimiento
+      FROM okr_objetivos o
+      LEFT JOIN okr_staff s ON o.id_responsable = s.id_staff
+      LEFT JOIN okr_resultados_clave kr ON o.id_objetivo = kr.id_objetivo
+      GROUP BY o.id_objetivo, s.nombre
+      ORDER BY o.fecha_inicio DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando objetivos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Objetivos - Obtener un objetivo específico con sus key results
+app.get('/api/okr/objetivos/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Obtener objetivo
+    const objetivoResult = await pool.query(`
+      SELECT 
+        o.*,
+        s.nombre as responsable_nombre,
+        s.correo as responsable_correo
+      FROM okr_objetivos o
+      LEFT JOIN okr_staff s ON o.id_responsable = s.id_staff
+      WHERE o.id_objetivo = $1
+    `, [id]);
+
+    if (objetivoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Objetivo no encontrado' });
+    }
+
+    // Obtener key results del objetivo
+    const keyResultsResult = await pool.query(`
+      SELECT 
+        kr.*,
+        s.nombre as responsable_nombre
+      FROM okr_resultados_clave kr
+      LEFT JOIN okr_staff s ON kr.id_responsable = s.id_staff
+      WHERE kr.id_objetivo = $1
+      ORDER BY kr.fecha_creacion
+    `, [id]);
+
+    const objetivo = {
+      ...objetivoResult.rows[0],
+      keyResults: keyResultsResult.rows
+    };
+
+    res.json(objetivo);
+  } catch (error) {
+    console.error('❌ Error consultando objetivo:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Objetivos - Crear nuevo objetivo
+app.post('/api/okr/objetivos', async (req, res) => {
+  const { 
+    titulo, 
+    descripcion, 
+    nivel, 
+    id_responsable, 
+    fecha_inicio, 
+    fecha_fin, 
+    estado, 
+    id_objetivo_preexistente, 
+    nivel_impacto 
+  } = req.body;
+  
+  try {
+    const result = await pool.query(`
+      INSERT INTO okr_objetivos (
+        titulo, descripcion, nivel, id_responsable, fecha_inicio, 
+        fecha_fin, estado, id_objetivo_preexistente, nivel_impacto
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [
+      titulo, descripcion, nivel, id_responsable, fecha_inicio, 
+      fecha_fin, estado || 'Activo', id_objetivo_preexistente, nivel_impacto
+    ]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando objetivo:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Objetivos - Actualizar objetivo
+app.put('/api/okr/objetivos/:id', async (req, res) => {
+  const { id } = req.params;
+  const { 
+    titulo, 
+    descripcion, 
+    nivel, 
+    id_responsable, 
+    fecha_inicio, 
+    fecha_fin, 
+    estado, 
+    id_objetivo_preexistente, 
+    nivel_impacto 
+  } = req.body;
+  
+  try {
+    const result = await pool.query(`
+      UPDATE okr_objetivos SET
+        titulo = $1,
+        descripcion = $2,
+        nivel = $3,
+        id_responsable = $4,
+        fecha_inicio = $5,
+        fecha_fin = $6,
+        estado = $7,
+        id_objetivo_preexistente = $8,
+        nivel_impacto = $9
+      WHERE id_objetivo = $10
+      RETURNING *
+    `, [
+      titulo, descripcion, nivel, id_responsable, fecha_inicio, 
+      fecha_fin, estado, id_objetivo_preexistente, nivel_impacto, id
+    ]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Objetivo no encontrado' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error actualizando objetivo:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Objetivos - Eliminar objetivo
+app.delete('/api/okr/objetivos/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`🗑️ Intentando eliminar objetivo con ID: ${id}`);
+  
+  try {
+    // Verificar si el objetivo existe
+    const checkResult = await pool.query('SELECT id_objetivo FROM okr_objetivos WHERE id_objetivo = $1', [id]);
+    
+    if (checkResult.rows.length === 0) {
+      console.log(`❌ Objetivo ${id} no encontrado`);
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(404).json({ message: 'Objetivo no encontrado' });
+    }
+    
+    // Eliminar el objetivo (los key results se eliminarán en cascada por FK)
+    await pool.query('DELETE FROM okr_objetivos WHERE id_objetivo = $1', [id]);
+    console.log(`✅ Objetivo ${id} eliminado correctamente`);
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ message: 'Objetivo eliminado correctamente' });
+    
+  } catch (error) {
+    console.error('💥 Error al eliminar objetivo:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Key Results - Obtener todos los key results de un objetivo
+app.get('/api/okr/objetivos/:objetivoId/key-results', async (req, res) => {
+  const { objetivoId } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT 
+        kr.*,
+        s.nombre as responsable_nombre
+      FROM okr_resultados_clave kr
+      LEFT JOIN okr_staff s ON kr.id_responsable = s.id_staff
+      WHERE kr.id_objetivo = $1
+      ORDER BY kr.fecha_creacion
+    `, [objetivoId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando key results:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Key Results - Crear nuevo key result
+app.post('/api/okr/key-results', async (req, res) => {
+  const { 
+    id_objetivo, 
+    descripcion, 
+    valor_objetivo, 
+    unidad, 
+    fecha_limite, 
+    id_responsable 
+  } = req.body;
+  
+  try {
+    const result = await pool.query(`
+      INSERT INTO okr_resultados_clave (
+        id_objetivo, descripcion, valor_objetivo, unidad, fecha_limite, id_responsable
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [id_objetivo, descripcion, valor_objetivo, unidad, fecha_limite, id_responsable]);
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando key result:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Key Results - Actualizar key result
+app.put('/api/okr/key-results/:id', async (req, res) => {
+  const { id } = req.params;
+  const { 
+    descripcion, 
+    valor_objetivo, 
+    unidad, 
+    fecha_limite, 
+    id_responsable, 
+    porcentaje_cumplimiento 
+  } = req.body;
+  
+  try {
+    const result = await pool.query(`
+      UPDATE okr_resultados_clave SET
+        descripcion = $1,
+        valor_objetivo = $2,
+        unidad = $3,
+        fecha_limite = $4,
+        id_responsable = $5,
+        porcentaje_cumplimiento = $6,
+        fecha_evaluacion = NOW()
+      WHERE id_kr = $7
+      RETURNING *
+    `, [descripcion, valor_objetivo, unidad, fecha_limite, id_responsable, porcentaje_cumplimiento, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Key Result no encontrado' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error actualizando key result:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Key Results - Eliminar key result
+app.delete('/api/okr/key-results/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`🗑️ Intentando eliminar key result con ID: ${id}`);
+  
+  try {
+    const checkResult = await pool.query('SELECT id_kr FROM okr_resultados_clave WHERE id_kr = $1', [id]);
+    
+    if (checkResult.rows.length === 0) {
+      console.log(`❌ Key Result ${id} no encontrado`);
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(404).json({ message: 'Key Result no encontrado' });
+    }
+    
+    await pool.query('DELETE FROM okr_resultados_clave WHERE id_kr = $1', [id]);
+    console.log(`✅ Key Result ${id} eliminado correctamente`);
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ message: 'Key Result eliminado correctamente' });
+    
+  } catch (error) {
+    console.error('💥 Error al eliminar key result:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Registros de avance - Crear nuevo registro de progreso
+app.post('/api/okr/key-results/:krId/progress', async (req, res) => {
+  const { krId } = req.params;
+  const { valor_actual } = req.body;
+  
+  try {
+    // Obtener el valor objetivo para calcular el progreso
+    const krResult = await pool.query('SELECT valor_objetivo FROM okr_resultados_clave WHERE id_kr = $1', [krId]);
+    
+    if (krResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Key Result no encontrado' });
+    }
+    
+    const valorObjetivo = krResult.rows[0].valor_objetivo;
+    const progresoCalculado = (valor_actual / valorObjetivo) * 100;
+    
+    // Insertar registro de avance
+    const result = await pool.query(`
+      INSERT INTO okr_registros_avance (id_kr, valor_actual, progreso_calculado)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [krId, valor_actual, progresoCalculado]);
+    
+    // Actualizar el porcentaje de cumplimiento del key result
+    await pool.query(`
+      UPDATE okr_resultados_clave 
+      SET porcentaje_cumplimiento = $1, fecha_evaluacion = NOW()
+      WHERE id_kr = $2
+    `, [progresoCalculado, krId]);
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando registro de avance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Dashboard OKR - Estadísticas generales
+app.get('/api/okr/dashboard/stats', async (req, res) => {
+  try {
+    const stats = await pool.query(`
+      SELECT 
+        COUNT(DISTINCT o.id_objetivo) as total_objetivos,
+        COUNT(DISTINCT kr.id_kr) as total_key_results,
+        COUNT(DISTINCT o.id_responsable) as total_responsables,
+        COALESCE(AVG(kr.porcentaje_cumplimiento), 0) as promedio_cumplimiento_general,
+        COUNT(CASE WHEN o.estado = 'Activo' THEN 1 END) as objetivos_activos,
+        COUNT(CASE WHEN o.estado = 'Completado' THEN 1 END) as objetivos_completados,
+        COUNT(CASE WHEN kr.porcentaje_cumplimiento >= 100 THEN 1 END) as key_results_completados
+      FROM okr_objetivos o
+      LEFT JOIN okr_resultados_clave kr ON o.id_objetivo = kr.id_objetivo
+    `);
+    
+    res.json(stats.rows[0]);
+  } catch (error) {
+    console.error('❌ Error consultando estadísticas OKR:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Iniciar servidor y mostrar tablas disponibles
 const PORT = 8081;
 app.listen(PORT, () => {
@@ -1397,4 +1784,4 @@ app.listen(PORT, () => {
   .catch(err => {
     console.error('❌ Error al consultar tablas:', err);
   });
-});
+}); 

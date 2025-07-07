@@ -7,10 +7,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import theme from './theme/mui-theme';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
-import Login from './pages/Login';
-import './styles/login.css';
 import MainLayout from '@/layouts/MainLayout';
 import FacturasPage from '@/pages/contabilidad/Facturas';
 
@@ -43,116 +40,69 @@ import ContratosRRHH from '@/pages/rrhh/ContratosRRHH';
 import GestionDashboard from '@/pages/gestion/GestionDashboard';
 import OKRView from '@/pages/gestion/okr/OKRView';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return children;
-};
-
-// Componente interno que usa useAuth
-function AppContent() {
-  const { isAuthenticated } = useAuth();
-
-  return (
-    <Router>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="min-h-screen bg-background"
-      >
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            
-            {/* CRM Routes */}
-            <Route path="crm">
-              <Route index element={<CRMDashboard />} />
-              <Route path="contactos" element={<Contactos />} />
-              <Route path="mercado" element={<Mercado />} />
-              <Route path="buyer" element={<Buyer />} />
-              <Route path="empresas" element={<Empresas />} />
-            </Route>
-
-            {/* Contabilidad Routes */}
-            <Route path="contabilidad">
-              <Route index element={<ContabilidadDashboard />} />
-              <Route path="facturas" element={<FacturasPage />} />
-              <Route path="transacciones" element={<Transacciones />} />
-              <Route path="contratos" element={<Contratos />} />
-              <Route path="servicios" element={<LineasServicios />} />
-              <Route path="impuestos" element={<Impuestos />} />
-              <Route path="clasificaciones-contables" element={<ClasificacionesContables />} />
-              <Route path="terceros" element={<Terceros />} />
-            </Route>
-
-            {/* RRHH Routes */}
-            <Route path="rrhh">
-              <Route index element={<RRHHDashboard />} />
-              <Route path="contratos-rrhh" element={<ContratosRRHH />} />
-              <Route path="cargos" element={<Cargos />} />
-              <Route path="capacitaciones" element={<CapacitacionesSkills />} />
-              <Route path="asignaciones" element={<AsignacionesEvaluaciones />} />
-            </Route>
-
-            {/* Sistema de Gestión Routes */}
-            <Route path="gestion">
-              <Route index element={<GestionDashboard />} />
-              <Route path="okr" element={<OKRView />} />
-            </Route>
-
-            {/* Ajustes Route */}
-            <Route path="ajustes" element={<Ajustes />} />
-          </Route>
-
-          {/* Redirect unmatched routes to login if not authenticated, or dashboard if authenticated */}
-          <Route
-            path="*"
-            element={
-              isAuthenticated ? (
-                <Navigate to="/" replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-        </Routes>
-        <Toaster />
-      </motion.div>
-    </Router>
-  );
-}
-
-// Componente principal que envuelve todo con providers
+// Componente principal de la aplicación
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
         <SettingsProvider>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
+          <Router>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="min-h-screen bg-background"
+            >
+              <Routes>
+                <Route path="/" element={<MainLayout />}>
+                  <Route index element={<Dashboard />} />
+                  
+                  {/* CRM Routes */}
+                  <Route path="crm">
+                    <Route index element={<CRMDashboard />} />
+                    <Route path="contactos" element={<Contactos />} />
+                    <Route path="mercado" element={<Mercado />} />
+                    <Route path="buyer" element={<Buyer />} />
+                    <Route path="empresas" element={<Empresas />} />
+                  </Route>
+
+                  {/* Contabilidad Routes */}
+                  <Route path="contabilidad">
+                    <Route index element={<ContabilidadDashboard />} />
+                    <Route path="facturas" element={<FacturasPage />} />
+                    <Route path="transacciones" element={<Transacciones />} />
+                    <Route path="contratos" element={<Contratos />} />
+                    <Route path="servicios" element={<LineasServicios />} />
+                    <Route path="impuestos" element={<Impuestos />} />
+                    <Route path="clasificaciones-contables" element={<ClasificacionesContables />} />
+                    <Route path="terceros" element={<Terceros />} />
+                  </Route>
+
+                  {/* RRHH Routes */}
+                  <Route path="rrhh">
+                    <Route index element={<RRHHDashboard />} />
+                    <Route path="contratos-rrhh" element={<ContratosRRHH />} />
+                    <Route path="cargos" element={<Cargos />} />
+                    <Route path="capacitaciones" element={<CapacitacionesSkills />} />
+                    <Route path="asignaciones" element={<AsignacionesEvaluaciones />} />
+                  </Route>
+
+                  {/* Sistema de Gestión Routes */}
+                  <Route path="gestion">
+                    <Route index element={<GestionDashboard />} />
+                    <Route path="okr" element={<OKRView />} />
+                  </Route>
+
+                  {/* Ajustes Route */}
+                  <Route path="ajustes" element={<Ajustes />} />
+                </Route>
+
+                {/* Redirect unmatched routes to dashboard */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+              <Toaster />
+            </motion.div>
+          </Router>
         </SettingsProvider>
       </LocalizationProvider>
     </ThemeProvider>

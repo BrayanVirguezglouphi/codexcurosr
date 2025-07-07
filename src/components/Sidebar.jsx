@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/layouts/MainLayout';
 import { useSettings } from '@/contexts/SettingsContext';
 import { cn } from '@/lib/utils';
@@ -23,7 +22,6 @@ import {
   Settings,
   CreditCard,
   Zap,
-  LogOut,
   Menu,
   X,
   Home
@@ -90,7 +88,6 @@ const menuItems = [
 
 const Sidebar = () => {
   const location = useLocation();
-  const { user, logout } = useAuth();
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const { isDarkMode } = useSettings();
   const [openSections, setOpenSections] = useState({});
@@ -299,7 +296,7 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* User profile section */}
+      {/* Información del sistema (sin usuario) */}
       <div className={cn(
         "border-t p-4 bg-gradient-to-r from-white/5 to-transparent",
         isDarkMode ? "border-slate-700/50" : "border-white/10"
@@ -315,37 +312,21 @@ const Sidebar = () => {
                 ? "bg-gradient-to-br from-slate-600/50 to-slate-700/50 border-slate-500/50" 
                 : "bg-gradient-to-br from-white/30 to-white/20 border-white/30"
             )}>
-              <span className="text-white text-sm font-bold">
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </span>
+              <span className="text-white text-sm font-bold">G</span>
             </div>
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 shadow-lg"
                  style={{ borderColor: isDarkMode ? '#0f172a' : '#1e3a8a' }} />
           </div>
           
           {!isCollapsed && (
-            <>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">
-                  {user?.name || 'Usuario'}
-                </p>
-                <p className="text-xs text-white/60 truncate">
-                  {user?.email || 'correo@ejemplo.com'}
-                </p>
-              </div>
-              <button
-                onClick={logout}
-                className={cn(
-                  "p-2 rounded-lg transition-all duration-200 group",
-                  isDarkMode 
-                    ? "hover:bg-slate-700/50" 
-                    : "hover:bg-white/10"
-                )}
-                title="Cerrar sesión"
-              >
-                <LogOut className="h-4 w-4 text-white/70 group-hover:text-white transition-colors" />
-              </button>
-            </>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">
+                Sistema GLOUPHI
+              </p>
+              <p className="text-xs text-white/60 truncate">
+                Gestión Empresarial
+              </p>
+            </div>
           )}
           
           {isCollapsed && (
@@ -353,7 +334,7 @@ const Sidebar = () => {
               "absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 text-white text-sm rounded-lg shadow-lg opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50",
               isDarkMode ? "bg-slate-800" : "bg-gray-900"
             )}>
-              {user?.name || 'Usuario'}
+              Sistema GLOUPHI
               <div className={cn(
                 "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 rotate-45",
                 isDarkMode ? "bg-slate-800" : "bg-gray-900"

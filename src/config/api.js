@@ -18,32 +18,26 @@ const getEnvironment = () => {
   return 'production';
 };
 
-// Obtener configuración actual
-const currentEnv = getEnvironment();
-const apiConfig = API_CONFIG[currentEnv];
+// Configuración para el entorno actual
+const environment = getEnvironment();
+const apiConfig = API_CONFIG[environment];
 
-console.log('🌍 Entorno detectado:', currentEnv);
-console.log('🔗 API Base URL:', apiConfig.baseURL);
+console.log('🌍 Entorno detectado:', environment);
+console.log('🔗 Base URL:', apiConfig.baseURL);
 
 // Función helper para hacer llamadas a la API
 export const apiCall = async (endpoint, options = {}) => {
   const url = `${apiConfig.baseURL}${endpoint}`;
   
-  // Obtener token de autenticación si existe
-  const token = localStorage.getItem('authToken');
-  
   console.log('📡 API Call:', {
     url,
-    method: options.method || 'GET',
-    hasToken: !!token,
-    tokenPreview: token ? `${token.substring(0, 20)}...` : 'sin token'
+    method: options.method || 'GET'
   });
   
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers
     },
     ...options
@@ -65,15 +59,6 @@ export const apiCall = async (endpoint, options = {}) => {
       const data = await response.json();
       console.log('✅ JSON parseado:', Array.isArray(data) ? `Array[${data.length}]` : typeof data);
       
-      // Si hay error de autenticación, limpiar token
-      if (response.status === 401 || response.status === 403) {
-        console.warn('🔒 Error de autenticación, limpiando token...');
-        localStorage.removeItem('authToken');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-      }
-      
       // Si hay un error del servidor, lanzar excepción
       if (!response.ok) {
         const errorMessage = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
@@ -92,8 +77,7 @@ export const apiCall = async (endpoint, options = {}) => {
   }
 };
 
-// Exportar configuración para uso directo si es necesario
-export const API_BASE_URL = apiConfig.baseURL;
+export default apiConfig;
 
 // Funciones helper para endpoints comunes
 export const api = {

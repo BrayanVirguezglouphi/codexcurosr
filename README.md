@@ -38,7 +38,7 @@ sistema-empresarial/
 │   │   ├── 📁 rrhh/               # Módulo de recursos humanos
 │   │   ├── 📁 crm/                # Módulo CRM
 │   │   ├── Dashboard.jsx          # Dashboard principal
-│   │   └── Login.jsx              # Página de login
+│   │   └── Dashboard.jsx          # Dashboard principal (sin login requerido)
 │   ├── 📁 layouts/                # Layouts de aplicación
 │   ├── 📁 hooks/                  # Custom hooks
 │   ├── 📁 utils/                  # Utilidades y helpers
