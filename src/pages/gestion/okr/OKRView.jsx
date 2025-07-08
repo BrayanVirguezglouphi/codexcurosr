@@ -21,7 +21,8 @@ import {
   Calendar,
   UserCheck,
   Settings,
-  TreePine
+  TreePine,
+  Network
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import EditarObjetivoDialog from './components/EditarObjetivoDialog';
 import VerObjetivoDialog from './components/VerObjetivoDialog';
 import KeyResultsManager from './components/KeyResultsManager';
 import OKRHierarchyView from './components/OKRHierarchyView';
+import OKRGraphView from './components/OKRGraphView';
 
 const OKRView = () => {
   const { isDarkMode } = useSettings();
@@ -251,14 +253,18 @@ const OKRView = () => {
 
       {/* Navegación por tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="lista" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Vista Lista
           </TabsTrigger>
           <TabsTrigger value="jerarquia" className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
+            <TreePine className="h-4 w-4" />
             Vista Jerárquica
+          </TabsTrigger>
+          <TabsTrigger value="grafos" className="flex items-center gap-2">
+            <Network className="h-4 w-4" />
+            Vista Grafos
           </TabsTrigger>
         </TabsList>
 
@@ -327,131 +333,141 @@ const OKRView = () => {
 
           {/* Lista de Objetivos */}
           <div className="space-y-6">
-        {objetivosFiltrados.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Target className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay objetivos</h3>
-              <p className="text-gray-600 text-center">
-                {objetivos.length === 0 
-                  ? 'Crea tu primer objetivo OKR para comenzar'
-                  : 'No se encontraron objetivos con los filtros seleccionados'
-                }
-              </p>
-              {objetivos.length === 0 && (
-                <Button 
-                  onClick={() => setIsCrearObjetivoOpen(true)}
-                  className="mt-4 bg-indigo-600 hover:bg-indigo-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear Primer Objetivo
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          objetivosFiltrados.map((objetivo) => (
-            <motion.div
-              key={objetivo.id_objetivo}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-gray-900">{objetivo.titulo}</h3>
-                    <Badge className={getEstadoColor(objetivo.estado)}>
-                      {objetivo.estado}
-                    </Badge>
-                    {objetivo.nivel_impacto && (
-                      <Badge variant="outline">
-                        Impacto: {objetivo.nivel_impacto}/10
-                      </Badge>
-                    )}
-                  </div>
-                  {objetivo.descripcion && (
-                    <p className="text-gray-600 mb-3">{objetivo.descripcion}</p>
+            {objetivosFiltrados.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Target className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay objetivos</h3>
+                  <p className="text-gray-600 text-center">
+                    {objetivos.length === 0 
+                      ? 'Crea tu primer objetivo OKR para comenzar'
+                      : 'No se encontraron objetivos con los filtros seleccionados'
+                    }
+                  </p>
+                  {objetivos.length === 0 && (
+                    <Button 
+                      onClick={() => setIsCrearObjetivoOpen(true)}
+                      className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear Primer Objetivo
+                    </Button>
                   )}
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <UserCheck className="h-4 w-4" />
-                      {objetivo.responsable_nombre}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Award className="h-4 w-4" />
-                      {objetivo.nivel}
-                    </span>
-                    {objetivo.fecha_inicio && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {new Date(objetivo.fecha_inicio).toLocaleDateString()} - {new Date(objetivo.fecha_fin).toLocaleDateString()}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <BarChart3 className="h-4 w-4" />
-                      {objetivo.total_key_results} Key Results
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 ml-4">
-                  <div className="text-right mr-4">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {Math.round(objetivo.promedio_cumplimiento || 0)}%
+                </CardContent>
+              </Card>
+            ) : (
+              objetivosFiltrados.map((objetivo) => (
+                <motion.div
+                  key={objetivo.id_objetivo}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-semibold text-gray-900">{objetivo.titulo}</h3>
+                        <Badge className={getEstadoColor(objetivo.estado)}>
+                          {objetivo.estado}
+                        </Badge>
+                        {objetivo.nivel_impacto && (
+                          <Badge variant="outline">
+                            Impacto: {objetivo.nivel_impacto}/10
+                          </Badge>
+                        )}
+                      </div>
+                      {objetivo.descripcion && (
+                        <p className="text-gray-600 mb-3">{objetivo.descripcion}</p>
+                      )}
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <UserCheck className="h-4 w-4" />
+                          {objetivo.responsable_nombre}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Award className="h-4 w-4" />
+                          {objetivo.nivel}
+                        </span>
+                        {objetivo.fecha_inicio && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(objetivo.fecha_inicio).toLocaleDateString()} - {new Date(objetivo.fecha_fin).toLocaleDateString()}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <BarChart3 className="h-4 w-4" />
+                          {objetivo.total_key_results} Key Results
+                        </span>
+                      </div>
                     </div>
-                    <Progress 
-                      value={objetivo.promedio_cumplimiento || 0} 
-                      className="w-24"
-                    />
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => abrirVerObjetivo(objetivo)}
-                    title="Ver detalles"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                    
+                    <div className="flex items-center gap-2 ml-4">
+                      <div className="text-right mr-4">
+                        <div className="text-2xl font-bold text-gray-900">
+                          {Math.round(objetivo.promedio_cumplimiento || 0)}%
+                        </div>
+                        <Progress 
+                          value={objetivo.promedio_cumplimiento || 0} 
+                          className="w-24"
+                        />
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => abrirVerObjetivo(objetivo)}
+                        title="Ver detalles"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
 
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => abrirKeyResultsManager(objetivo)}
-                    title="Gestionar Key Results"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => abrirEditarObjetivo(objetivo)}
-                    title="Editar objetivo"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => eliminarObjetivo(objetivo.id_objetivo)}
-                    className="text-red-600 hover:text-red-800"
-                    title="Eliminar objetivo"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          ))
-        )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => abrirKeyResultsManager(objetivo)}
+                        title="Gestionar Key Results"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => abrirEditarObjetivo(objetivo)}
+                        title="Editar objetivo"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => eliminarObjetivo(objetivo.id_objetivo)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Eliminar objetivo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="jerarquia" className="mt-6">
           <OKRHierarchyView
+            onViewObjective={abrirVerObjetivo}
+            onEditObjective={abrirEditarObjetivo}
+            onDeleteObjective={(objetivo) => eliminarObjetivo(objetivo.id_objetivo)}
+            onCreateObjective={() => setIsCrearObjetivoOpen(true)}
+            staff={staff}
+          />
+        </TabsContent>
+
+        <TabsContent value="grafos" className="mt-6">
+          <OKRGraphView
             onViewObjective={abrirVerObjetivo}
             onEditObjective={abrirEditarObjetivo}
             onDeleteObjective={(objetivo) => eliminarObjetivo(objetivo.id_objetivo)}

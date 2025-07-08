@@ -6,26 +6,38 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "0.0.0.0:80:80"  # Bind a todas las interfaces
+      - "0.0.0.0:443:443"  # Para HTTPS futuro
     environment:
       - NODE_ENV=production
+      - REACT_APP_API_URL=http://192.168.1.68:8081  # Cambiar por tu IP real
     depends_on:
       - backend
+    restart: unless-stopped
+    networks:
+      - app-network
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "8081:8080"
+      - "0.0.0.0:8081:8080"  # Bind a todas las interfaces
     environment:
       - NODE_ENV=production
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
+      - DB_HOST=${DB_HOST:-localhost}
+      - DB_PORT=${DB_PORT:-3306}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+      - CORS_ORIGIN=http://192.168.1.68:80,http://localhost:5173
+    restart: unless-stopped
+    networks:
+      - app-network
 
 networks:
-  default:
-    driver: bridge 
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

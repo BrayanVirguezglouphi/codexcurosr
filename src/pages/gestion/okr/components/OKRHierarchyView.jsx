@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import '@/styles/okr-hierarchy.css';
-import { TreePine, Eye, Edit, Trash2, Plus, Filter, RotateCcw, ZoomIn, ZoomOut, Maximize, Move } from 'lucide-react';
+import { TreePine, Eye, Edit, Trash2, Plus, Filter, RotateCcw, ZoomIn, ZoomOut, Maximize, Move, GripVertical, ArrowRight, ArrowDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiCall } from '@/config/api';
 import { Button } from '@/components/ui/button';
@@ -22,23 +22,31 @@ const OKRHierarchyView = ({
   const [filtroEstado, setFiltroEstado] = useState('');
   const svgRef = useRef(null);
   
-  // Estados para zoom y pan
+  // Estados para zoom y pan del canvas
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
+  const [canvasDragStart, setCanvasDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef(null);
+
+  // Estados para drag and drop individual de OKRs
+  const [draggingOKR, setDraggingOKR] = useState(null);
+  const [okrPositions, setOkrPositions] = useState(new Map());
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Estado para orientación del layout
+  const [layoutOrientation, setLayoutOrientation] = useState('vertical'); // 'vertical' o 'horizontal'
 
   useEffect(() => {
     cargarObjetivos();
   }, []);
 
-  // Efectos para manejo de eventos globales
+  // Efectos para manejo de eventos globales del canvas
   useEffect(() => {
-    const handleGlobalMouseMove = (e) => handleMouseMove(e);
-    const handleGlobalMouseUp = () => handleMouseUp();
+    const handleGlobalMouseMove = (e) => handleCanvasMouseMove(e);
+    const handleGlobalMouseUp = () => handleCanvasMouseUp();
 
-    if (isDragging) {
+    if (isDraggingCanvas) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
     }
@@ -47,13 +55,54 @@ const OKRHierarchyView = ({
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isDragging, dragStart]);
+  }, [isDraggingCanvas, canvasDragStart]);
+
+  // Efectos para manejo de drag and drop de OKRs individuales
+  useEffect(() => {
+    const handleOKRMouseMove = (e) => handleOKRDragMove(e);
+    const handleOKRMouseUp = () => handleOKRDragEnd();
+
+    if (draggingOKR) {
+      document.addEventListener('mousemove', handleOKRMouseMove);
+      document.addEventListener('mouseup', handleOKRMouseUp);
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleOKRMouseMove);
+      document.removeEventListener('mouseup', handleOKRMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [draggingOKR, dragOffset]);
 
   const cargarObjetivos = async () => {
     try {
       setLoading(true);
       const data = await apiCall('/api/okr/objetivos');
       setObjetivos(data || []);
+      
+      // Cargar posiciones personalizadas si existen
+      try {
+        const savedPositions = localStorage.getItem('okr-custom-positions');
+        if (savedPositions) {
+          const positions = JSON.parse(savedPositions);
+          setOkrPositions(new Map(Object.entries(positions)));
+        }
+      } catch (error) {
+        console.log('No hay posiciones guardadas');
+      }
+      
+      // Cargar orientación guardada
+      try {
+        const savedOrientation = localStorage.getItem('okr-layout-orientation');
+        if (savedOrientation) {
+          setLayoutOrientation(savedOrientation);
+        }
+      } catch (error) {
+        console.log('No hay orientación guardada');
+      }
     } catch (error) {
       console.error('Error cargando objetivos:', error);
       toast({
@@ -98,37 +147,77 @@ const OKRHierarchyView = ({
     return raices;
   };
 
-  // Calcular posiciones para el layout del árbol
-  const calcularPosiciones = (nodos, nivel = 0, indice = 0, espacioH = 300, espacioV = 180) => {
+  // Mejorado: Calcular posiciones sin solapamientos
+  const calcularPosicionesAvanzadas = (nodos) => {
     const posiciones = [];
+    const nodosConNivel = [];
     
-    nodos.forEach((nodo, i) => {
-      const x = indice * espacioH + i * espacioH;
-      const y = nivel * espacioV + 50;
-      
-      posiciones.push({
-        nodo,
-        x,
-        y,
-        nivel
+    // Función recursiva para asignar niveles
+    const asignarNiveles = (nodos, nivel = 0) => {
+      nodos.forEach(nodo => {
+        nodosConNivel.push({ nodo, nivel });
+        if (nodo.children && nodo.children.length > 0) {
+          asignarNiveles(nodo.children, nivel + 1);
+        }
       });
-
-      if (nodo.children && nodo.children.length > 0) {
-        const posicionesHijos = calcularPosiciones(
-          nodo.children, 
-          nivel + 1, 
-          i * nodo.children.length, 
-          espacioH / Math.max(nodo.children.length, 1),
-          espacioV
-        );
-        posiciones.push(...posicionesHijos);
+    };
+    
+    asignarNiveles(nodos);
+    
+    // Agrupar por niveles
+    const nivelesAgrupados = {};
+    nodosConNivel.forEach(({ nodo, nivel }) => {
+      if (!nivelesAgrupados[nivel]) {
+        nivelesAgrupados[nivel] = [];
       }
+      nivelesAgrupados[nivel].push(nodo);
     });
-
+    
+    // Configuración según orientación
+    const cardWidth = 240;
+    const cardHeight = 80;
+    const horizontalSpacing = cardWidth + 60; // Más espacio horizontal
+    const verticalSpacing = cardHeight + 40; // Más espacio vertical
+    
+    Object.keys(nivelesAgrupados).forEach(nivel => {
+      const nodosEnNivel = nivelesAgrupados[nivel];
+      const nivelNum = parseInt(nivel);
+      
+      nodosEnNivel.forEach((nodo, index) => {
+        // Usar posición personalizada si existe
+        const customPos = okrPositions.get(nodo.id_objetivo.toString());
+        
+        let x, y;
+        
+        if (customPos) {
+          x = customPos.x;
+          y = customPos.y;
+        } else {
+          if (layoutOrientation === 'horizontal') {
+            // Layout horizontal: niveles de izquierda a derecha
+            x = nivelNum * horizontalSpacing + 50;
+            y = index * verticalSpacing + 50;
+          } else {
+            // Layout vertical: niveles de arriba a abajo
+            x = index * horizontalSpacing + 50;
+            y = nivelNum * verticalSpacing + 50;
+          }
+        }
+        
+        posiciones.push({
+          nodo,
+          x,
+          y,
+          nivel: nivelNum,
+          isCustomPosition: !!customPos
+        });
+      });
+    });
+    
     return posiciones;
   };
 
-  // Generar líneas de conexión SVG
+  // Generar líneas de conexión curvas y delgadas
   const generarConexiones = (posiciones) => {
     const conexiones = [];
     
@@ -137,33 +226,43 @@ const OKRHierarchyView = ({
         pos.nodo.children.forEach(hijo => {
           const posHijo = posiciones.find(p => p.nodo.id_objetivo === hijo.id_objetivo);
           if (posHijo) {
-            // Determinar el tipo de flecha según los estados
-            let tipoFlecha = 'arrowhead';
             let colorLinea = '#3B82F6';
-            let estiloLinea = 'solid';
             
             if (pos.nodo.estado === 'Completado' && hijo.estado === 'Completado') {
-              tipoFlecha = 'arrowhead-completed';
               colorLinea = '#10B981';
             } else if (pos.nodo.estado === 'En Riesgo' || hijo.estado === 'En Riesgo') {
-              tipoFlecha = 'arrowhead-risk';
               colorLinea = '#F59E0B';
             } else if (pos.nodo.estado === 'Pausado' || hijo.estado === 'Pausado') {
               colorLinea = '#6B7280';
-              estiloLinea = 'dashed';
+            }
+            
+            // Puntos de conexión mejorados
+            const cardWidth = 240;
+            const cardHeight = 80;
+            
+            let x1, y1, x2, y2;
+            
+            if (layoutOrientation === 'horizontal') {
+              // Conexiones horizontales: de derecha a izquierda
+              x1 = pos.x + cardWidth;
+              y1 = pos.y + cardHeight / 2;
+              x2 = posHijo.x;
+              y2 = posHijo.y + cardHeight / 2;
+            } else {
+              // Conexiones verticales: de abajo a arriba
+              x1 = pos.x + cardWidth / 2;
+              y1 = pos.y + cardHeight;
+              x2 = posHijo.x + cardWidth / 2;
+              y2 = posHijo.y;
             }
             
             conexiones.push({
-              x1: pos.x + 150, // Centro del nodo padre
-              y1: pos.y + 120, // Bottom del nodo padre
-              x2: posHijo.x + 150, // Centro del nodo hijo
-              y2: posHijo.y, // Top del nodo hijo
+              x1, y1, x2, y2,
               id: `${pos.nodo.id_objetivo}-${hijo.id_objetivo}`,
-              tipoFlecha,
               colorLinea,
-              estiloLinea,
               estadoPadre: pos.nodo.estado,
-              estadoHijo: hijo.estado
+              estadoHijo: hijo.estado,
+              orientacion: layoutOrientation
             });
           }
         });
@@ -174,36 +273,47 @@ const OKRHierarchyView = ({
   };
 
   const jerarquia = construirJerarquia();
-  const posiciones = calcularPosiciones(jerarquia);
+  const posiciones = calcularPosicionesAvanzadas(jerarquia);
   const conexiones = generarConexiones(posiciones);
 
-  // Calcular dimensiones del SVG
-  const maxX = Math.max(...posiciones.map(p => p.x + 300), 800);
-  const maxY = Math.max(...posiciones.map(p => p.y + 150), 400);
+  // Calcular dimensiones del SVG con más padding
+  const maxX = Math.max(...posiciones.map(p => p.x + 300), 1000);
+  const maxY = Math.max(...posiciones.map(p => p.y + 150), 600);
 
-  // Obtener color según estado
+  // Obtener color según estado (simplificado)
   const getColorEstado = (estado) => {
     switch (estado) {
-      case 'Activo': return 'bg-green-100 border-green-300 text-green-800';
-      case 'Completado': return 'bg-blue-100 border-blue-300 text-blue-800';
-      case 'En Riesgo': return 'bg-yellow-100 border-yellow-300 text-yellow-800';
-      case 'Pausado': return 'bg-gray-100 border-gray-300 text-gray-800';
-      default: return 'bg-gray-100 border-gray-300 text-gray-800';
+      case 'Activo': return 'bg-green-50 border-green-200 text-green-800';
+      case 'Completado': return 'bg-blue-50 border-blue-200 text-blue-800';
+      case 'En Riesgo': return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+      case 'Pausado': return 'bg-gray-50 border-gray-200 text-gray-800';
+      default: return 'bg-gray-50 border-gray-200 text-gray-800';
     }
   };
 
-  // Obtener icono según nivel
-  const getIconoNivel = (nivel) => {
+  // Obtener emoji según nivel (profesional)
+  const getEmojiNivel = (nivel) => {
     switch (nivel) {
       case 'Empresa': return '🏢';
-      case 'Departamento': return '🏛️';
+      case 'Departamento': return '🏬';
       case 'Equipo': return '👥';
       case 'Individual': return '👤';
-      default: return '🎯';
+      default: return '📋';
     }
   };
 
-  // Funciones para zoom y pan
+  // Obtener emoji según estado (profesional)
+  const getEmojiEstado = (estado) => {
+    switch (estado) {
+      case 'Activo': return '🟢';
+      case 'Completado': return '🔵';
+      case 'En Riesgo': return '🟡';
+      case 'Pausado': return '⚫';
+      default: return '⚪';
+    }
+  };
+
+  // Manejo de zoom y controles de canvas
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev * 1.2, 3));
   };
@@ -218,65 +328,65 @@ const OKRHierarchyView = ({
   };
 
   const handleFitToScreen = () => {
-    if (posiciones.length === 0) return;
+    if (!containerRef.current) return;
     
-    const containerWidth = containerRef.current?.clientWidth || 800;
-    const containerHeight = containerRef.current?.clientHeight || 600;
+    const container = containerRef.current;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
     
-    const margin = 50;
-    const contentWidth = maxX + margin * 2;
-    const contentHeight = maxY + margin * 2;
+    const contentWidth = maxX;
+    const contentHeight = maxY;
     
-    const scaleX = (containerWidth - margin * 2) / contentWidth;
-    const scaleY = (containerHeight - margin * 2) / contentHeight;
+    const scaleX = (containerWidth - 40) / contentWidth;
+    const scaleY = (containerHeight - 40) / contentHeight;
     const newZoom = Math.min(scaleX, scaleY, 1);
     
     setZoom(newZoom);
-    setPan({ 
+    setPan({
       x: (containerWidth - contentWidth * newZoom) / 2,
       y: (containerHeight - contentHeight * newZoom) / 2
     });
   };
 
-  // Manejo de arrastre
-  const handleMouseDown = (e) => {
-    if (e.button === 0) { // Solo botón izquierdo
-      setIsDragging(true);
-      setDragStart({
+  // Manejo de drag del canvas
+  const handleCanvasMouseDown = (e) => {
+    if (e.target === e.currentTarget || e.target.closest('.okr-hierarchy-container')) {
+      setIsDraggingCanvas(true);
+      setCanvasDragStart({
         x: e.clientX - pan.x,
         y: e.clientY - pan.y
       });
     }
   };
 
-  const handleMouseMove = (e) => {
-    if (isDragging) {
-      setPan({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }
+  const handleCanvasMouseMove = (e) => {
+    if (!isDraggingCanvas) return;
+    setPan({
+      x: e.clientX - canvasDragStart.x,
+      y: e.clientY - canvasDragStart.y
+    });
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleCanvasMouseUp = () => {
+    setIsDraggingCanvas(false);
   };
 
-  // Zoom con rueda del mouse
   const handleWheel = (e) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.3, Math.min(3, zoom * delta));
-    
-    // Zoom hacia el cursor
-    const rect = containerRef.current.getBoundingClientRect();
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
+
     const zoomPoint = {
       x: (mouseX - pan.x) / zoom,
       y: (mouseY - pan.y) / zoom
     };
+
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.3), 3);
     
     setPan({
       x: mouseX - zoomPoint.x * newZoom,
@@ -284,6 +394,76 @@ const OKRHierarchyView = ({
     });
     
     setZoom(newZoom);
+  };
+
+  // Manejo de drag and drop individual de OKRs
+  const handleOKRDragStart = (e, objetivo) => {
+    e.stopPropagation();
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    
+    setDraggingOKR(objetivo);
+  };
+
+  const handleOKRDragMove = (e) => {
+    if (!draggingOKR || !containerRef.current) return;
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    
+    // Calcular nueva posición considerando zoom y pan
+    const newX = (e.clientX - containerRect.left - pan.x - dragOffset.x) / zoom;
+    const newY = (e.clientY - containerRect.top - pan.y - dragOffset.y) / zoom;
+
+    // Actualizar posición en el mapa
+    setOkrPositions(prev => {
+      const newMap = new Map(prev);
+      newMap.set(draggingOKR.id_objetivo.toString(), { x: newX, y: newY });
+      return newMap;
+    });
+  };
+
+  const handleOKRDragEnd = () => {
+    if (draggingOKR) {
+      // Guardar posiciones en localStorage
+      const positionsObj = Object.fromEntries(okrPositions.entries());
+      localStorage.setItem('okr-custom-positions', JSON.stringify(positionsObj));
+      
+      toast({
+        title: "Posición actualizada",
+        description: `El objetivo "${draggingOKR.titulo}" ha sido reposicionado`,
+      });
+    }
+    
+    setDraggingOKR(null);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  // Cambiar orientación del layout
+  const cambiarOrientacion = () => {
+    const nuevaOrientacion = layoutOrientation === 'vertical' ? 'horizontal' : 'vertical';
+    setLayoutOrientation(nuevaOrientacion);
+    localStorage.setItem('okr-layout-orientation', nuevaOrientacion);
+    
+    toast({
+      title: "Orientación cambiada",
+      description: `Layout cambiado a ${nuevaOrientacion === 'vertical' ? 'vertical' : 'horizontal'}`,
+    });
+  };
+
+  // Resetear posiciones a layout automático
+  const resetearPosiciones = () => {
+    setOkrPositions(new Map());
+    localStorage.removeItem('okr-custom-positions');
+    toast({
+      title: "Posiciones restablecidas",
+      description: "Los objetivos han vuelto al layout automático",
+    });
   };
 
   if (loading) {
@@ -304,7 +484,7 @@ const OKRHierarchyView = ({
           <div>
             <h2 className="text-xl font-bold text-gray-900">Vista Jerárquica OKR</h2>
             <p className="text-sm text-gray-600">
-              {objetivos.length} objetivos • {jerarquia.length} objetivo(s) raíz
+              {objetivos.length} objetivos • {jerarquia.length} objetivo(s) raíz • Layout {layoutOrientation}
             </p>
           </div>
         </div>
@@ -318,7 +498,7 @@ const OKRHierarchyView = ({
             <SelectContent>
               <SelectItem value="">Todos los niveles</SelectItem>
               <SelectItem value="Empresa">🏢 Empresa</SelectItem>
-              <SelectItem value="Departamento">🏛️ Departamento</SelectItem>
+              <SelectItem value="Departamento">🏬 Departamento</SelectItem>
               <SelectItem value="Equipo">👥 Equipo</SelectItem>
               <SelectItem value="Individual">👤 Individual</SelectItem>
             </SelectContent>
@@ -331,9 +511,9 @@ const OKRHierarchyView = ({
             <SelectContent>
               <SelectItem value="">Todos los estados</SelectItem>
               <SelectItem value="Activo">🟢 Activo</SelectItem>
-              <SelectItem value="Completado">✅ Completado</SelectItem>
-              <SelectItem value="En Riesgo">⚠️ En Riesgo</SelectItem>
-              <SelectItem value="Pausado">⏸️ Pausado</SelectItem>
+              <SelectItem value="Completado">🔵 Completado</SelectItem>
+              <SelectItem value="En Riesgo">🟡 En Riesgo</SelectItem>
+              <SelectItem value="Pausado">⚫ Pausado</SelectItem>
             </SelectContent>
           </Select>
 
@@ -348,6 +528,42 @@ const OKRHierarchyView = ({
             <RotateCcw className="h-4 w-4 mr-1" />
             Limpiar Filtros
           </Button>
+
+          {/* Controles de layout mejorados */}
+          <div className="flex items-center gap-1 border rounded-md">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={cambiarOrientacion}
+              title={`Cambiar a layout ${layoutOrientation === 'vertical' ? 'horizontal' : 'vertical'}`}
+              className="border-0"
+            >
+              {layoutOrientation === 'vertical' ? (
+                <>
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  Horizontal
+                </>
+              ) : (
+                <>
+                  <ArrowDown className="h-4 w-4 mr-1" />
+                  Vertical
+                </>
+              )}
+            </Button>
+            
+            <div className="border-l h-6 mx-1"></div>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={resetearPosiciones}
+              title="Restablecer posiciones automáticas"
+              className="border-0"
+            >
+              <Move className="h-4 w-4 mr-1" />
+              Reset
+            </Button>
+          </div>
 
           {/* Controles de zoom */}
           <div className="okr-zoom-controls flex items-center gap-1 border rounded-md">
@@ -393,7 +609,7 @@ const OKRHierarchyView = ({
             onClick={handleResetView}
             title="Vista original"
           >
-            <Move className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" />
           </Button>
 
           <Button onClick={onCreateObjective} size="sm">
@@ -406,9 +622,11 @@ const OKRHierarchyView = ({
       {/* Área del diagrama */}
       <div 
         ref={containerRef}
-        className={`okr-viewport bg-white rounded-lg border shadow-sm overflow-hidden relative ${isDragging ? 'dragging' : ''}`}
-        style={{ height: '600px', cursor: isDragging ? 'grabbing' : 'grab' }}
-        onMouseDown={handleMouseDown}
+        className={`okr-viewport bg-white rounded-lg border shadow-sm overflow-hidden relative ${
+          isDraggingCanvas ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
+        style={{ height: '600px' }}
+        onMouseDown={handleCanvasMouseDown}
         onWheel={handleWheel}
       >
         {posiciones.length === 0 ? (
@@ -426,10 +644,10 @@ const OKRHierarchyView = ({
               minHeight: '500px',
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               transformOrigin: '0 0',
-              transition: isDragging ? 'none' : 'transform 0.2s ease'
+              transition: isDraggingCanvas ? 'none' : 'transform 0.2s ease'
             }}
           >
-            {/* SVG para las líneas de conexión */}
+            {/* SVG para las líneas de conexión curvas y delgadas */}
             <svg
               ref={svgRef}
               className="absolute top-0 left-0 pointer-events-none z-0"
@@ -437,281 +655,141 @@ const OKRHierarchyView = ({
               height={maxY}
             >
               <defs>
-                {/* Flecha principal */}
                 <marker
                   id="arrowhead"
-                  markerWidth="12"
-                  markerHeight="10"
-                  refX="11"
-                  refY="5"
+                  markerWidth="8"
+                  markerHeight="6"
+                  refX="7"
+                  refY="3"
                   orient="auto"
                   markerUnits="strokeWidth"
                 >
                   <polygon
-                    points="0 0, 12 5, 0 10"
+                    points="0 0, 8 3, 0 6"
                     fill="#3B82F6"
-                    stroke="#2563EB"
-                    strokeWidth="1"
                   />
                 </marker>
-                
-                {/* Flecha para objetivos completados */}
-                <marker
-                  id="arrowhead-completed"
-                  markerWidth="12"
-                  markerHeight="10"
-                  refX="11"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0 0, 12 5, 0 10"
-                    fill="#10B981"
-                    stroke="#059669"
-                    strokeWidth="1"
-                  />
-                </marker>
-                
-                {/* Flecha para objetivos en riesgo */}
-                <marker
-                  id="arrowhead-risk"
-                  markerWidth="12"
-                  markerHeight="10"
-                  refX="11"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0 0, 12 5, 0 10"
-                    fill="#F59E0B"
-                    stroke="#D97706"
-                    strokeWidth="1"
-                  />
-                </marker>
-                
-                {/* Patrón de línea punteada */}
-                <pattern id="dots" patternUnits="userSpaceOnUse" width="8" height="8">
-                  <circle cx="4" cy="4" r="1" fill="#3B82F6" opacity="0.6"/>
-                </pattern>
               </defs>
               
               {conexiones.map(conexion => (
                 <g key={conexion.id}>
-                  {/* Línea principal con curva */}
+                  {/* Línea de conexión curva y delgada */}
                   <path
-                    d={`M ${conexion.x1} ${conexion.y1 + 5} 
-                        C ${conexion.x1} ${conexion.y1 + 40} 
-                        ${conexion.x2} ${conexion.y2 - 40} 
-                        ${conexion.x2} ${conexion.y2 - 5}`}
+                    d={
+                      conexion.orientacion === 'horizontal' 
+                        ? `M ${conexion.x1} ${conexion.y1} 
+                           C ${conexion.x1 + 60} ${conexion.y1} 
+                           ${conexion.x2 - 60} ${conexion.y2} 
+                           ${conexion.x2} ${conexion.y2}`
+                        : `M ${conexion.x1} ${conexion.y1} 
+                           C ${conexion.x1} ${conexion.y1 + 40} 
+                           ${conexion.x2} ${conexion.y2 - 40} 
+                           ${conexion.x2} ${conexion.y2}`
+                    }
                     stroke={conexion.colorLinea}
-                    strokeWidth="3"
+                    strokeWidth="1.5"
                     fill="none"
-                    markerEnd={`url(#${conexion.tipoFlecha})`}
-                    strokeDasharray={conexion.estiloLinea === 'dashed' ? '8,4' : 'none'}
-                    className={`connection-line ${
-                      conexion.estadoPadre === 'Completado' && conexion.estadoHijo === 'Completado' 
-                        ? 'connection-completed' 
-                        : conexion.estadoPadre === 'En Riesgo' || conexion.estadoHijo === 'En Riesgo'
-                        ? 'connection-risk'
-                        : 'connection-active'
-                    }`}
+                    markerEnd="url(#arrowhead)"
                     opacity="0.8"
+                    className="connection-curve"
                   />
-                  
-                  {/* Línea de fondo para mejor visibilidad */}
-                  <path
-                    d={`M ${conexion.x1} ${conexion.y1 + 5} 
-                        C ${conexion.x1} ${conexion.y1 + 40} 
-                        ${conexion.x2} ${conexion.y2 - 40} 
-                        ${conexion.x2} ${conexion.y2 - 5}`}
-                    stroke="white"
-                    strokeWidth="5"
-                    fill="none"
-                    opacity="0.3"
-                    className="connection-background"
-                  />
-                  
-                  {/* Indicador de relación en el medio */}
-                  <circle
-                    cx={(conexion.x1 + conexion.x2) / 2}
-                    cy={(conexion.y1 + conexion.y2) / 2}
-                    r="4"
-                    fill={conexion.colorLinea}
-                    stroke="white"
-                    strokeWidth="2"
-                    opacity="0.9"
-                  />
-                  
-                  {/* Texto indicativo de la relación */}
-                  <text
-                    x={(conexion.x1 + conexion.x2) / 2 + 12}
-                    y={(conexion.y1 + conexion.y2) / 2 + 4}
-                    fontSize="10"
-                    fill={conexion.colorLinea}
-                    fontWeight="bold"
-                    opacity="0.7"
-                  >
-                    ↓
-                  </text>
                 </g>
               ))}
             </svg>
 
-            {/* Nodos de objetivos */}
+            {/* Nodos de objetivos simplificados */}
             {posiciones.map((pos, index) => (
               <motion.div
                 key={pos.nodo.id_objetivo}
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1, duration: 0.3 }}
-                className={`okr-node absolute border-2 rounded-lg p-4 bg-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer nivel-${pos.nodo.nivel.toLowerCase()} estado-${pos.nodo.estado.toLowerCase().replace(' ', '-')} ${getColorEstado(pos.nodo.estado)}`}
+                transition={{ delay: index * 0.05, duration: 0.2 }}
+                className={`okr-node-simple absolute border rounded-lg bg-white shadow-md hover:shadow-lg transition-all duration-200 ${
+                  getColorEstado(pos.nodo.estado)
+                } ${
+                  draggingOKR?.id_objetivo === pos.nodo.id_objetivo ? 'ring-2 ring-blue-400 shadow-xl' : ''
+                } ${
+                  pos.isCustomPosition ? 'ring-1 ring-indigo-300' : ''
+                }`}
                 style={{
                   left: pos.x,
                   top: pos.y,
-                  width: '300px',
-                  zIndex: 10
+                  width: '240px',
+                  height: '80px',
+                  zIndex: draggingOKR?.id_objetivo === pos.nodo.id_objetivo ? 1000 : 10,
+                  cursor: 'grab'
                 }}
+                onMouseDown={(e) => handleOKRDragStart(e, pos.nodo)}
               >
-                {/* Header del nodo */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{getIconoNivel(pos.nodo.nivel)}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {pos.nodo.nivel}
-                    </Badge>
-                  </div>
-                  <Badge className={`text-xs ${getColorEstado(pos.nodo.estado)}`}>
-                    {pos.nodo.estado}
-                  </Badge>
-                </div>
-
-                {/* Contenido del nodo */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm leading-tight line-clamp-2">
-                    {pos.nodo.titulo}
-                  </h3>
-                  
-                  <div className="text-xs text-gray-600">
-                    <p>👤 {pos.nodo.responsable_nombre}</p>
-                    {pos.nodo.total_key_results && (
-                      <p>📊 {pos.nodo.total_key_results} Key Results</p>
-                    )}
-                    {pos.nodo.promedio_cumplimiento !== null && (
-                      <p>📈 {Math.round(pos.nodo.promedio_cumplimiento)}% progreso</p>
-                    )}
-                  </div>
-
-                  {/* Información de relación */}
-                  {pos.nodo.id_objetivo_preexistente && (
-                    <div className="text-xs text-blue-600 bg-blue-50 p-1 rounded">
-                      🔗 Relacionado con objetivo #{pos.nodo.id_objetivo_preexistente}
+                {/* Header simplificado */}
+                <div className="flex items-center justify-between p-2 h-full">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-lg">{getEmojiNivel(pos.nodo.nivel)}</span>
+                      <span className="text-xs">{getEmojiEstado(pos.nodo.estado)}</span>
                     </div>
-                  )}
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 mb-1">
+                        {pos.nodo.titulo}
+                      </h3>
+                      <p className="text-xs text-gray-600 truncate">
+                        👤 {pos.nodo.responsable_nombre}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Handle para drag */}
+                  <div className="flex flex-col gap-1 opacity-60 hover:opacity-100">
+                    <GripVertical className="h-4 w-4 text-gray-400" />
+                  </div>
+
+                  {/* Acciones compactas */}
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewObjective(pos.nodo);
+                      }}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Eye className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditObjective(pos.nodo);
+                      }}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Acciones */}
-                <div className="flex justify-end gap-1 mt-3 pt-2 border-t border-gray-200">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewObjective(pos.nodo);
-                    }}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Eye className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditObjective(pos.nodo);
-                    }}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteObjective(pos.nodo);
-                    }}
-                    className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
+                {/* Indicador de posición personalizada */}
+                {pos.isCustomPosition && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full border-2 border-white" 
+                       title="Posición personalizada" />
+                )}
               </motion.div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Leyenda */}
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="font-medium text-gray-900">Leyenda</h4>
-          <div className="flex items-center gap-4 text-xs text-gray-600">
-            <span>Zoom: {Math.round(zoom * 100)}%</span>
-            <span>📱 Usa la rueda del mouse para hacer zoom</span>
-            <span>🖱️ Arrastra para mover la vista</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span>🏢</span>
-            <span>Empresa</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>🏛️</span>
-            <span>Departamento</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>👥</span>
-            <span>Equipo</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>👤</span>
-            <span>Individual</span>
-          </div>
-        </div>
-        <div className="mt-3 space-y-2">
-          <div className="flex items-center gap-4 text-xs text-gray-600">
-            <span>🔗 Las flechas indican relaciones jerárquicas</span>
-            <span>📊 Los colores representan el estado del objetivo</span>
-          </div>
-          <div className="flex items-center gap-6 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-blue-500 relative">
-                <div className="absolute right-0 top-[-2px] w-0 h-0 border-l-[4px] border-l-blue-500 border-t-[2px] border-b-[2px] border-t-transparent border-b-transparent"></div>
-              </div>
-              <span className="text-blue-600">Activo</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-green-500 relative">
-                <div className="absolute right-0 top-[-2px] w-0 h-0 border-l-[4px] border-l-green-500 border-t-[2px] border-b-[2px] border-t-transparent border-b-transparent"></div>
-              </div>
-              <span className="text-green-600">Completado</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-yellow-500 relative">
-                <div className="absolute right-0 top-[-2px] w-0 h-0 border-l-[4px] border-l-yellow-500 border-t-[2px] border-b-[2px] border-t-transparent border-b-transparent"></div>
-              </div>
-              <span className="text-yellow-600">En Riesgo</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-gray-500 border-dashed border-b-2 relative">
-                <div className="absolute right-0 top-[-2px] w-0 h-0 border-l-[4px] border-l-gray-500 border-t-[2px] border-b-[2px] border-t-transparent border-b-transparent"></div>
-              </div>
-              <span className="text-gray-600">Pausado</span>
-            </div>
-          </div>
+      {/* Leyenda simplificada */}
+      <div className="bg-gray-50 p-3 rounded-lg">
+        <div className="flex items-center justify-between text-xs text-gray-600">
+          <span>💡 Arrastra cualquier OKR para reposicionarlo</span>
+          <span>🔄 Cambia entre layout horizontal y vertical</span>
+          <span>🖱️ Usa la rueda del mouse para zoom</span>
+          <span>📱 Arrastra el fondo para mover la vista</span>
+          <span>Zoom: {Math.round(zoom * 100)}%</span>
         </div>
       </div>
     </div>
