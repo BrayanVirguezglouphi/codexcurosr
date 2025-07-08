@@ -1,0 +1,23 @@
+# Usar imagen base de Node.js
+FROM node:20
+
+# Directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de backend
+COPY . .
+
+# Instalar dependencias de tu app
+RUN npm install
+
+# Hacer ejecutable el script de inicio
+RUN chmod +x start-backend.sh
+
+# Exponer puerto
+EXPOSE 8080
+
+# Variables de entorno
+ENV NODE_ENV=production
+
+# Usar script de inicio
+CMD ["./start-backend.sh"] 

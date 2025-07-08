@@ -5,6 +5,9 @@ const API_CONFIG = {
   },
   production: {
     baseURL: 'https://pros-backend-996366858087.us-central1.run.app'
+  },
+  docker: {
+    baseURL: 'http://100.94.177.68:8081' // Backend local para Docker
   }
 };
 
@@ -13,6 +16,11 @@ const getEnvironment = () => {
   const hostname = window.location.hostname;
   const port = window.location.port;
   
+  // Permitir override por variable de entorno (útil para Docker)
+  if (window.ENV_MODE) {
+    return window.ENV_MODE;
+  }
+  
   // Si estamos en desarrollo local (localhost, 127.0.0.1 o IPs privadas)
   if (
     hostname === 'localhost' || 
@@ -20,13 +28,18 @@ const getEnvironment = () => {
     hostname.startsWith('192.168.') ||
     hostname.startsWith('172.') ||
     hostname.startsWith('10.') ||
-    hostname.startsWith('100.') || // Rango adicional para redes privadas/VPN
+    hostname.startsWith('100.') || // Rango adicional para Docker/VPN
     hostname === '0.0.0.0' ||
     port === '5173' || // Puerto por defecto de Vite dev
     port === '3000' || // Puerto común de desarrollo
     window.location.protocol === 'http:' // Si usa HTTP, probablemente es desarrollo
   ) {
     return 'development';
+  }
+  
+  // Si el puerto es 8080 y usa HTTP, probablemente es Docker local
+  if ((port === '8080' || port === '80' || !port) && window.location.protocol === 'http:') {
+    return 'docker';
   }
   
   // Si estamos en producción
