@@ -20,7 +20,7 @@ const getEnvironment = () => {
     hostname.startsWith('192.168.') ||
     hostname.startsWith('172.') ||
     hostname.startsWith('10.') ||
-    hostname.startsWith('100.') || // Rango adicional para Docker/VPN
+    hostname.startsWith('100.') || // Rango adicional para redes privadas/VPN
     hostname === '0.0.0.0' ||
     port === '5173' || // Puerto por defecto de Vite dev
     port === '3000' || // Puerto común de desarrollo

@@ -1769,7 +1769,7 @@ const HOST = '0.0.0.0'; // Escuchar en todas las interfaces
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
   console.log(`🌐 Accesible desde: http://localhost:${PORT}`);
-  console.log(`🌐 Accesible desde: http://100.94.177.68:${PORT}`);
+  console.log(`🌐 Accesible desde cualquier IP de la red en puerto ${PORT}`);
   // Mostrar tablas disponibles al iniciar
   pool.query(`
     SELECT table_name 

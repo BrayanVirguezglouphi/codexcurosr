@@ -193,7 +193,7 @@ export default defineConfig({
 		allowedHosts: true,
 		proxy: {
 			'/api': {
-				target: 'http://100.94.177.68:8081', // Usar la IP externa para el backend
+				target: 'http://localhost:8081', // Usar localhost para simplicidad
 				changeOrigin: true,
 				secure: false,
 				configure: (proxy, options) => {
