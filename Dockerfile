@@ -25,11 +25,11 @@ COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 # Copiar archivos build
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Exponer puerto 8080
-EXPOSE 8080
+# Exponer puerto 80
+EXPOSE 80
 
 # Variables de entorno
-ENV PORT=8080
+ENV PORT=80
 
-# Comando para iniciar nginx en puerto 8080
-CMD ["sh", "-c", "sed -i 's/listen 80;/listen 8080;/' /etc/nginx/nginx.conf && nginx -g 'daemon off;'"] 
+# Comando para iniciar nginx
+CMD ["nginx", "-g", "daemon off;"] 

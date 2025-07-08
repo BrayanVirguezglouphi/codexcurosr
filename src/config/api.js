@@ -7,7 +7,7 @@ const API_CONFIG = {
     baseURL: 'https://pros-backend-996366858087.us-central1.run.app'
   },
   docker: {
-    baseURL: 'http://100.94.177.68:8081' // Backend local para Docker
+    baseURL: 'http://host.docker.internal:8081' // Usar host.docker.internal para acceder al host desde Docker
   }
 };
 
