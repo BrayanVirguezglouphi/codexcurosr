@@ -10,10 +10,25 @@ const API_CONFIG = {
 
 // Detectar entorno actual
 const getEnvironment = () => {
-  // Si estamos en desarrollo local
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  const hostname = window.location.hostname;
+  const port = window.location.port;
+  
+  // Si estamos en desarrollo local (localhost, 127.0.0.1 o IPs privadas)
+  if (
+    hostname === 'localhost' || 
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('172.') ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('100.') || // Rango adicional para Docker/VPN
+    hostname === '0.0.0.0' ||
+    port === '5173' || // Puerto por defecto de Vite dev
+    port === '3000' || // Puerto común de desarrollo
+    window.location.protocol === 'http:' // Si usa HTTP, probablemente es desarrollo
+  ) {
     return 'development';
   }
+  
   // Si estamos en producción
   return 'production';
 };

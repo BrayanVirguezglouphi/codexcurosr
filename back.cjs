@@ -1765,8 +1765,11 @@ app.get('/api/okr/dashboard/stats', async (req, res) => {
 
 // Iniciar servidor y mostrar tablas disponibles
 const PORT = 8081;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+const HOST = '0.0.0.0'; // Escuchar en todas las interfaces
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
+  console.log(`🌐 Accesible desde: http://localhost:${PORT}`);
+  console.log(`🌐 Accesible desde: http://100.94.177.68:${PORT}`);
   // Mostrar tablas disponibles al iniciar
   pool.query(`
     SELECT table_name 

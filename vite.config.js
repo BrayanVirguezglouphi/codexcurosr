@@ -186,12 +186,26 @@ export default defineConfig({
 	plugins: [react(), addTransformIndexHtml],
 	server: {
 		cors: true,
+		host: '0.0.0.0', // Permitir acceso desde cualquier IP
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
 		allowedHosts: true,
 		proxy: {
-			'/api': 'http://localhost:8081'
+			'/api': {
+				target: 'http://100.94.177.68:8081', // Usar la IP externa para el backend
+				changeOrigin: true,
+				secure: false,
+				configure: (proxy, options) => {
+					proxy.on('proxyReq', (proxyReq, req, res) => {
+						console.log('🔄 Proxy request:', req.method, req.url, '→', options.target + req.url);
+					});
+					proxy.on('error', (err, req, res) => {
+						console.error('❌ Proxy error:', err.message);
+						console.error('💡 Asegúrate de que el backend esté corriendo en', options.target);
+					});
+				}
+			}
 		}
 	},
 	resolve: {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, Save, X } from 'lucide-react';
+import { Edit3, Save, X, Link } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiCall } from '@/config/api';
 
@@ -28,10 +28,38 @@ const EditarObjetivoDialog = ({
     fecha_inicio: '',
     fecha_fin: '',
     estado: 'Activo',
+    id_objetivo_preexistente: '',
     nivel_impacto: ''
   });
 
   const [loading, setLoading] = useState(false);
+  const [objetivosExistentes, setObjetivosExistentes] = useState([]);
+  const [loadingObjetivos, setLoadingObjetivos] = useState(false);
+
+  // Cargar objetivos existentes cuando se abre el diálogo
+  useEffect(() => {
+    if (isOpen) {
+      cargarObjetivosExistentes();
+    }
+  }, [isOpen]);
+
+  // Función para cargar objetivos existentes
+  const cargarObjetivosExistentes = async () => {
+    try {
+      setLoadingObjetivos(true);
+      const objetivos = await apiCall('/api/okr/objetivos');
+      setObjetivosExistentes(objetivos || []);
+    } catch (error) {
+      console.error('Error cargando objetivos existentes:', error);
+      toast({
+        title: "Advertencia",
+        description: "No se pudieron cargar los objetivos existentes",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingObjetivos(false);
+    }
+  };
 
   // Cargar datos del objetivo cuando se abre el diálogo
   useEffect(() => {
@@ -44,6 +72,7 @@ const EditarObjetivoDialog = ({
         fecha_inicio: objetivo.fecha_inicio ? objetivo.fecha_inicio.split('T')[0] : '',
         fecha_fin: objetivo.fecha_fin ? objetivo.fecha_fin.split('T')[0] : '',
         estado: objetivo.estado || 'Activo',
+        id_objetivo_preexistente: objetivo.id_objetivo_preexistente ? objetivo.id_objetivo_preexistente.toString() : '',
         nivel_impacto: objetivo.nivel_impacto ? objetivo.nivel_impacto.toString() : ''
       });
     }
@@ -59,6 +88,7 @@ const EditarObjetivoDialog = ({
       fecha_inicio: '',
       fecha_fin: '',
       estado: 'Activo',
+      id_objetivo_preexistente: '',
       nivel_impacto: ''
     });
   };
@@ -115,6 +145,7 @@ const EditarObjetivoDialog = ({
         fecha_inicio: formObjetivo.fecha_inicio || null,
         fecha_fin: formObjetivo.fecha_fin || null,
         estado: formObjetivo.estado,
+        id_objetivo_preexistente: formObjetivo.id_objetivo_preexistente ? parseInt(formObjetivo.id_objetivo_preexistente) : null,
         nivel_impacto: formObjetivo.nivel_impacto ? parseInt(formObjetivo.nivel_impacto) : null
       };
 
@@ -299,6 +330,45 @@ const EditarObjetivoDialog = ({
                   placeholder="Escala de impacto esperado"
                   disabled={loading}
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label htmlFor="objetivo_preexistente-edit" className="flex items-center gap-2">
+                  <Link className="h-4 w-4 text-blue-600" />
+                  Relacionar con Objetivo Preexistente (Opcional)
+                </Label>
+                <div className="space-y-2">
+                  <Select 
+                    value={formObjetivo.id_objetivo_preexistente} 
+                    onValueChange={(value) => setFormObjetivo(prev => ({ ...prev, id_objetivo_preexistente: value }))}
+                    disabled={loading || loadingObjetivos}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingObjetivos ? "Cargando objetivos..." : "Seleccionar objetivo preexistente"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">🚫 Sin objetivo preexistente</SelectItem>
+                      {objetivosExistentes
+                        .filter(obj => obj.id_objetivo !== objetivo?.id_objetivo) // Excluir el objetivo actual
+                        .map(obj => {
+                          const responsable = staff.find(s => s.id_staff === obj.id_responsable);
+                          return (
+                            <SelectItem key={obj.id_objetivo} value={obj.id_objetivo.toString()}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">🎯 {obj.titulo}</span>
+                                <span className="text-xs text-gray-500">
+                                  {obj.estado} • {obj.nivel} • {responsable ? responsable.nombre : 'Sin responsable'}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-600 flex items-start gap-1">
+                    💡 <span>Modifica la relación de este objetivo con otros objetivos existentes. Útil para crear dependencias o jerarquías organizacionales.</span>
+                  </p>
+                </div>
               </div>
             </div>
           </div>

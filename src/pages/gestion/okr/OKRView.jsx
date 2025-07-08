@@ -20,7 +20,8 @@ import {
   Filter,
   Calendar,
   UserCheck,
-  Settings
+  Settings,
+  TreePine
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ import CrearObjetivoDialog from './components/CrearObjetivoDialog';
 import EditarObjetivoDialog from './components/EditarObjetivoDialog';
 import VerObjetivoDialog from './components/VerObjetivoDialog';
 import KeyResultsManager from './components/KeyResultsManager';
+import OKRHierarchyView from './components/OKRHierarchyView';
 
 const OKRView = () => {
   const { isDarkMode } = useSettings();
@@ -63,6 +65,9 @@ const OKRView = () => {
     responsable: '',
     nivel: ''
   });
+
+  // Estado para tabs
+  const [activeTab, setActiveTab] = useState('lista');
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -244,70 +249,84 @@ const OKRView = () => {
         </Card>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Estado</Label>
-              <Select value={filtros.estado} onValueChange={(value) => setFiltros(prev => ({ ...prev, estado: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los estados" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todos los estados</SelectItem>
-                  <SelectItem value="Activo">Activo</SelectItem>
-                  <SelectItem value="Completado">Completado</SelectItem>
-                  <SelectItem value="En Riesgo">En Riesgo</SelectItem>
-                  <SelectItem value="Pausado">Pausado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Navegación por tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="lista" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Vista Lista
+          </TabsTrigger>
+          <TabsTrigger value="jerarquia" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Vista Jerárquica
+          </TabsTrigger>
+        </TabsList>
 
-            <div>
-              <Label>Responsable</Label>
-              <Select value={filtros.responsable} onValueChange={(value) => setFiltros(prev => ({ ...prev, responsable: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los responsables" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todos los responsables</SelectItem>
-                  {staff.map(person => (
-                    <SelectItem key={person.id_staff} value={person.id_staff.toString()}>
-                      {person.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <TabsContent value="lista" className="space-y-6 mt-6">
+          {/* Filtros */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filtros
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Estado</Label>
+                  <Select value={filtros.estado} onValueChange={(value) => setFiltros(prev => ({ ...prev, estado: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los estados" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos los estados</SelectItem>
+                      <SelectItem value="Activo">Activo</SelectItem>
+                      <SelectItem value="Completado">Completado</SelectItem>
+                      <SelectItem value="En Riesgo">En Riesgo</SelectItem>
+                      <SelectItem value="Pausado">Pausado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div>
-              <Label>Nivel</Label>
-              <Select value={filtros.nivel} onValueChange={(value) => setFiltros(prev => ({ ...prev, nivel: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los niveles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todos los niveles</SelectItem>
-                  <SelectItem value="Empresa">Empresa</SelectItem>
-                  <SelectItem value="Departamento">Departamento</SelectItem>
-                  <SelectItem value="Equipo">Equipo</SelectItem>
-                  <SelectItem value="Individual">Individual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                <div>
+                  <Label>Responsable</Label>
+                  <Select value={filtros.responsable} onValueChange={(value) => setFiltros(prev => ({ ...prev, responsable: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los responsables" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos los responsables</SelectItem>
+                      {staff.map(person => (
+                        <SelectItem key={person.id_staff} value={person.id_staff.toString()}>
+                          {person.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-      {/* Lista de Objetivos */}
-      <div className="space-y-6">
+                <div>
+                  <Label>Nivel</Label>
+                  <Select value={filtros.nivel} onValueChange={(value) => setFiltros(prev => ({ ...prev, nivel: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los niveles" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos los niveles</SelectItem>
+                      <SelectItem value="Empresa">Empresa</SelectItem>
+                      <SelectItem value="Departamento">Departamento</SelectItem>
+                      <SelectItem value="Equipo">Equipo</SelectItem>
+                      <SelectItem value="Individual">Individual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lista de Objetivos */}
+          <div className="space-y-6">
         {objetivosFiltrados.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -428,7 +447,19 @@ const OKRView = () => {
             </motion.div>
           ))
         )}
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="jerarquia" className="mt-6">
+          <OKRHierarchyView
+            onViewObjective={abrirVerObjetivo}
+            onEditObjective={abrirEditarObjetivo}
+            onDeleteObjective={(objetivo) => eliminarObjetivo(objetivo.id_objetivo)}
+            onCreateObjective={() => setIsCrearObjetivoOpen(true)}
+            staff={staff}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Diálogos especializados */}
       <CrearObjetivoDialog

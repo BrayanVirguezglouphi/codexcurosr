@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node src/server.js",
+    "server": "node back.cjs",
     "start": "npm run server",
     "build:prod": "npm run env:gcp && npm run build",
     "env:dev": "node config-manager.js switch dev",
