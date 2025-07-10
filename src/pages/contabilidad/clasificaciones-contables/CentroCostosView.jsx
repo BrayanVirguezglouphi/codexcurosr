@@ -21,6 +21,8 @@ import ImportDialog from '@/components/ui/import-dialog';
 import { useToast } from "@/components/ui/use-toast";
 import { apiCall } from '@/config/api';
 import { toast } from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const CentroCostosView = () => {
   const [centrosCostos, setCentrosCostos] = useState([]);
@@ -364,15 +366,28 @@ const CentroCostosView = () => {
   // Funciones de exportación e importación
   const handleExport = async (exportType) => {
     try {
-      const { default: XLSX } = await import('xlsx');
-      const { saveAs } = await import('file-saver');
+      console.log('🔄 Iniciando exportación de centros de costos...');
+      
+      // Verificar que las librerías estén disponibles (importación estática)
+      console.log('✅ Librerías disponibles:', { XLSX: !!XLSX, saveAs: !!saveAs });
+      
+      if (!XLSX || !XLSX.utils) {
+        throw new Error('Error: Librería XLSX no disponible');
+      }
       
       let dataToExport = [];
       
-      if (exportType === 'filtered') {
+      if (exportType === 'filtered' && filteredAndSortedCentrosCostos && filteredAndSortedCentrosCostos.length > 0) {
         dataToExport = filteredAndSortedCentrosCostos;
       } else {
-        dataToExport = centrosCostos;
+        dataToExport = centrosCostos || [];
+      }
+
+      console.log(`📊 Datos a exportar: ${dataToExport.length} registros`);
+
+      if (dataToExport.length === 0) {
+        toast.warning('No hay datos para exportar');
+        return;
       }
 
       // Formatear datos para exportación

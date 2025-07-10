@@ -24,6 +24,8 @@ import { Badge } from '../../../components/ui/badge';
 import ExportDialog from '../../../components/ui/export-dialog';
 import ImportDialog from '../../../components/ui/import-dialog';
 import { toast } from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const EtiquetasContablesView = () => {
   const [etiquetasContables, setEtiquetasContables] = useState([]);
@@ -356,15 +358,28 @@ const EtiquetasContablesView = () => {
   // Funciones de exportación e importación
   const handleExport = async (exportType) => {
     try {
-      const { default: XLSX } = await import('xlsx');
-      const { saveAs } = await import('file-saver');
+      console.log('🔄 Iniciando exportación de etiquetas contables...');
+      
+      // Verificar que las librerías estén disponibles (importación estática)
+      console.log('✅ Librerías disponibles:', { XLSX: !!XLSX, saveAs: !!saveAs });
+      
+      if (!XLSX || !XLSX.utils) {
+        throw new Error('Error: Librería XLSX no disponible');
+      }
       
       let dataToExport = [];
       
-      if (exportType === 'filtered') {
+      if (exportType === 'filtered' && filteredAndSortedEtiquetas && filteredAndSortedEtiquetas.length > 0) {
         dataToExport = filteredAndSortedEtiquetas;
       } else {
-        dataToExport = etiquetasContables;
+        dataToExport = etiquetasContables || [];
+      }
+
+      console.log(`📊 Datos a exportar: ${dataToExport.length} registros`);
+
+      if (dataToExport.length === 0) {
+        toast.warning('No hay datos para exportar');
+        return;
       }
 
       // Formatear datos para exportación

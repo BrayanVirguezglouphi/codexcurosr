@@ -653,6 +653,23 @@ app.get('/api/terceros/:id', async (req, res) => {
 app.put('/api/terceros/:id', async (req, res) => {
   const { id } = req.params;
   try {
+    console.log(`📝 PUT /api/terceros/${id}`);
+    console.log('🔍 Datos recibidos:', req.body);
+    
+    // Primero obtener los datos actuales del tercero
+    const currentResult = await pool.query('SELECT * FROM adcot_terceros_exogenos WHERE id_tercero = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tercero no encontrado' });
+    }
+    
+    const currentTercero = currentResult.rows[0];
+    console.log('📋 Datos actuales del tercero:', currentTercero);
+    
+    // Hacer merge de los datos actuales con los nuevos cambios
+    const updatedData = { ...currentTercero, ...req.body };
+    console.log('🔄 Datos después del merge:', updatedData);
+    
     const {
       tipo_personalidad,
       id_tipo_documento,
@@ -668,7 +685,7 @@ app.put('/api/terceros/:id', async (req, res) => {
       id_municipio_ciudad,
       telefono,
       observaciones
-    } = req.body;
+    } = updatedData;
 
     const result = await pool.query(`
       UPDATE adcot_terceros_exogenos SET
@@ -706,10 +723,7 @@ app.put('/api/terceros/:id', async (req, res) => {
       id
     ]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Tercero no encontrado' });
-    }
-
+    console.log('✅ Tercero actualizado exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error:', error);
@@ -1404,26 +1418,44 @@ app.put('/api/transacciones/:id', async (req, res) => {
 // Actualizar un contrato existente
 app.put('/api/contratos/:id', async (req, res) => {
   const { id } = req.params;
-  const {
-    numero_contrato_os,
-    id_tercero,
-    descripcion_servicio_contratado,
-    estatus_contrato,
-    fecha_contrato,
-    fecha_inicio_servicio,
-    fecha_final_servicio,
-    id_moneda_cotizacion,
-    valor_cotizado,
-    valor_descuento,
-    trm,
-    id_tax,
-    valor_tax,
-    modo_de_pago,
-    url_cotizacion,
-    url_contrato,
-    observaciones_contrato
-  } = req.body;
   try {
+    console.log(`📝 PUT /api/contratos/${id}`);
+    console.log('🔍 Datos recibidos:', req.body);
+    
+    // Primero obtener los datos actuales del contrato
+    const currentResult = await pool.query('SELECT * FROM adcot_contratos_clientes WHERE id_contrato = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Contrato no encontrado' });
+    }
+    
+    const currentContrato = currentResult.rows[0];
+    console.log('📋 Datos actuales del contrato:', currentContrato);
+    
+    // Hacer merge de los datos actuales con los nuevos cambios
+    const updatedData = { ...currentContrato, ...req.body };
+    console.log('🔄 Datos después del merge:', updatedData);
+    
+    const {
+      numero_contrato_os,
+      id_tercero,
+      descripcion_servicio_contratado,
+      estatus_contrato,
+      fecha_contrato,
+      fecha_inicio_servicio,
+      fecha_final_servicio,
+      id_moneda_cotizacion,
+      valor_cotizado,
+      valor_descuento,
+      trm,
+      id_tax,
+      valor_tax,
+      modo_de_pago,
+      url_cotizacion,
+      url_contrato,
+      observaciones_contrato
+    } = updatedData;
+
     const result = await pool.query(`
       UPDATE adcot_contratos_clientes SET
         numero_contrato_os = $1,
@@ -1465,9 +1497,8 @@ app.put('/api/contratos/:id', async (req, res) => {
       observaciones_contrato,
       id
     ]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Contrato no encontrado' });
-    }
+
+    console.log('✅ Contrato actualizado exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error actualizando contrato:', error);
@@ -1478,12 +1509,31 @@ app.put('/api/contratos/:id', async (req, res) => {
 // Actualizar una línea de servicio existente
 app.put('/api/lineas-servicios/:id', async (req, res) => {
   const { id } = req.params;
-  const {
-    nombre,
-    descripcion_servicio,
-    id_modelonegocio
-  } = req.body;
   try {
+    console.log(`📝 PUT /api/lineas-servicios/${id}`);
+    console.log('🔍 Datos recibidos:', req.body);
+    
+    // Primero obtener los datos actuales de la línea de servicio
+    const currentResult = await pool.query('SELECT * FROM adcot_lineas_de_servicios WHERE id_servicio = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Línea de servicio no encontrada' });
+    }
+    
+    const currentLinea = currentResult.rows[0];
+    console.log('📋 Datos actuales de la línea:', currentLinea);
+    
+    // Hacer merge de los datos actuales con los nuevos cambios
+    const updatedData = { ...currentLinea, ...req.body };
+    console.log('🔄 Datos después del merge:', updatedData);
+    
+    // Mapear campos del body que podrían venir como 'nombre' en lugar de 'servicio'
+    const nombre = updatedData.nombre || updatedData.servicio;
+    const {
+      descripcion_servicio,
+      id_modelonegocio
+    } = updatedData;
+
     const result = await pool.query(`
       UPDATE adcot_lineas_de_servicios SET
         servicio = $1,
@@ -1497,9 +1547,8 @@ app.put('/api/lineas-servicios/:id', async (req, res) => {
       id_modelonegocio,
       id
     ]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Línea de servicio no encontrada' });
-    }
+
+    console.log('✅ Línea de servicio actualizada exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error actualizando línea de servicio:', error);
@@ -1539,21 +1588,58 @@ app.delete('/api/lineas-servicios/:id', async (req, res) => {
 // Actualizar un impuesto existente
 app.put('/api/impuestos/:id', async (req, res) => {
   const { id } = req.params;
-  const {
-    tipo_obligacion,
-    institucion_reguladora,
-    titulo_impuesto,
-    formula_aplicacion,
-    periodicidad_declaracion,
-    estado,
-    observaciones,
-    url_referencia_normativa,
-    fecha_inicio_impuesto,
-    fecha_final_impuesto,
-    url_instrucciones,
-    fecha_fin
-  } = req.body;
   try {
+    console.log(`📝 PUT /api/impuestos/${id}`);
+    console.log('🔍 Datos recibidos:', req.body);
+    
+    // Primero obtener los datos actuales del impuesto
+    const currentResult = await pool.query('SELECT * FROM adcot_taxes WHERE id_tax = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Impuesto no encontrado' });
+    }
+    
+    const currentImpuesto = currentResult.rows[0];
+    console.log('📋 Datos actuales del impuesto:', currentImpuesto);
+    
+    // Hacer merge de los datos actuales con los nuevos cambios
+    const updatedData = { ...currentImpuesto, ...req.body };
+    console.log('🔄 Datos después del merge:', updatedData);
+    
+    // Asegurar valores por defecto para campos obligatorios en la DB
+    // Usar verificación robusta que maneje null, undefined y strings vacíos
+    const safeData = {
+      tipo_obligacion: (updatedData.tipo_obligacion && updatedData.tipo_obligacion.trim()) || 'IMPUESTO',
+      institucion_reguladora: (updatedData.institucion_reguladora && updatedData.institucion_reguladora.trim()) || 'DIAN',
+      titulo_impuesto: (updatedData.titulo_impuesto && updatedData.titulo_impuesto.trim()) || 'Impuesto General',
+      formula_aplicacion: updatedData.formula_aplicacion || '',
+      periodicidad_declaracion: (updatedData.periodicidad_declaracion && updatedData.periodicidad_declaracion.trim()) || 'MENSUAL',
+      estado: (updatedData.estado && updatedData.estado.trim()) || 'ACTIVO',
+      observaciones: updatedData.observaciones || '',
+      url_referencia_normativa: updatedData.url_referencia_normativa || '',
+      fecha_inicio_impuesto: updatedData.fecha_inicio_impuesto || null,
+      fecha_final_impuesto: updatedData.fecha_final_impuesto || null,
+      url_instrucciones: updatedData.url_instrucciones || '',
+      fecha_fin: updatedData.fecha_fin || null
+    };
+    
+    console.log('🛡️ Datos con valores por defecto:', safeData);
+    
+    const {
+      tipo_obligacion,
+      institucion_reguladora,
+      titulo_impuesto,
+      formula_aplicacion,
+      periodicidad_declaracion,
+      estado,
+      observaciones,
+      url_referencia_normativa,
+      fecha_inicio_impuesto,
+      fecha_final_impuesto,
+      url_instrucciones,
+      fecha_fin
+    } = safeData;
+
     const result = await pool.query(`
       UPDATE adcot_taxes SET
         tipo_obligacion = $1,
@@ -1585,9 +1671,8 @@ app.put('/api/impuestos/:id', async (req, res) => {
       fecha_fin,
       id
     ]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Impuesto no encontrado' });
-    }
+
+    console.log('✅ Impuesto actualizado exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error actualizando impuesto:', error);
@@ -1627,12 +1712,30 @@ app.delete('/api/impuestos/:id', async (req, res) => {
 // Actualizar un centro de costos existente
 app.put('/api/centros-costos/:id', async (req, res) => {
   const { id } = req.params;
-  const {
-    sub_centro_costo,
-    centro_costo_macro,
-    descripcion_cc
-  } = req.body;
   try {
+    console.log(`📝 PUT /api/centros-costos/${id}`);
+    console.log('🔍 Datos recibidos:', req.body);
+    
+    // Primero obtener los datos actuales del centro de costos
+    const currentResult = await pool.query('SELECT * FROM adcot_centro_costos WHERE id_centro_costo = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Centro de costos no encontrado' });
+    }
+    
+    const currentCentro = currentResult.rows[0];
+    console.log('📋 Datos actuales del centro:', currentCentro);
+    
+    // Hacer merge de los datos actuales con los nuevos cambios
+    const updatedData = { ...currentCentro, ...req.body };
+    console.log('🔄 Datos después del merge:', updatedData);
+    
+    const {
+      sub_centro_costo,
+      centro_costo_macro,
+      descripcion_cc
+    } = updatedData;
+
     const result = await pool.query(`
       UPDATE adcot_centro_costos SET
         sub_centro_costo = $1,
@@ -1646,9 +1749,8 @@ app.put('/api/centros-costos/:id', async (req, res) => {
       descripcion_cc,
       id
     ]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Centro de costos no encontrado' });
-    }
+
+    console.log('✅ Centro de costos actualizado exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error actualizando centro de costos:', error);
@@ -1688,11 +1790,29 @@ app.delete('/api/centros-costos/:id', async (req, res) => {
 // Actualizar una etiqueta contable existente
 app.put('/api/etiquetas-contables/:id', async (req, res) => {
   const { id } = req.params;
-  const {
-    etiqueta_contable,
-    descripcion_etiqueta
-  } = req.body;
   try {
+    console.log(`📝 PUT /api/etiquetas-contables/${id}`);
+    console.log('🔍 Datos recibidos:', req.body);
+    
+    // Primero obtener los datos actuales de la etiqueta contable
+    const currentResult = await pool.query('SELECT * FROM adcot_etiquetas_contables WHERE id_etiqueta_contable = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Etiqueta contable no encontrada' });
+    }
+    
+    const currentEtiqueta = currentResult.rows[0];
+    console.log('📋 Datos actuales de la etiqueta:', currentEtiqueta);
+    
+    // Hacer merge de los datos actuales con los nuevos cambios
+    const updatedData = { ...currentEtiqueta, ...req.body };
+    console.log('🔄 Datos después del merge:', updatedData);
+    
+    const {
+      etiqueta_contable,
+      descripcion_etiqueta
+    } = updatedData;
+
     const result = await pool.query(`
       UPDATE adcot_etiquetas_contables SET
         etiqueta_contable = $1,
@@ -1704,9 +1824,8 @@ app.put('/api/etiquetas-contables/:id', async (req, res) => {
       descripcion_etiqueta,
       id
     ]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Etiqueta contable no encontrada' });
-    }
+
+    console.log('✅ Etiqueta contable actualizada exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error actualizando etiqueta contable:', error);
@@ -1746,12 +1865,30 @@ app.delete('/api/etiquetas-contables/:id', async (req, res) => {
 // Actualizar un concepto de transacción existente
 app.put('/api/conceptos-transacciones/:id', async (req, res) => {
   const { id } = req.params;
-  const {
-    id_tipo_transaccion,
-    codigo_dian,
-    concepto_dian
-  } = req.body;
   try {
+    console.log(`📝 PUT /api/conceptos-transacciones/${id}`);
+    console.log('🔍 Datos recibidos:', req.body);
+    
+    // Primero obtener los datos actuales del concepto de transacción
+    const currentResult = await pool.query('SELECT * FROM adcot_conceptos_transacciones WHERE id_concepto = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Concepto de transacción no encontrado' });
+    }
+    
+    const currentConcepto = currentResult.rows[0];
+    console.log('📋 Datos actuales del concepto:', currentConcepto);
+    
+    // Hacer merge de los datos actuales con los nuevos cambios
+    const updatedData = { ...currentConcepto, ...req.body };
+    console.log('🔄 Datos después del merge:', updatedData);
+    
+    const {
+      id_tipo_transaccion,
+      codigo_dian,
+      concepto_dian
+    } = updatedData;
+
     const result = await pool.query(`
       UPDATE adcot_conceptos_transacciones SET
         id_tipo_transaccion = $1,
@@ -1765,9 +1902,8 @@ app.put('/api/conceptos-transacciones/:id', async (req, res) => {
       concepto_dian,
       id
     ]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Concepto de transacción no encontrado' });
-    }
+
+    console.log('✅ Concepto de transacción actualizado exitosamente');
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error actualizando concepto de transacción:', error);
