@@ -174,6 +174,60 @@ const Transacciones = () => {
     return resultado;
   };
 
+  // Obtener nombre del tercero
+  const getNombreTercero = (id) => {
+    console.log('🔍 Buscando tercero:', id, 'en:', terceros);
+    const tercero = terceros.find(t => t.id_tercero === id);
+    if (!tercero) {
+      return `ID: ${id}`;
+    }
+    
+    // Priorizar nombre consolidado si existe
+    if (tercero.nombre_consolidado) {
+      console.log('✅ Resultado tercero (consolidado):', tercero.nombre_consolidado);
+      return tercero.nombre_consolidado;
+    }
+    
+    // Si es persona jurídica, usar razón social
+    if (tercero.tipo_personalidad === 'JURIDICA' && tercero.razon_social) {
+      console.log('✅ Resultado tercero (razón social):', tercero.razon_social);
+      return tercero.razon_social;
+    }
+    
+    // Para persona natural, construir nombre
+    const nombreCompleto = `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim();
+    const resultado = nombreCompleto || `ID: ${id}`;
+    console.log('✅ Resultado tercero (construido):', resultado);
+    return resultado;
+  };
+
+  // Obtener nombre de la etiqueta contable
+  const getNombreEtiquetaContable = (id) => {
+    console.log('🔍 Buscando etiqueta:', id, 'en:', etiquetasContables);
+    const etiqueta = etiquetasContables.find(e => e.id_etiqueta_contable === id);
+    const resultado = etiqueta ? (etiqueta.etiqueta_contable || `ID: ${id}`) : `ID: ${id}`;
+    console.log('✅ Resultado etiqueta:', resultado);
+    return resultado;
+  };
+
+  // Obtener nombre del concepto
+  const getNombreConcepto = (id) => {
+    console.log('🔍 Buscando concepto:', id, 'en:', conceptos);
+    const concepto = conceptos.find(c => c.id_concepto === id);
+    const resultado = concepto ? (concepto.concepto_dian || `ID: ${id}`) : `ID: ${id}`;
+    console.log('✅ Resultado concepto:', resultado);
+    return resultado;
+  };
+
+  // Obtener nombre de la moneda
+  const getNombreMoneda = (id) => {
+    console.log('🔍 Buscando moneda:', id, 'en:', monedas);
+    const moneda = monedas.find(m => m.id_moneda === id);
+    const resultado = moneda ? (moneda.nombre_moneda || moneda.codigo_moneda || `ID: ${id}`) : `ID: ${id}`;
+    console.log('✅ Resultado moneda:', resultado);
+    return resultado;
+  };
+
   // Cargar transacciones
   const cargarTransacciones = async () => {
     try {
@@ -294,24 +348,16 @@ const Transacciones = () => {
         return getNombreCuenta(value);
       case 'id_moneda_transaccion':
         if (value == null || value === '' || value === undefined) return 'No seleccionado';
-        const moneda = monedas.find(m => m.id_moneda === value);
-        return moneda ? `${moneda.codigo_iso} - ${moneda.nombre_moneda}` : 'No seleccionado';
+        return getNombreMoneda(value);
       case 'id_tercero':
         if (value == null || value === '' || value === undefined) return 'No seleccionado';
-        const tercero = terceros.find(t => t.id_tercero === value);
-        return tercero ? `${tercero.primer_nombre} ${tercero.primer_apellido}` : 'No seleccionado';
+        return getNombreTercero(value);
       case 'id_etiqueta_contable':
         if (value == null || value === '' || value === undefined) return 'No seleccionado';
-        const etiqueta = etiquetasContables.find(e => e.id_etiqueta_contable === value);
-        return etiqueta ? (etiqueta.etiqueta_contable || etiqueta.descripcion_etiqueta) : 'No seleccionado';
+        return getNombreEtiquetaContable(value);
       case 'id_concepto':
         if (value == null || value === '' || value === undefined) return 'No seleccionado';
-        const concepto = conceptos.find(c => c.id_concepto === value);
-        if (concepto) {
-          return concepto.descripcion_concepto || concepto.concepto_dian || concepto.concepto || 'No seleccionado';
-        }
-        const conceptoDian = conceptosDianOpciones.find(c => c.id === value);
-        return conceptoDian ? conceptoDian.concepto_dian : 'No seleccionado';
+        return getNombreConcepto(value);
       default:
         return value || 'No seleccionado';
     }
@@ -427,6 +473,18 @@ const Transacciones = () => {
             } else if (col.key === 'id_cuenta') {
               // Convertir ID de cuenta a nombre
               value = getNombreCuenta(value);
+            } else if (col.key === 'id_tercero') {
+              // Convertir ID de tercero a nombre
+              value = getNombreTercero(value);
+            } else if (col.key === 'id_etiqueta_contable') {
+              // Convertir ID de etiqueta contable a nombre
+              value = getNombreEtiquetaContable(value);
+            } else if (col.key === 'id_concepto') {
+              // Convertir ID de concepto a nombre
+              value = getNombreConcepto(value);
+            } else if (col.key === 'id_moneda_transaccion') {
+              // Convertir ID de moneda a nombre
+              value = getNombreMoneda(value);
             }
             
             exportRow[col.label] = value || '';
@@ -467,6 +525,283 @@ const Transacciones = () => {
       toast({
         title: "Error",
         description: "No se pudo exportar el archivo Excel",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Función para descargar plantilla con dropdowns nativos
+  const handleDownloadTemplate = async () => {
+    try {
+      // Importar ExcelJS dinámicamente
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.default.Workbook();
+      
+      // Crear hoja principal
+      const worksheet = workbook.addWorksheet('📄 Plantilla Transacciones');
+      
+      // Definir columnas con ancho adecuado
+      worksheet.columns = [
+        { header: 'Fecha', key: 'fecha', width: 15 },
+        { header: 'Título', key: 'titulo', width: 40 },
+        { header: 'Tipo', key: 'tipo', width: 30 },
+        { header: 'Cuenta Origen', key: 'cuenta', width: 50 },
+        { header: 'Monto', key: 'monto', width: 15 },
+        { header: 'Moneda', key: 'moneda', width: 30 },
+        { header: 'TRM', key: 'trm', width: 12 },
+        { header: 'Estado', key: 'estado', width: 12 },
+        { header: 'Tercero', key: 'tercero', width: 40 },
+        { header: 'Etiqueta', key: 'etiqueta', width: 30 },
+        { header: 'Concepto', key: 'concepto', width: 30 },
+        { header: 'Auxiliar', key: 'auxiliar', width: 10 },
+        { header: 'Retención', key: 'retencion', width: 10 },
+        { header: 'Impuestos', key: 'impuestos', width: 10 },
+        { header: 'Observación', key: 'observacion', width: 30 }
+      ];
+      
+      // Agregar datos de ejemplo
+      worksheet.addRow({
+        fecha: '2024-01-15',
+        titulo: 'Ejemplo de transacción',
+        tipo: tiposTransaccion.length > 0 ? `${tiposTransaccion[0].id_tipotransaccion} - ${tiposTransaccion[0].tipo_transaccion}` : '',
+        cuenta: cuentas.length > 0 ? `${cuentas[0].id_cuenta} - ${cuentas[0].titulo_cuenta || cuentas[0].numero_cuenta}` : '',
+        monto: '1000000',
+        moneda: monedas.length > 0 ? `${monedas[0].id_moneda} - ${monedas[0].codigo_iso} - ${monedas[0].nombre_moneda}` : '',
+        trm: '1.000000',
+        estado: 'Pendiente',
+        tercero: terceros.length > 0 ? `${terceros[0].id_tercero} - ${terceros[0].nombre_consolidado || terceros[0].primer_nombre + ' ' + terceros[0].primer_apellido}` : '',
+        etiqueta: etiquetasContables.length > 0 ? `${etiquetasContables[0].id_etiqueta_contable} - ${etiquetasContables[0].etiqueta_contable}` : '',
+        concepto: conceptos.length > 0 ? `${conceptos[0].id_concepto} - ${conceptos[0].concepto_dian}` : '',
+        auxiliar: 'No',
+        retencion: 'No',
+        impuestos: 'No',
+        observacion: 'Ejemplo de observaciones'
+      });
+      
+      // Crear hojas auxiliares para los datos de los dropdowns
+      
+      // Hoja de tipos de transacción
+      const wsTipos = workbook.addWorksheet('Datos_Tipos');
+      wsTipos.columns = [{ header: 'Opción', key: 'opcion', width: 40 }];
+      wsTipos.state = 'hidden';
+      const tiposOpciones = tiposTransaccion.map(t => ({
+        opcion: `${t.id_tipotransaccion} - ${t.tipo_transaccion}`
+      }));
+      wsTipos.addRows(tiposOpciones);
+      
+      // Hoja de cuentas
+      const wsCuentas = workbook.addWorksheet('Datos_Cuentas');
+      wsCuentas.columns = [{ header: 'Opción', key: 'opcion', width: 60 }];
+      wsCuentas.state = 'hidden';
+      const cuentasOpciones = cuentas.map(c => ({
+        opcion: `${c.id_cuenta} - ${c.titulo_cuenta || c.numero_cuenta || 'Sin título'}`
+      }));
+      wsCuentas.addRows(cuentasOpciones);
+      
+      // Hoja de monedas
+      const wsMonedas = workbook.addWorksheet('Datos_Monedas');
+      wsMonedas.columns = [{ header: 'Opción', key: 'opcion', width: 40 }];
+      wsMonedas.state = 'hidden';
+      const monedasOpciones = monedas.map(m => ({
+        opcion: `${m.id_moneda} - ${m.codigo_iso || 'N/A'} - ${m.nombre_moneda || 'Sin nombre'}`
+      }));
+      wsMonedas.addRows(monedasOpciones);
+      
+      // Hoja de terceros
+      const wsTerceros = workbook.addWorksheet('Datos_Terceros');
+      wsTerceros.columns = [{ header: 'Opción', key: 'opcion', width: 60 }];
+      wsTerceros.state = 'hidden';
+      const tercerosOpciones = terceros.map(t => ({
+        opcion: `${t.id_tercero} - ${t.nombre_consolidado || `${t.primer_nombre || ''} ${t.primer_apellido || ''}`.trim() || t.razon_social || 'Sin nombre'}`
+      }));
+      wsTerceros.addRows(tercerosOpciones);
+      
+      // Hoja de etiquetas contables
+      const wsEtiquetas = workbook.addWorksheet('Datos_Etiquetas');
+      wsEtiquetas.columns = [{ header: 'Opción', key: 'opcion', width: 50 }];
+      wsEtiquetas.state = 'hidden';
+      const etiquetasOpciones = etiquetasContables.map(e => ({
+        opcion: `${e.id_etiqueta_contable} - ${e.etiqueta_contable || e.descripcion_etiqueta || 'Sin descripción'}`
+      }));
+      wsEtiquetas.addRows(etiquetasOpciones);
+      
+      // Hoja de conceptos
+      const wsConceptos = workbook.addWorksheet('Datos_Conceptos');
+      wsConceptos.columns = [{ header: 'Opción', key: 'opcion', width: 50 }];
+      wsConceptos.state = 'hidden';
+      const conceptosOpciones = [...conceptos.map(c => ({
+        opcion: `${c.id_concepto} - ${c.concepto_dian || c.descripcion_concepto || 'Sin descripción'}`
+      })), ...conceptosDianOpciones.map(d => ({
+        opcion: `${d.id} - ${d.concepto_dian}`
+      }))];
+      wsConceptos.addRows(conceptosOpciones);
+      
+      // Aplicar validación de datos (dropdowns) a las celdas correspondientes
+      
+      // Dropdown para Estados
+      const estadosOpciones = ['Validada', 'Pendiente'];
+      worksheet.getColumn('estado').eachCell((cell, rowNumber) => {
+        if (rowNumber > 1) {
+          cell.dataValidation = {
+            type: 'list',
+            allowBlank: true,
+            formulae: [`"${estadosOpciones.join(',')}"`]
+          };
+        }
+      });
+      
+      // Dropdown para opciones Sí/No
+      const siNoOpciones = ['Sí', 'No'];
+      ['auxiliar', 'retencion', 'impuestos'].forEach(col => {
+        worksheet.getColumn(col).eachCell((cell, rowNumber) => {
+          if (rowNumber > 1) {
+            cell.dataValidation = {
+              type: 'list',
+              allowBlank: true,
+              formulae: [`"${siNoOpciones.join(',')}"`]
+            };
+          }
+        });
+      });
+      
+      // Dropdowns con referencia a hojas auxiliares
+      const dropdownConfigs = [
+        { column: 'tipo', sheet: 'Datos_Tipos', count: tiposTransaccion.length },
+        { column: 'cuenta', sheet: 'Datos_Cuentas', count: cuentas.length },
+        { column: 'moneda', sheet: 'Datos_Monedas', count: monedas.length },
+        { column: 'tercero', sheet: 'Datos_Terceros', count: terceros.length },
+        { column: 'etiqueta', sheet: 'Datos_Etiquetas', count: etiquetasContables.length },
+        { column: 'concepto', sheet: 'Datos_Conceptos', count: conceptosOpciones.length }
+      ];
+      
+      dropdownConfigs.forEach(config => {
+        if (config.count > 0) {
+          worksheet.getColumn(config.column).eachCell((cell, rowNumber) => {
+            if (rowNumber > 1) {
+              cell.dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`${config.sheet}!$A$2:$A$${config.count + 1}`]
+              };
+            }
+          });
+        }
+      });
+      
+      // Agregar más filas vacías con validación para permitir múltiples transacciones
+      for (let i = 0; i < 10; i++) {
+        const newRow = worksheet.addRow({
+          fecha: '',
+          titulo: '',
+          tipo: '',
+          cuenta: '',
+          monto: '',
+          moneda: '',
+          trm: '',
+          estado: '',
+          tercero: '',
+          etiqueta: '',
+          concepto: '',
+          auxiliar: '',
+          retencion: '',
+          impuestos: '',
+          observacion: ''
+        });
+        
+        // Aplicar validaciones a cada nueva fila
+        newRow.getCell('estado').dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${estadosOpciones.join(',')}"`]
+        };
+        
+        ['auxiliar', 'retencion', 'impuestos'].forEach(col => {
+          newRow.getCell(col).dataValidation = {
+            type: 'list',
+            allowBlank: true,
+            formulae: [`"${siNoOpciones.join(',')}"`]
+          };
+        });
+        
+        dropdownConfigs.forEach(config => {
+          if (config.count > 0) {
+            newRow.getCell(config.column).dataValidation = {
+              type: 'list',
+              allowBlank: true,
+              formulae: [`${config.sheet}!$A$2:$A$${config.count + 1}`]
+            };
+          }
+        });
+      }
+      
+      // Estilizar el header
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' }
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+      
+      // Hoja de instrucciones
+      const wsInstrucciones = workbook.addWorksheet('📋 Instrucciones');
+      wsInstrucciones.columns = [
+        { header: 'Paso', key: 'paso', width: 8 },
+        { header: 'Instrucción', key: 'instruccion', width: 80 }
+      ];
+      
+      const instrucciones = [
+        { paso: 1, instruccion: 'Use la hoja "📄 Plantilla Transacciones" para ingresar los datos de transacciones' },
+        { paso: 2, instruccion: 'Los campos con dropdowns tienen opciones predefinidas - haga clic en las flechas desplegables' },
+        { paso: 3, instruccion: 'Las fechas deben estar en formato YYYY-MM-DD (ej: 2024-01-15)' },
+        { paso: 4, instruccion: 'Los valores numéricos no deben incluir símbolos de moneda (solo números)' },
+        { paso: 5, instruccion: 'Estados válidos: Validada, Pendiente' },
+        { paso: 6, instruccion: 'Opciones Sí/No: Auxiliar, Retención, Impuestos' },
+        { paso: 7, instruccion: 'Los dropdowns extraen automáticamente los IDs del formato "ID - Nombre"' },
+        { paso: 8, instruccion: 'Las hojas auxiliares están ocultas pero contienen todas las opciones disponibles' }
+      ];
+      wsInstrucciones.addRows(instrucciones);
+      
+      // Estilizar las instrucciones
+      wsInstrucciones.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4CAF50' }
+        };
+        cell.font.color = { argb: 'FFFFFFFF' };
+      });
+      
+      // Guardar archivo
+      const fileName = `plantilla-transacciones-con-dropdowns-${new Date().toISOString().split('T')[0]}.xlsx`;
+      const buffer = await workbook.xlsx.writeBuffer();
+      
+      // Crear blob y descargar
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Plantilla descargada",
+        description: "Se descargó la plantilla con dropdowns nativos para transacciones",
+      });
+    } catch (error) {
+      console.error('Error al crear plantilla:', error);
+      toast({
+        title: "Error al crear plantilla",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -613,28 +948,62 @@ const Transacciones = () => {
         });
         
         return processedRow;
-      }).filter(row => row.titulo_transaccion && row.valor_total_transaccion); // Filtrar registros válidos
-
-      // Enviar datos al servidor (por ahora simular)
-      console.log('Transacciones a importar:', processedData);
-      
-      // Simular respuesta exitosa del servidor
-      // En producción, aquí iría la llamada real al API
-      
-      // Agregar al estado local con IDs temporales
-      const transaccionesConId = processedData.map((transaccion, index) => ({
-        ...transaccion,
-        id_transaccion: Date.now() + index
-      }));
-      
-      setTransacciones(prev => [...prev, ...transaccionesConId]);
-      
-      toast({
-        title: "Éxito",
-        description: `${processedData.length} transacciones importadas correctamente`,
+      })
+      .filter(row => {
+        // Filtrar registros válidos: deben tener al menos título y monto
+        const hasRequiredFields = row.titulo_transaccion && 
+                                 row.titulo_transaccion !== null && 
+                                 row.titulo_transaccion !== '' &&
+                                 row.valor_total_transaccion !== null && 
+                                 row.valor_total_transaccion !== undefined &&
+                                 !isNaN(row.valor_total_transaccion);
+        
+        console.log('Fila evaluada:', row);
+        console.log('¿Tiene campos requeridos?', hasRequiredFields);
+        
+        return hasRequiredFields;
       });
+
+      console.log(`📋 Total de filas procesadas: ${jsonData.length}`);
+      console.log(`✅ Filas válidas para importar: ${processedData.length}`);
+      console.log('Datos filtrados para importar:', processedData);
       
-      cargarTransacciones(); // Recargar datos del servidor
+      if (processedData.length === 0) {
+        throw new Error('No se encontraron filas válidas para importar. Asegúrate de llenar al menos el Título y el Monto.');
+      }
+
+      // Enviar datos al servidor usando api
+      const { apiCall } = await import('@/config/api');
+      const result = await apiCall('/api/transacciones/import', {
+        method: 'POST',
+        body: JSON.stringify({ transacciones: processedData }),
+      });
+
+      // Manejar respuesta del servidor
+      console.log('Resultado de importación:', result);
+
+      if (result.resultados) {
+        // Mostrar resultados detallados
+        if (result.resultados.errores.length > 0) {
+          toast({
+            title: "Importación Completada con Advertencias",
+            description: `${result.resultados.exitosas.length} transacciones importadas, ${result.resultados.errores.length} errores.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Éxito",
+            description: `${result.resultados.exitosas.length} transacciones importadas correctamente`,
+          });
+        }
+        cargarTransacciones(); // Recargar datos del servidor
+      } else {
+        toast({
+          title: "Éxito",
+          description: `${processedData.length} transacciones importadas correctamente`,
+        });
+        cargarTransacciones(); // Recargar datos del servidor
+      }
     } catch (error) {
       console.error('Error al importar:', error);
       toast({
@@ -1298,6 +1667,7 @@ const Transacciones = () => {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImport={handleImport}
+        onDownloadTemplate={handleDownloadTemplate}
         loading={isImporting}
         entityName="transacciones"
         // Enviar todos los catálogos para generar plantilla con dropdowns

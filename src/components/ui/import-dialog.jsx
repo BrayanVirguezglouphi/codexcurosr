@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, Download } from 'lucide-react';
 import TemplateDownloader from './template-downloader';
 
 const ImportDialog = ({ 
@@ -25,7 +25,9 @@ const ImportDialog = ({
   cuentas = [],
   tiposTransaccion = [],
   etiquetasContables = [],
-  conceptos = []
+  conceptos = [],
+  // Función personalizada para descargar plantilla
+  onDownloadTemplate = null
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
@@ -213,12 +215,23 @@ const ImportDialog = ({
                     Descarga nuestra plantilla con el formato correcto
                   </p>
                 </div>
-                <TemplateDownloader
-                  templateData={finalTemplateData}
-                  columns={finalColumns}
-                  entityName={displayName}
-                  className="bg-white hover:bg-gray-50"
-                />
+                {onDownloadTemplate ? (
+                  <Button
+                    onClick={onDownloadTemplate}
+                    variant="outline"
+                    className="bg-white hover:bg-gray-50"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Descargar Plantilla
+                  </Button>
+                ) : (
+                  <TemplateDownloader
+                    templateData={finalTemplateData}
+                    columns={finalColumns}
+                    entityName={displayName}
+                    className="bg-white hover:bg-gray-50"
+                  />
+                )}
               </div>
             </div>
           )}

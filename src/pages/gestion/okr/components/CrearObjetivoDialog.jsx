@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Link, Save, X, Search, ChevronDown, ChevronRight, Target, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Link, Save, X, Search, ChevronDown, ChevronRight, Target, CheckCircle2, TrendingUp, CheckCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiCall } from '@/config/api';
 
@@ -30,22 +30,22 @@ const CrearObjetivoDialog = ({
     fecha_inicio: '',
     fecha_fin: '',
     estado: 'Activo',
-    id_objetivo_preexistente: '',
-    id_key_result_preexistente: '',
-    tipo_relacion: '', // 'objetivo' o 'key_result'
     nivel_impacto: '',
-    keyResults: []
+    keyResults: [],
+    // NUEVAS RELACIONES MÚLTIPLES
+    relacionesObjetivos: [], // Array de {id_objetivo, tipo_relacion, peso_relacion, descripcion}
+    relacionesKRs: []        // Array de {id_kr, id_objetivo_padre, tipo_relacion, peso_contribucion, porcentaje_impacto, descripcion}
   });
 
   const [loading, setLoading] = useState(false);
   const [objetivosConKRs, setObjetivosConKRs] = useState([]);
   const [loadingObjetivos, setLoadingObjetivos] = useState(false);
   
-  // Estados para el dropdown avanzado
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  // Estados para el selector múltiple
+  const [modalRelacionesOpen, setModalRelacionesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedObjetivos, setExpandedObjetivos] = useState(new Set());
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
 
   // Cargar objetivos con sus Key Results cuando se abre el diálogo
   useEffect(() => {
@@ -104,16 +104,15 @@ const CrearObjetivoDialog = ({
       fecha_inicio: '',
       fecha_fin: '',
       estado: 'Activo',
-      id_objetivo_preexistente: '',
-      id_key_result_preexistente: '',
-      tipo_relacion: '',
       nivel_impacto: '',
-      keyResults: []
+      keyResults: [],
+      relacionesObjetivos: [],
+      relacionesKRs: []
     });
-    setSelectedItem(null);
+    setSelectedItems([]);
     setSearchTerm('');
     setExpandedObjetivos(new Set());
-    setDropdownOpen(false);
+    setModalRelacionesOpen(false);
   };
 
   // Agregar nuevo Key Result
@@ -151,6 +150,92 @@ const CrearObjetivoDialog = ({
     }));
   };
 
+  // ===== NUEVAS FUNCIONES PARA RELACIONES MÚLTIPLES =====
+
+  // Agregar relación con objetivo
+  const agregarRelacionObjetivo = (objetivo) => {
+    const nuevaRelacion = {
+      id: Date.now(),
+      id_objetivo: objetivo.id_objetivo,
+      titulo_objetivo: objetivo.titulo,
+      nivel_objetivo: objetivo.nivel,
+      tipo_relacion: 'contribuye_a',
+      peso_relacion: 1.0,
+      descripcion_relacion: ''
+    };
+
+    setFormObjetivo(prev => ({
+      ...prev,
+      relacionesObjetivos: [...prev.relacionesObjetivos, nuevaRelacion]
+    }));
+  };
+
+  // Agregar relación con Key Result
+  const agregarRelacionKR = (kr, objetivo) => {
+    const nuevaRelacion = {
+      id: Date.now(),
+      id_kr: kr.id_kr,
+      id_objetivo_padre: objetivo.id_objetivo,
+      descripcion_kr: kr.descripcion,
+      titulo_objetivo_padre: objetivo.titulo,
+      tipo_relacion: 'contribuye_a',
+      peso_contribucion: 1.0,
+      porcentaje_impacto: null,
+      descripcion_relacion: ''
+    };
+
+    setFormObjetivo(prev => ({
+      ...prev,
+      relacionesKRs: [...prev.relacionesKRs, nuevaRelacion]
+    }));
+  };
+
+  // Eliminar relación de objetivo
+  const eliminarRelacionObjetivo = (id) => {
+    setFormObjetivo(prev => ({
+      ...prev,
+      relacionesObjetivos: prev.relacionesObjetivos.filter(rel => rel.id !== id)
+    }));
+  };
+
+  // Eliminar relación de KR
+  const eliminarRelacionKR = (id) => {
+    setFormObjetivo(prev => ({
+      ...prev,
+      relacionesKRs: prev.relacionesKRs.filter(rel => rel.id !== id)
+    }));
+  };
+
+  // Actualizar relación de objetivo
+  const actualizarRelacionObjetivo = (id, campo, valor) => {
+    setFormObjetivo(prev => ({
+      ...prev,
+      relacionesObjetivos: prev.relacionesObjetivos.map(rel => 
+        rel.id === id ? { ...rel, [campo]: valor } : rel
+      )
+    }));
+  };
+
+  // Actualizar relación de KR
+  const actualizarRelacionKR = (id, campo, valor) => {
+    setFormObjetivo(prev => ({
+      ...prev,
+      relacionesKRs: prev.relacionesKRs.map(rel => 
+        rel.id === id ? { ...rel, [campo]: valor } : rel
+      )
+    }));
+  };
+
+  // Verificar si un objetivo ya está seleccionado
+  const objetivoYaSeleccionado = (objetivoId) => {
+    return formObjetivo.relacionesObjetivos.some(rel => rel.id_objetivo === objetivoId);
+  };
+
+  // Verificar si un KR ya está seleccionado
+  const krYaSeleccionado = (krId) => {
+    return formObjetivo.relacionesKRs.some(rel => rel.id_kr === krId);
+  };
+
   // Filtrar objetivos y Key Results según búsqueda
   const filtrarItems = () => {
     if (!searchTerm.trim()) return objetivosConKRs;
@@ -184,32 +269,51 @@ const CrearObjetivoDialog = ({
     setExpandedObjetivos(newExpanded);
   };
 
-  // Manejar selección de item
-  const handleSelectItem = (item, tipo) => {
-    setSelectedItem(item);
-    setFormObjetivo(prev => ({
-      ...prev,
-      tipo_relacion: tipo,
-      id_objetivo_preexistente: tipo === 'objetivo' ? item.id_objetivo : item.id_objetivo_padre || '',
-      id_key_result_preexistente: tipo === 'key_result' ? item.id_key_result : ''
-    }));
-    setDropdownOpen(false);
-  };
+  // Función auxiliar para guardar relaciones en la base de datos
+  const guardarRelaciones = async (objetivoId) => {
+    try {
+      // Guardar relaciones con objetivos
+      if (formObjetivo.relacionesObjetivos.length > 0) {
+        const relacionesObjetivosPromises = formObjetivo.relacionesObjetivos.map(relacion => 
+          apiCall('/api/okr/relaciones-objetivos', {
+            method: 'POST',
+            body: JSON.stringify({
+              id_objetivo_origen: objetivoId,
+              id_objetivo_destino: relacion.id_objetivo,
+              tipo_relacion: relacion.tipo_relacion,
+              peso_relacion: relacion.peso_relacion,
+              descripcion_relacion: relacion.descripcion_relacion || null
+            })
+          })
+        );
+        
+        await Promise.all(relacionesObjetivosPromises);
+      }
 
-  // Obtener texto del item seleccionado
-  const getSelectedText = () => {
-    if (!selectedItem) return "Seleccionar objetivo o Key Result";
-    
-    if (formObjetivo.tipo_relacion === 'objetivo') {
-      return `🎯 ${selectedItem.titulo}`;
-    } else if (formObjetivo.tipo_relacion === 'key_result') {
-      const objetivo = objetivosConKRs.find(obj => 
-        obj.keyResults.some(kr => kr.id_key_result === selectedItem.id_key_result)
-      );
-      return `📊 ${selectedItem.descripcion} (${objetivo?.titulo || 'Objetivo'})`;
+      // Guardar relaciones con Key Results
+      if (formObjetivo.relacionesKRs.length > 0) {
+        const relacionesKRsPromises = formObjetivo.relacionesKRs.map(relacion => 
+          apiCall('/api/okr/relaciones-kr', {
+            method: 'POST',
+            body: JSON.stringify({
+              id_objetivo: objetivoId,
+              id_kr: relacion.id_kr,
+              tipo_relacion: relacion.tipo_relacion,
+              peso_contribucion: relacion.peso_contribucion,
+              porcentaje_impacto: relacion.porcentaje_impacto,
+              descripcion_relacion: relacion.descripcion_relacion || null
+            })
+          })
+        );
+        
+        await Promise.all(relacionesKRsPromises);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error guardando relaciones:', error);
+      return false;
     }
-    
-    return "Seleccionar objetivo o Key Result";
   };
 
   // Manejar envío de formulario
@@ -255,9 +359,6 @@ const CrearObjetivoDialog = ({
         fecha_inicio: formObjetivo.fecha_inicio || null,
         fecha_fin: formObjetivo.fecha_fin || null,
         estado: formObjetivo.estado,
-        id_objetivo_preexistente: formObjetivo.id_objetivo_preexistente ? parseInt(formObjetivo.id_objetivo_preexistente) : null,
-        id_key_result_preexistente: formObjetivo.id_key_result_preexistente ? parseInt(formObjetivo.id_key_result_preexistente) : null,
-        tipo_relacion: formObjetivo.tipo_relacion || null,
         nivel_impacto: formObjetivo.nivel_impacto ? parseInt(formObjetivo.nivel_impacto) : null
       };
 
@@ -290,11 +391,19 @@ const CrearObjetivoDialog = ({
         await Promise.all(keyResultsPromises);
       }
 
+      // Guardar relaciones múltiples
+      const relacionesGuardadas = await guardarRelaciones(objetivoCreado.id_objetivo);
+      
+      // Construir mensaje de éxito
       let relacionMessage = '';
-      if (formObjetivo.tipo_relacion === 'objetivo') {
-        relacionMessage = ' y relacionado con objetivo preexistente';
-      } else if (formObjetivo.tipo_relacion === 'key_result') {
-        relacionMessage = ' y relacionado con Key Result preexistente';
+      const totalRelaciones = formObjetivo.relacionesObjetivos.length + formObjetivo.relacionesKRs.length;
+      
+      if (totalRelaciones > 0) {
+        if (relacionesGuardadas) {
+          relacionMessage = ` y ${totalRelaciones} relación${totalRelaciones > 1 ? 'es' : ''} configurada${totalRelaciones > 1 ? 's' : ''}`;
+        } else {
+          relacionMessage = ' (advertencia: algunas relaciones no se pudieron guardar)';
+        }
       }
 
       toast({
@@ -472,148 +581,85 @@ const CrearObjetivoDialog = ({
                       </div>
                     </div>
 
-                    {/* Dropdown Simplificado para Objetivos/Key Results */}
-                    <div>
-                      <Label>Relacionar con OKR o Key Result (Opcional)</Label>
-                      <div className="relative mt-1">
+                    {/* Sección Relaciones Múltiples */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-medium">Relaciones con OKRs (Opcional)</Label>
                         <Button
                           type="button"
                           variant="outline"
-                          className="w-full justify-between"
-                          onClick={() => setDropdownOpen(!dropdownOpen)}
-                          disabled={loadingObjetivos}
+                          size="sm"
+                          onClick={() => setModalRelacionesOpen(true)}
+                          className="text-purple-600 border-purple-300 hover:bg-purple-50"
                         >
-                          <span className="truncate">
-                            {loadingObjetivos ? "Cargando..." : getSelectedText()}
-                          </span>
-                          <ChevronDown className={`ml-2 h-4 w-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                          <Plus className="h-4 w-4 mr-2" />
+                          Agregar
                         </Button>
-
-                        {dropdownOpen && (
-                          <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[400px] overflow-hidden">
-                            {/* Barra de búsqueda */}
-                            <div className="p-3 border-b">
-                              <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                  placeholder="Buscar objetivos o Key Results..."
-                                  value={searchTerm}
-                                  onChange={(e) => setSearchTerm(e.target.value)}
-                                  className="pl-10"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Lista de opciones */}
-                            <div className="max-h-[300px] overflow-y-auto">
-                              {/* Opción sin relación */}
-                              <div 
-                                className="flex items-center p-3 hover:bg-gray-100 cursor-pointer border-b"
-                                onClick={() => {
-                                  setSelectedItem(null);
-                                  setFormObjetivo(prev => ({
-                                    ...prev,
-                                    tipo_relacion: '',
-                                    id_objetivo_preexistente: '',
-                                    id_key_result_preexistente: ''
-                                  }));
-                                  setDropdownOpen(false);
-                                }}
-                              >
-                                <X className="h-4 w-4 text-gray-400 mr-2" />
-                                <span className="text-gray-600">Sin relación</span>
-                              </div>
-
-                              {objetivosFiltrados.length === 0 ? (
-                                <div className="p-4 text-center text-gray-500">
-                                  No se encontraron resultados
-                                </div>
-                              ) : (
-                                objetivosFiltrados.map((objetivo) => (
-                                  <div key={objetivo.id_objetivo}>
-                                    {/* Objetivo */}
-                                    <div className="flex items-center p-2">
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 p-0 mr-2"
-                                        onClick={() => toggleExpansion(objetivo.id_objetivo)}
-                                        disabled={objetivo.keyResults.length === 0}
-                                      >
-                                        {objetivo.keyResults.length > 0 ? (
-                                          expandedObjetivos.has(objetivo.id_objetivo) ? (
-                                            <ChevronDown className="h-3 w-3" />
-                                          ) : (
-                                            <ChevronRight className="h-3 w-3" />
-                                          )
-                                        ) : (
-                                          <div className="h-3 w-3" />
-                                        )}
-                                      </Button>
-                                      
-                                      <div
-                                        className="flex items-center flex-1 p-2 hover:bg-gray-100 rounded cursor-pointer"
-                                        onClick={() => handleSelectItem(objetivo, 'objetivo')}
-                                      >
-                                        <Target className="h-4 w-4 text-blue-600 mr-2" />
-                                        <div className="flex-1">
-                                          <div className="font-medium">{objetivo.titulo}</div>
-                                          <div className="text-xs text-gray-500">
-                                            {objetivo.nivel} • {objetivo.estado} • {objetivo.keyResults.length} KRs
-                                          </div>
-                                        </div>
-                                        {selectedItem?.id_objetivo === objetivo.id_objetivo && formObjetivo.tipo_relacion === 'objetivo' && (
-                                          <Badge variant="default" className="text-xs">Seleccionado</Badge>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {/* Key Results (expandidos) */}
-                                    {expandedObjetivos.has(objetivo.id_objetivo) && objetivo.keyResults.map((kr) => (
-                                      <div
-                                        key={kr.id_key_result}
-                                        className="flex items-center ml-10 p-2 hover:bg-gray-100 rounded cursor-pointer"
-                                        onClick={() => handleSelectItem(kr, 'key_result')}
-                                      >
-                                        <CheckCircle2 className="h-4 w-4 text-green-600 mr-2" />
-                                        <div className="flex-1">
-                                          <div className="font-medium text-sm">{kr.descripcion}</div>
-                                          <div className="text-xs text-gray-500">
-                                            Meta: {kr.valor_objetivo} {kr.unidad || 'unidades'}
-                                          </div>
-                                        </div>
-                                        {selectedItem?.id_key_result === kr.id_key_result && formObjetivo.tipo_relacion === 'key_result' && (
-                                          <Badge variant="default" className="text-xs">Seleccionado</Badge>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
-                      
-                      {/* Mostrar selección actual */}
-                      {selectedItem && (
-                        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <div className="flex items-center gap-2 text-sm">
-                            {formObjetivo.tipo_relacion === 'objetivo' ? (
-                              <>
-                                <Target className="h-4 w-4 text-blue-600" />
-                                <span className="font-medium">Relacionado con objetivo:</span>
-                                <span>{selectedItem.titulo}</span>
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                <span className="font-medium">Relacionado con Key Result:</span>
-                                <span>{selectedItem.descripcion}</span>
-                              </>
-                            )}
+
+                      {/* Resumen de relaciones */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Target className="h-4 w-4 text-orange-500" />
+                              <span className="text-sm font-medium">Objetivos</span>
+                            </div>
+                            <Badge variant="secondary">{formObjetivo.relacionesObjetivos.length}</Badge>
                           </div>
+                        </div>
+                        
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-blue-500" />
+                              <span className="text-sm font-medium">Key Results</span>
+                            </div>
+                            <Badge variant="secondary">{formObjetivo.relacionesKRs.length}</Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lista compacta de relaciones */}
+                      {(formObjetivo.relacionesObjetivos.length > 0 || formObjetivo.relacionesKRs.length > 0) && (
+                        <div className="max-h-32 overflow-y-auto space-y-2 p-3 bg-gray-50 rounded-lg border">
+                          {formObjetivo.relacionesObjetivos.map((rel) => (
+                            <div key={rel.id} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Target className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                                <span className="truncate">{rel.titulo_objetivo}</span>
+                                <Badge variant="outline" className="text-xs">{rel.tipo_relacion}</Badge>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => eliminarRelacionObjetivo(rel.id)}
+                                className="h-6 w-6 p-0 text-red-500 hover:bg-red-50"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                          
+                          {formObjetivo.relacionesKRs.map((rel) => (
+                            <div key={rel.id} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <TrendingUp className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                <span className="truncate">{rel.descripcion_kr}</span>
+                                <Badge variant="outline" className="text-xs">{rel.tipo_relacion}</Badge>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => eliminarRelacionKR(rel.id)}
+                                className="h-6 w-6 p-0 text-red-500 hover:bg-red-50"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -793,6 +839,196 @@ const CrearObjetivoDialog = ({
           </form>
         </div>
       </DialogContent>
+
+      {/* Modal para Agregar Relaciones Múltiples */}
+      <Dialog open={modalRelacionesOpen} onOpenChange={setModalRelacionesOpen}>
+        <DialogContent className="max-w-6xl w-full h-[85vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Link className="h-5 w-5 text-purple-600" />
+              Agregar Relaciones OKR
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
+            {/* Barra de búsqueda */}
+            <div className="relative flex-shrink-0">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar objetivos o Key Results..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Lista de objetivos - área scrolleable */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {loadingObjetivos ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                  <p className="text-sm text-gray-500 mt-2">Cargando objetivos...</p>
+                </div>
+              ) : (
+                <div className="space-y-3 pr-2">
+                {filtrarItems().map((objetivo) => (
+                  <div key={objetivo.id_objetivo} className="border rounded-lg p-4 bg-white shadow-sm">
+                    {/* Objetivo principal */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpansion(objetivo.id_objetivo)}
+                          className="p-1 rounded hover:bg-gray-100 transition-colors"
+                        >
+                          {expandedObjetivos.has(objetivo.id_objetivo) ? 
+                            <ChevronDown className="h-4 w-4 text-gray-500" /> : 
+                            <ChevronRight className="h-4 w-4 text-gray-500" />
+                          }
+                        </button>
+                        
+                        <Target className={`h-4 w-4 ${objetivo.nivel === 'Empresa' ? 'text-red-500' : 
+                          objetivo.nivel === 'Departamento' ? 'text-yellow-500' : 
+                          objetivo.nivel === 'Equipo' ? 'text-blue-500' : 'text-green-500'}`} />
+                        
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900 truncate">
+                            {objetivo.titulo}
+                          </h4>
+                          <p className="text-sm text-gray-500 truncate">
+                            {objetivo.nivel} • {objetivo.estado} • {objetivo.keyResults?.length || 0} KRs
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={() => agregarRelacionObjetivo(objetivo)}
+                        disabled={objetivoYaSeleccionado(objetivo.id_objetivo)}
+                        variant={objetivoYaSeleccionado(objetivo.id_objetivo) ? "secondary" : "outline"}
+                        size="sm"
+                        className={objetivoYaSeleccionado(objetivo.id_objetivo) ? 
+                          'bg-green-100 text-green-700 border-green-300' : 
+                          'text-purple-600 border-purple-300 hover:bg-purple-50'
+                        }
+                      >
+                        {objetivoYaSeleccionado(objetivo.id_objetivo) ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Agregado
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Relacionar
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Key Results (mostrar solo si está expandido) */}
+                    {expandedObjetivos.has(objetivo.id_objetivo) && objetivo.keyResults?.length > 0 && (
+                      <div className="ml-8 space-y-2 border-l-2 border-blue-200 pl-4">
+                        {objetivo.keyResults.map((kr) => (
+                          <div key={kr.id_kr} 
+                               className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-center gap-3 flex-1">
+                              <TrendingUp className="h-4 w-4 text-blue-500" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {kr.descripcion}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Meta: {kr.valor_objetivo} {kr.unidad || 'unidades'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <Button
+                              type="button"
+                              onClick={() => agregarRelacionKR(kr, objetivo)}
+                              disabled={krYaSeleccionado(kr.id_kr)}
+                              variant={krYaSeleccionado(kr.id_kr) ? "secondary" : "outline"}
+                              size="sm"
+                              className={krYaSeleccionado(kr.id_kr) ? 
+                                'bg-green-100 text-green-700 border-green-300' : 
+                                'text-blue-600 border-blue-300 hover:bg-blue-50'
+                              }
+                            >
+                              {krYaSeleccionado(kr.id_kr) ? (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Agregado
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Relacionar
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {filtrarItems().length === 0 && searchTerm && (
+                  <div className="text-center py-12 text-gray-500">
+                    <Target className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg mb-2">No se encontraron resultados</p>
+                    <p className="text-sm">Intenta con otros términos de búsqueda</p>
+                  </div>
+                )}
+                </div>
+              )}
+            </div>
+
+            {/* Resumen de selecciones en el modal */}
+            <div className="border-t pt-4 flex-shrink-0">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-orange-500" />
+                    <span className="text-sm font-medium">Objetivos seleccionados</span>
+                  </div>
+                  <Badge variant="secondary">{formObjetivo.relacionesObjetivos.length}</Badge>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium">Key Results seleccionados</span>
+                  </div>
+                  <Badge variant="secondary">{formObjetivo.relacionesKRs.length}</Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones del modal */}
+            <div className="flex justify-end gap-3 pt-4 border-t flex-shrink-0">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setModalRelacionesOpen(false)}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cerrar
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => setModalRelacionesOpen(false)}
+                className="bg-purple-600 hover:bg-purple-700"
+                disabled={formObjetivo.relacionesObjetivos.length === 0 && formObjetivo.relacionesKRs.length === 0}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Aplicar Relaciones ({formObjetivo.relacionesObjetivos.length + formObjetivo.relacionesKRs.length})
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

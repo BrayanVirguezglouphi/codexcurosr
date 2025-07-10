@@ -11,15 +11,23 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const ConfirmDialog = ({ 
-  isOpen, 
+export const ConfirmDialog = ({ 
+  open, 
   onClose, 
   onConfirm, 
   title = "¿Está seguro?", 
-  description = "Esta acción no se puede deshacer." 
+  description = "Esta acción no se puede deshacer.",
+  confirmText = "Confirmar",
+  cancelText = "Cancelar",
+  variant = "default"
 }) => {
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
+
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog open={open} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -28,9 +36,14 @@ const ConfirmDialog = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Confirmar
+          <AlertDialogCancel onClick={onClose}>
+            {cancelText}
+          </AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleConfirm} 
+            className={variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+          >
+            {confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

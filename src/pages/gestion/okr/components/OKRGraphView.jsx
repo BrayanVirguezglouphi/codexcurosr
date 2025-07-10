@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, Edit, Trash2, Plus, RotateCcw, ZoomIn, ZoomOut, Maximize, Move, Network, Filter, Layers } from 'lucide-react';
+import { Eye, Edit, Trash2, Plus, RotateCcw, ZoomIn, ZoomOut, Maximize, Move, Network, Filter, Layers, Play, Pause } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiCall } from '@/config/api';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,7 @@ const OKRGraphView = ({
   // Estados para agrupación
   const [groupBy, setGroupBy] = useState(''); // 'nivel', 'estado', 'responsable', ''
   const [groups, setGroups] = useState([]);
+  const [simulationPaused, setSimulationPaused] = useState(false);
 
   useEffect(() => {
     cargarObjetivos();
@@ -336,6 +337,9 @@ const OKRGraphView = ({
     let simulationNodes = [...nodes];
     
     const tick = () => {
+      // No ejecutar simulación si está pausada
+      if (simulationPaused) return;
+      
       // Fuerzas de repulsión entre nodos
       for (let i = 0; i < simulationNodes.length; i++) {
         for (let j = i + 1; j < simulationNodes.length; j++) {
@@ -347,7 +351,7 @@ const OKRGraphView = ({
           const distance = Math.sqrt(dx * dx + dy * dy);
           
           if (distance > 0 && distance < 120) {
-            const force = 120 / (distance * distance);
+            const force = (120 / (distance * distance)) * 0.3; // Reducir fuerza de repulsión
             const fx = (dx / distance) * force;
             const fy = (dy / distance) * force;
             
@@ -372,7 +376,7 @@ const OKRGraphView = ({
         const targetDistance = 100;
         
         if (distance > 0) {
-          const force = (distance - targetDistance) * 0.01;
+          const force = (distance - targetDistance) * 0.005; // Reducir fuerza de atracción
           const fx = (dx / distance) * force;
           const fy = (dy / distance) * force;
           
@@ -383,12 +387,12 @@ const OKRGraphView = ({
         }
       });
 
-      // Fuerza hacia el centro (más suave)
+      // Fuerza hacia el centro (muy suave)
       simulationNodes.forEach(node => {
         const centerX = width / 2;
         const centerY = height / 2;
-        node.vx += (centerX - node.x) * 0.0005;
-        node.vy += (centerY - node.y) * 0.0005;
+        node.vx += (centerX - node.x) * 0.0002; // Reducir aún más la fuerza centrípeta
+        node.vy += (centerY - node.y) * 0.0002;
       });
 
       // Aplicar velocidades y fricción
@@ -400,8 +404,8 @@ const OKRGraphView = ({
         const isInertiaNode = lastDragPosition.nodeId === node.id && hasRecentInertia;
         
         if (!isBeingDragged && !isInertiaNode) {
-          node.vx *= 0.95; // fricción reducida
-          node.vy *= 0.95;
+          node.vx *= 0.92; // Fricción incrementada para estabilización más rápida
+          node.vy *= 0.92;
           node.x += node.vx;
           node.y += node.vy;
           
@@ -458,9 +462,9 @@ const OKRGraphView = ({
       });
     };
 
-    // Ejecutar simulación por más tiempo para grupos
-    const interval = setInterval(tick, 50);
-    const duration = groupBy ? 8000 : 5000; // Más tiempo si hay grupos
+    // Ejecutar simulación con duración reducida para evitar movimiento excesivo
+    const interval = setInterval(tick, 60); // Intervalo más largo para suavidad
+    const duration = groupBy ? 4000 : 2500; // Tiempo reducido
     
     setTimeout(() => {
       clearInterval(interval);
@@ -690,7 +694,7 @@ const OKRGraphView = ({
     setIsDraggingCanvas(false);
   };
 
-  const handleWheel = (e) => {
+  const handleWheel = useCallback((e) => {
     e.preventDefault();
     const container = containerRef.current;
     if (!container) return;
@@ -713,7 +717,19 @@ const OKRGraphView = ({
     });
     
     setZoom(newZoom);
-  };
+  }, [pan.x, pan.y, zoom]);
+
+  // Agregar event listener para wheel manualmente para evitar error de passive event
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
 
   // Reorganizar nodos aleatoriamente
   const reorganizarGrafo = () => {
@@ -747,6 +763,21 @@ const OKRGraphView = ({
 
   return (
     <div className="space-y-6">
+      {/* CSS para cursor personalizado */}
+      <style>{`
+        .graph-tooltip .tooltip-actions button {
+          cursor: pointer !important;
+        }
+        .graph-tooltip {
+          cursor: default !important;
+        }
+        .graph-node:not(.dragging) {
+          cursor: grab !important;
+        }
+        .graph-node.dragging {
+          cursor: grabbing !important;
+        }
+      `}</style>
       {/* Header con controles */}
       <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
         <div className="flex items-center gap-3">
@@ -838,6 +869,25 @@ const OKRGraphView = ({
             Reorganizar
           </Button>
 
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setSimulationPaused(!simulationPaused)}
+            title={simulationPaused ? "Reanudar simulación" : "Pausar simulación"}
+          >
+            {simulationPaused ? (
+              <>
+                <Play className="h-4 w-4 mr-1" />
+                Reanudar
+              </>
+            ) : (
+              <>
+                <Pause className="h-4 w-4 mr-1" />
+                Pausar
+              </>
+            )}
+          </Button>
+
           {/* Controles de zoom */}
           <div className="flex items-center gap-1 border rounded-md">
             <Button
@@ -892,7 +942,6 @@ const OKRGraphView = ({
           cursor: isDraggingCanvas ? 'grabbing' : 'grab'
         }}
         onMouseDown={handleCanvasMouseDown}
-        onWheel={handleWheel}
       >
         {nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
@@ -1011,9 +1060,9 @@ const OKRGraphView = ({
               return (
                 <motion.div
                   key={node.id}
-                  className={`absolute cursor-pointer select-none graph-node ${
+                  className={`absolute select-none graph-node ${
                     isOther ? 'opacity-30' : 'opacity-100'
-                  } ${isDragging ? 'z-50 dragging' : 'z-10'} ${
+                  } ${isDragging ? 'z-50 dragging cursor-grabbing' : 'z-10 cursor-grab'} ${
                     isSelected ? 'selected' : ''
                                      } ${Math.abs(dragVelocity.x) > 0.1 || Math.abs(dragVelocity.y) > 0.1 ? 'with-inertia' : 'smooth-movement'} ${
                      isBouncing ? 'bounce-effect' : ''
@@ -1028,14 +1077,31 @@ const OKRGraphView = ({
                     scale: isSelected ? 1.2 : isConnected ? 1.1 : 1,
                   }}
                   transition={{ duration: 0.2 }}
-                  onClick={() => handleNodeClick(node)}
+                  onClick={(e) => {
+                    // No ejecutar click del nodo si el click es en el tooltip
+                    if (e.target.closest('.graph-tooltip')) {
+                      return;
+                    }
+                    handleNodeClick(node);
+                  }}
                   onMouseEnter={() => setHoveredNode(node.id)}
-                  onMouseLeave={() => setHoveredNode(null)}
-                  onMouseDown={(e) => handleNodeDragStart(e, node)}
+                  onMouseLeave={(e) => {
+                    // No cerrar el tooltip si el mouse se mueve al tooltip
+                    if (!e.relatedTarget?.closest('.graph-tooltip')) {
+                      setHoveredNode(null);
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    // No iniciar drag si el click es en el tooltip
+                    if (e.target.closest('.graph-tooltip')) {
+                      return;
+                    }
+                    handleNodeDragStart(e, node);
+                  }}
                 >
                   {/* Círculo del nodo */}
                   <div
-                    className={`w-full h-full rounded-full border-4 flex items-center justify-center text-white font-bold shadow-lg graph-circle ${
+                    className={`w-full h-full rounded-full border-4 flex items-center justify-center text-white font-bold shadow-lg graph-circle cursor-grab ${
                       isSelected ? 'ring-4 ring-blue-400 ring-opacity-50' : ''
                     } node-${node.data.estado.toLowerCase().replace(' ', '-')}`}
                     style={{
@@ -1053,7 +1119,16 @@ const OKRGraphView = ({
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl z-50 min-w-[220px] graph-tooltip"
+                      className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl min-w-[220px] graph-tooltip cursor-default"
+                      style={{ zIndex: 9999 }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onMouseEnter={() => setHoveredNode(node.id)}
+                      onMouseLeave={() => setHoveredNode(null)}
                     >
                       <div className="font-semibold mb-1 line-clamp-2">
                         #{node.data.id_objetivo}: {node.data.titulo}
@@ -1067,29 +1142,80 @@ const OKRGraphView = ({
                       </div>
                       
                       {/* Acciones */}
-                      <div className="flex gap-1 mt-2 pt-2 border-t border-gray-700">
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                      <div className="flex gap-1 mt-2 pt-2 border-t border-gray-700 tooltip-actions">
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onViewObjective(node.data);
+                            e.preventDefault();
+                            console.log('Ver objetivo clicked:', {
+                              nodeId: node.id,
+                              nodeData: node.data,
+                              onViewObjective: typeof onViewObjective
+                            });
+                            if (onViewObjective && typeof onViewObjective === 'function') {
+                              onViewObjective(node.data);
+                            } else {
+                              console.error('onViewObjective no está definido o no es una función');
+                            }
                           }}
-                          className="h-6 w-6 p-0 text-white hover:bg-gray-700"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          className="h-8 w-8 p-1 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors flex items-center justify-center cursor-pointer"
+                          title="Ver objetivo"
                         >
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onEditObjective(node.data);
+                            e.preventDefault();
+                            console.log('Editar objetivo clicked:', {
+                              nodeId: node.id,
+                              nodeData: node.data,
+                              onEditObjective: typeof onEditObjective
+                            });
+                            if (onEditObjective && typeof onEditObjective === 'function') {
+                              onEditObjective(node.data);
+                            } else {
+                              console.error('onEditObjective no está definido o no es una función');
+                            }
                           }}
-                          className="h-6 w-6 p-0 text-white hover:bg-gray-700"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          className="h-8 w-8 p-1 bg-gray-700 hover:bg-gray-600 rounded text-white transition-colors flex items-center justify-center cursor-pointer"
+                          title="Editar objetivo"
                         >
-                          <Edit className="h-3 w-3" />
-                        </Button>
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            console.log('Eliminar objetivo clicked:', node.data.id_objetivo, 'Handler:', typeof onDeleteObjective);
+                            if (window.confirm('¿Estás seguro de que quieres eliminar este objetivo?')) {
+                              if (onDeleteObjective && typeof onDeleteObjective === 'function') {
+                                onDeleteObjective(node.data);
+                              } else {
+                                console.error('onDeleteObjective no está definido o no es una función');
+                              }
+                            }
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          className="h-8 w-8 p-1 bg-gray-700 hover:bg-red-600 rounded text-white transition-colors flex items-center justify-center cursor-pointer"
+                          title="Eliminar objetivo"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </motion.div>
                   )}

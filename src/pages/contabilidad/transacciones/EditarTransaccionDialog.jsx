@@ -192,20 +192,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
 
   // Sincronizar valores cuando se cargan los catálogos y la transacción
   useEffect(() => {
-    if (transaccion && cuentas.length > 0 && tiposTransaccion.length > 0) {
-      setValue('id_cuenta', transaccion.id_cuenta ? String(transaccion.id_cuenta) : '');
-      setValue('id_cuenta_destino_transf', transaccion.id_cuenta_destino_transf ? String(transaccion.id_cuenta_destino_transf) : '');
-      setValue('id_tipotransaccion', transaccion.id_tipotransaccion ? String(transaccion.id_tipotransaccion) : '');
-      setValue('id_moneda_transaccion', transaccion.id_moneda_transaccion ? String(transaccion.id_moneda_transaccion) : '');
-      setValue('id_etiqueta_contable', transaccion.id_etiqueta_contable ? String(transaccion.id_etiqueta_contable) : '');
-      setValue('id_tercero', transaccion.id_tercero ? String(transaccion.id_tercero) : '');
-      setValue('id_concepto', transaccion.id_concepto ? String(transaccion.id_concepto) : '');
-    }
-  }, [transaccion, cuentas, tiposTransaccion, monedas, etiquetas, terceros, conceptos, setValue]);
-
-  useEffect(() => {
-    if (transaccion) {
+    if (transaccion && cuentas.length > 0 && tiposTransaccion.length > 0 && monedas.length > 0) {
       console.log('🔄 Inicializando valores en EditarTransaccion:', {
+        transaccion: transaccion.id_transaccion,
         registro_auxiliar: transaccion.registro_auxiliar,
         registro_validado: transaccion.registro_validado,
         aplica_retencion: transaccion.aplica_retencion,
@@ -213,6 +202,8 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
       });
       
       const fecha = transaccion.fecha_transaccion ? new Date(transaccion.fecha_transaccion).toISOString().split('T')[0] : '';
+      
+      // Resetear todo el formulario de una vez con todos los valores
       reset({
         titulo_transaccion: transaccion.titulo_transaccion || '',
         fecha_transaccion: fecha,
@@ -232,12 +223,24 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         aplica_impuestos: transaccion.aplica_impuestos === true,
         url_soporte_adjunto: transaccion.url_soporte_adjunto || '',
       });
+      
+      console.log('✅ Formulario inicializado con valores:', {
+        titulo: transaccion.titulo_transaccion,
+        fecha: fecha,
+        valor: transaccion.valor_total_transaccion,
+        cuenta: transaccion.id_cuenta,
+        tipo: transaccion.id_tipotransaccion,
+        moneda: transaccion.id_moneda_transaccion,
+        etiqueta: transaccion.id_etiqueta_contable,
+        tercero: transaccion.id_tercero
+      });
     }
-  }, [transaccion, reset]);
+  }, [transaccion, cuentas, tiposTransaccion, monedas, etiquetas, terceros, conceptos, reset]);
 
   const onSubmit = async (data) => {
     try {
-      console.log('📋 Datos del formulario antes de formatear:', data);
+      console.log('📋 EditarTransaccion - Datos del formulario antes de formatear:', data);
+      console.log('🆔 EditarTransaccion - ID de transacción:', transaccion.id_transaccion);
       
       const formattedData = {
         titulo_transaccion: data.titulo_transaccion?.trim() || '',
@@ -259,7 +262,8 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         url_soporte_adjunto: data.url_soporte_adjunto?.trim() || ''
       };
 
-      console.log('📤 Datos formateados para enviar:', formattedData);
+      console.log('📤 EditarTransaccion - Datos formateados para enviar:', formattedData);
+      console.log('🌐 EditarTransaccion - URL del endpoint:', `/api/transacciones/${transaccion.id_transaccion}`);
       
       const response = await apiCall(`/api/transacciones/${transaccion.id_transaccion}`, {
         method: 'PUT',
@@ -269,21 +273,28 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         body: JSON.stringify(formattedData)
       });
       
-      console.log('📨 Respuesta recibida:', response);
+      console.log('📨 EditarTransaccion - Respuesta recibida completa:', response);
+      console.log('📨 EditarTransaccion - Tipo de respuesta:', typeof response);
+      console.log('📨 EditarTransaccion - Keys de respuesta:', Object.keys(response || {}));
       
-      if (response && response.success !== false) {
+      // Verificar si la actualización fue exitosa
+      if (response && (response.id_transaccion || response.success !== false)) {
+        console.log('✅ EditarTransaccion - Actualización exitosa');
         toast({
           title: "Éxito",
           description: "Transacción actualizada correctamente"
         });
-        onTransaccionActualizada();
+        onTransaccionActualizada?.();
         onClose();
         reset();
       } else {
-        throw new Error(response?.message || 'Error al actualizar la transacción');
+        console.log('❌ EditarTransaccion - Respuesta indica fallo:', response);
+        throw new Error(response?.message || response?.error || 'Error al actualizar la transacción');
       }
     } catch (error) {
-      console.error('❌ Error en onSubmit:', error);
+      console.error('❌ EditarTransaccion - Error completo en onSubmit:', error);
+      console.error('❌ EditarTransaccion - Error message:', error.message);
+      console.error('❌ EditarTransaccion - Error stack:', error.stack);
       toast({ 
         title: "Error", 
         description: `No se pudo actualizar la transacción: ${error.message}`, 
@@ -458,9 +469,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   onChange={(value) => setValue('id_etiqueta_contable', value)}
                   placeholder="Seleccione etiqueta"
                   searchPlaceholder="Buscar etiqueta..."
-                  displayKey="nombre"
-                  valueKey="id"
-                  formatOption={(option) => `${option.nombre}${option.descripcion_etiqueta ? ` - ${option.descripcion_etiqueta}` : ''}`}
+                  displayKey="etiqueta_contable"
+                  valueKey="id_etiqueta_contable"
+                  formatOption={(option) => `${option.etiqueta_contable}${option.descripcion_etiqueta ? ` - ${option.descripcion_etiqueta}` : ''}`}
                 />
               </div>
             </div>

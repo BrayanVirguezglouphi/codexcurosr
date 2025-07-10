@@ -1,243 +1,399 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  Button,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Typography,
-} from '@mui/material';
-import { useStorage } from '@/lib/storage';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import DataTable from '@/components/DataTable';
+import { apiCall } from '@/config/api';
+import { 
+  Plus, 
+  Search, 
+  Eye, 
+  Edit, 
+  Trash2, 
+  Users,
+  Target,
+  Filter,
+  RefreshCw,
+  Download,
+  Brain,
+  FileText,
+  ExternalLink
+} from 'lucide-react';
+
+// Importar diálogos
+import CrearBuyerPersonaDialog from './buyer-personas/CrearBuyerPersonaDialog';
+import EditarBuyerPersonaDialog from './buyer-personas/EditarBuyerPersonaDialog';
+import VerBuyerPersonaDialog from './buyer-personas/VerBuyerPersonaDialog';
 
 const Buyer = () => {
-  const storage = useStorage();
-  const [perfiles, setPerfiles] = useState([]);
-  const [filtro, setFiltro] = useState('');
-  const [dialogoAbierto, setDialogoAbierto] = useState(false);
-  const [perfilActual, setPerfilActual] = useState({
-    titulo: '',
-    industria: '',
-    tamanoEmpresa: '',
-    dolorPrincipal: '',
-    presupuestoPromedio: '',
-    criteriosDecision: ''
-  });
+  // Estados principales
+  const [buyerPersonas, setBuyerPersonas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados para diálogos
+  const [showCrearDialog, setShowCrearDialog] = useState(false);
+  const [showEditarDialog, setShowEditarDialog] = useState(false);
+  const [showVerDialog, setShowVerDialog] = useState(false);
+  const [selectedBuyerPersona, setSelectedBuyerPersona] = useState(null);
+  
+  // Estados para confirmación de eliminación
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [buyerPersonaToDelete, setBuyerPersonaToDelete] = useState(null);
+  
+  const { toast } = useToast();
 
+  // Cargar datos iniciales
   useEffect(() => {
-    const perfilesGuardados = storage.getItems('perfiles_compradores');
-    setPerfiles(perfilesGuardados);
+    cargarBuyerPersonas();
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (perfilActual.id) {
-      const exito = storage.updateItem('perfiles_compradores', perfilActual.id, perfilActual);
-      if (exito) {
-        const perfilesActualizados = storage.getItems('perfiles_compradores');
-        setPerfiles(perfilesActualizados);
-        setDialogoAbierto(false);
-        setPerfilActual({
-          titulo: '',
-          industria: '',
-          tamanoEmpresa: '',
-          dolorPrincipal: '',
-          presupuestoPromedio: '',
-          criteriosDecision: ''
-        });
-      }
-    } else {
-      const nuevoPerfil = storage.createItem('perfiles_compradores', perfilActual);
-      if (nuevoPerfil) {
-        const perfilesActualizados = storage.getItems('perfiles_compradores');
-        setPerfiles(perfilesActualizados);
-        setDialogoAbierto(false);
-        setPerfilActual({
-          titulo: '',
-          industria: '',
-          tamanoEmpresa: '',
-          dolorPrincipal: '',
-          presupuestoPromedio: '',
-          criteriosDecision: ''
-        });
-      }
+  const cargarBuyerPersonas = async () => {
+    try {
+      setLoading(true);
+      const data = await apiCall('/api/crm/buyer-personas');
+      setBuyerPersonas(data);
+      console.log('Buyer Personas cargadas:', data);
+    } catch (error) {
+      console.error('Error cargando buyer personas:', error);
+      toast({
+        title: "Error",
+        description: "Error al cargar las buyer personas",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('¿Está seguro de eliminar este perfil?')) {
-      const exito = storage.deleteItem('perfiles_compradores', id);
-      if (exito) {
-        const perfilesActualizados = storage.getItems('perfiles_compradores');
-        setPerfiles(perfilesActualizados);
-      }
+
+
+  const handleCrearBuyerPersona = (nuevaBuyerPersona) => {
+    setBuyerPersonas(prev => [...prev, nuevaBuyerPersona]);
+    toast({
+      title: "¡Éxito!",
+      description: "Buyer Persona creada correctamente",
+      variant: "success"
+    });
+  };
+
+  const handleEditarBuyerPersona = (buyerPersonaActualizada) => {
+    setBuyerPersonas(prev => prev.map(bp => 
+      bp.id_buyer === buyerPersonaActualizada.id_buyer ? buyerPersonaActualizada : bp
+    ));
+    toast({
+      title: "¡Éxito!",
+      description: "Buyer Persona actualizada correctamente",
+      variant: "success"
+    });
+  };
+
+  const handleEliminarBuyerPersona = async () => {
+    if (!buyerPersonaToDelete) return;
+    
+    try {
+      await apiCall(`/api/crm/buyer-personas/${buyerPersonaToDelete.id_buyer}`, {
+        method: 'DELETE'
+      });
+      
+      setBuyerPersonas(prev => prev.filter(bp => bp.id_buyer !== buyerPersonaToDelete.id_buyer));
+      
+      toast({
+        title: "¡Éxito!",
+        description: "Buyer Persona eliminada correctamente",
+        variant: "success"
+      });
+    } catch (error) {
+      console.error('Error eliminando buyer persona:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Error al eliminar la buyer persona",
+        variant: "destructive"
+      });
+    } finally {
+      setShowDeleteDialog(false);
+      setBuyerPersonaToDelete(null);
     }
   };
 
-  const perfilesFiltrados = perfiles.filter(perfil =>
-    perfil.titulo.toLowerCase().includes(filtro.toLowerCase()) ||
-    perfil.industria.toLowerCase().includes(filtro.toLowerCase())
-  );
+  // Funciones para abrir diálogos
+  const abrirDialogoVer = (buyerPersona) => {
+    setSelectedBuyerPersona(buyerPersona);
+    setShowVerDialog(true);
+  };
+
+  const abrirDialogoEditar = (buyerPersona) => {
+    setSelectedBuyerPersona(buyerPersona);
+    setShowEditarDialog(true);
+  };
+
+  const abrirDialogoEliminar = (buyerPersona) => {
+    setBuyerPersonaToDelete(buyerPersona);
+    setShowDeleteDialog(true);
+  };
+
+  // Configuración de columnas compatibles con DataTable
+  const columnsForDataTable = [
+    {
+      accessor: 'id_buyer',
+      header: 'ID',
+      cell: (buyerPersona) => (
+        <Badge variant="outline" className="font-mono">
+          {buyerPersona.id_buyer}
+        </Badge>
+      )
+    },
+    {
+      accessor: 'buyer',
+      header: 'Buyer Persona',
+      cell: (buyerPersona) => (
+        <div className="font-medium">
+          {buyerPersona.buyer}
+        </div>
+      )
+    },
+    {
+      accessor: 'background',
+      header: 'Background',
+      cell: (buyerPersona) => (
+        <div className="text-sm text-muted-foreground truncate max-w-[250px]" title={buyerPersona.background}>
+          {buyerPersona.background || 'Sin background'}
+        </div>
+      )
+    },
+    {
+      accessor: 'metas',
+      header: 'Metas',
+      cell: (buyerPersona) => (
+        <div className="text-sm text-muted-foreground truncate max-w-[200px]" title={buyerPersona.metas}>
+          {buyerPersona.metas || 'Sin metas definidas'}
+        </div>
+      )
+    },
+    {
+      accessor: 'retos',
+      header: 'Retos',
+      cell: (buyerPersona) => (
+        <div className="text-sm text-muted-foreground truncate max-w-[200px]" title={buyerPersona.retos}>
+          {buyerPersona.retos || 'Sin retos definidos'}
+        </div>
+      )
+    },
+    {
+      accessor: 'url_file',
+      header: 'Archivo',
+      cell: (buyerPersona) => buyerPersona.url_file ? (
+        <div className="flex items-center gap-1">
+          <ExternalLink className="h-3 w-3" />
+          <Badge variant="secondary" className="text-xs">
+            Disponible
+          </Badge>
+        </div>
+      ) : (
+        <Badge variant="outline" className="text-xs">
+          Sin archivo
+        </Badge>
+      )
+    },
+    {
+      accessor: 'completitud',
+      header: 'Completitud',
+      cell: (buyerPersona) => {
+        // Calcular completitud basado en campos completados
+        const campos = [
+          buyerPersona.buyer,
+          buyerPersona.background,
+          buyerPersona.metas,
+          buyerPersona.retos,
+          buyerPersona.identificadores,
+          buyerPersona.objeciones_comunes,
+          buyerPersona.conductas_compra,
+          buyerPersona.que_podemos_hacer,
+          buyerPersona.posible_mensaje,
+          buyerPersona.que_oye,
+          buyerPersona.que_piensa_siente,
+          buyerPersona.que_ve,
+          buyerPersona.que_dice_hace,
+          buyerPersona.esfuerzos,
+          buyerPersona.resultados_valor
+        ];
+        
+        const completados = campos.filter(campo => campo && campo.trim().length > 0).length;
+        const porcentaje = Math.round((completados / campos.length) * 100);
+        
+        let variant = "outline";
+        if (porcentaje >= 80) variant = "default";
+        else if (porcentaje >= 50) variant = "secondary";
+        
+        return (
+          <Badge variant={variant} className="text-xs">
+            {porcentaje}%
+          </Badge>
+        );
+      }
+    }
+  ];
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center mb-4">
-        <Typography variant="h4" component="h1">Perfiles de Compradores</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setDialogoAbierto(true)}
-        >
-          Nuevo Perfil
-        </Button>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Users className="h-8 w-8" />
+            Buyer Personas
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Gestione los perfiles de clientes ideales y arquetipos de usuarios
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={cargarBuyerPersonas}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
+          <Button onClick={() => setShowCrearDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Buyer Persona
+          </Button>
+        </div>
       </div>
 
+
+
+      {/* Estadísticas rápidas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{buyerPersonas.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Target className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Completas</p>
+                <p className="text-2xl font-bold">
+                  {buyerPersonas.filter(bp => {
+                    const campos = [bp.buyer, bp.background, bp.metas, bp.retos, bp.identificadores, bp.objeciones_comunes, bp.conductas_compra, bp.que_podemos_hacer, bp.posible_mensaje, bp.que_oye, bp.que_piensa_siente, bp.que_ve, bp.que_dice_hace, bp.esfuerzos, bp.resultados_valor];
+                    const completados = campos.filter(campo => campo && campo.trim().length > 0).length;
+                    return (completados / campos.length) >= 0.8;
+                  }).length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Brain className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Con Psicología</p>
+                <p className="text-2xl font-bold">
+                  {buyerPersonas.filter(bp => bp.que_oye || bp.que_ve || bp.que_piensa_siente || bp.que_dice_hace).length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FileText className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Con Archivos</p>
+                <p className="text-2xl font-bold">
+                  {buyerPersonas.filter(bp => bp.url_file).length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabla de buyer personas */}
       <Card>
-        <CardHeader 
-          title="Perfiles de Compradores"
-          action={
-            <TextField
-              placeholder="Buscar perfiles..."
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              variant="outlined"
-              size="small"
-              sx={{ width: 300 }}
-            />
-          }
-        />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Buyer Personas ({buyerPersonas.length})
+          </CardTitle>
+        </CardHeader>
         <CardContent>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Título/Cargo</TableCell>
-                <TableCell>Industria</TableCell>
-                <TableCell>Tamaño de Empresa</TableCell>
-                <TableCell>Presupuesto</TableCell>
-                <TableCell>Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {perfilesFiltrados.map((perfil) => (
-                <TableRow key={perfil.id}>
-                  <TableCell>{perfil.titulo}</TableCell>
-                  <TableCell>{perfil.industria}</TableCell>
-                  <TableCell>{perfil.tamanoEmpresa}</TableCell>
-                  <TableCell>{perfil.presupuestoPromedio}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => {
-                          setPerfilActual(perfil);
-                          setDialogoAbierto(true);
-                        }}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        onClick={() => handleDelete(perfil.id)}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            data={buyerPersonas}
+            columns={columnsForDataTable}
+            onEdit={abrirDialogoEditar}
+            onView={abrirDialogoVer}
+            onDelete={abrirDialogoEliminar}
+            emptyMessage="No hay buyer personas registradas"
+            searchable={true}
+          />
         </CardContent>
       </Card>
 
-      <Dialog 
-        open={dialogoAbierto} 
-        onClose={() => setDialogoAbierto(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <form onSubmit={handleSubmit}>
-          <DialogTitle>
-            {perfilActual.id ? 'Editar' : 'Nuevo'} Perfil de Comprador
-          </DialogTitle>
-          <DialogContent>
-            <div className="space-y-4 mt-4">
-              <TextField
-                fullWidth
-                label="Título/Cargo"
-                value={perfilActual.titulo}
-                onChange={(e) => setPerfilActual({...perfilActual, titulo: e.target.value})}
-                required
-              />
-              <TextField
-                fullWidth
-                label="Industria"
-                value={perfilActual.industria}
-                onChange={(e) => setPerfilActual({...perfilActual, industria: e.target.value})}
-                required
-              />
-              <FormControl fullWidth>
-                <InputLabel>Tamaño de Empresa</InputLabel>
-                <Select
-                  value={perfilActual.tamanoEmpresa}
-                  onChange={(e) => setPerfilActual({...perfilActual, tamanoEmpresa: e.target.value})}
-                  label="Tamaño de Empresa"
-                >
-                  <MenuItem value="Pequeña">Pequeña</MenuItem>
-                  <MenuItem value="Mediana">Mediana</MenuItem>
-                  <MenuItem value="Grande">Grande</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Dolor Principal"
-                value={perfilActual.dolorPrincipal}
-                onChange={(e) => setPerfilActual({...perfilActual, dolorPrincipal: e.target.value})}
-                required
-              />
-              <TextField
-                fullWidth
-                label="Presupuesto Promedio"
-                value={perfilActual.presupuestoPromedio}
-                onChange={(e) => setPerfilActual({...perfilActual, presupuestoPromedio: e.target.value})}
-                required
-              />
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Criterios de Decisión"
-                value={perfilActual.criteriosDecision}
-                onChange={(e) => setPerfilActual({...perfilActual, criteriosDecision: e.target.value})}
-                required
-              />
-            </div>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDialogoAbierto(false)}>Cancelar</Button>
-            <Button type="submit" variant="contained" color="primary">
-              Guardar
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      {/* Diálogos */}
+      <CrearBuyerPersonaDialog
+        open={showCrearDialog}
+        onClose={() => setShowCrearDialog(false)}
+        onBuyerPersonaCreado={handleCrearBuyerPersona}
+      />
+
+      <EditarBuyerPersonaDialog
+        open={showEditarDialog}
+        onClose={() => setShowEditarDialog(false)}
+        buyerPersona={selectedBuyerPersona}
+        onBuyerPersonaActualizado={handleEditarBuyerPersona}
+      />
+
+      <VerBuyerPersonaDialog
+        open={showVerDialog}
+        onClose={() => setShowVerDialog(false)}
+        buyerPersona={selectedBuyerPersona}
+      />
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onClose={() => {
+          setShowDeleteDialog(false);
+          setBuyerPersonaToDelete(null);
+        }}
+        onConfirm={handleEliminarBuyerPersona}
+        title="Eliminar Buyer Persona"
+        description={
+          buyerPersonaToDelete
+            ? `¿Está seguro de que desea eliminar la buyer persona "${buyerPersonaToDelete.buyer}"? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </div>
   );
 };

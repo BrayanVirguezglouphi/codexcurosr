@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import '@/styles/okr-hierarchy.css';
-import { TreePine, Eye, Edit, Trash2, Plus, Filter, RotateCcw, ZoomIn, ZoomOut, Maximize, Move, GripVertical, ArrowRight, ArrowDown } from 'lucide-react';
+import { TreePine, Eye, Edit, Trash2, Plus, Filter, RotateCcw, ZoomIn, ZoomOut, Maximize, Move, GripVertical, ArrowRight, ArrowDown, Target } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiCall } from '@/config/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const OKRHierarchyView = ({ 
   onViewObjective, 
@@ -17,9 +19,14 @@ const OKRHierarchyView = ({
 }) => {
   const { toast } = useToast();
   const [objetivos, setObjetivos] = useState([]);
+  const [relacionesObjetivos, setRelacionesObjetivos] = useState([]);
+  const [relacionesKRs, setRelacionesKRs] = useState([]);
+  const [keyResults, setKeyResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroNivel, setFiltroNivel] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroOKRSeleccionado, setFiltroOKRSeleccionado] = useState('');
+  const [mostrarKRsNativos, setMostrarKRsNativos] = useState(true);
   const svgRef = useRef(null);
   
   // Estados para zoom y pan del canvas
@@ -80,8 +87,33 @@ const OKRHierarchyView = ({
   const cargarObjetivos = async () => {
     try {
       setLoading(true);
-      const data = await apiCall('/api/okr/objetivos');
-      setObjetivos(data || []);
+      console.log('🔄 Cargando jerarquía con nuevas relaciones...');
+      
+      // Intentar usar la nueva API de jerarquía primero
+      try {
+        const data = await apiCall('/api/okr/jerarquia');
+        if (data.success) {
+          setObjetivos(data.objetivos || []);
+          setRelacionesObjetivos(data.relacionesObjetivos || []);
+          setRelacionesKRs(data.relacionesKRs || []);
+          setKeyResults(data.keyResults || []);
+          console.log('✅ Jerarquía cargada con éxito:', {
+            objetivos: data.objetivos?.length || 0,
+            relacionesObjetivos: data.relacionesObjetivos?.length || 0,
+            relacionesKRs: data.relacionesKRs?.length || 0,
+            keyResults: data.keyResults?.length || 0
+          });
+        } else {
+          throw new Error('API de jerarquía no disponible');
+        }
+      } catch (hierarchyError) {
+        console.log('⚠️  Usando API simple como fallback');
+        const data = await apiCall('/api/okr/objetivos');
+        setObjetivos(data || []);
+        setRelacionesObjetivos([]);
+        setRelacionesKRs([]);
+        setKeyResults([]);
+      }
       
       // Cargar posiciones personalizadas si existen
       try {
@@ -115,33 +147,217 @@ const OKRHierarchyView = ({
     }
   };
 
-  // Construir estructura jerárquica
+  // Construir estructura jerárquica con OKRs y KRs
   const construirJerarquia = () => {
-    const objetivosFiltrados = objetivos.filter(obj => {
+    let objetivosFiltrados = objetivos.filter(obj => {
       const pasaNivel = !filtroNivel || obj.nivel === filtroNivel;
       const pasaEstado = !filtroEstado || obj.estado === filtroEstado;
       return pasaNivel && pasaEstado;
     });
 
+    // Aplicar filtro por OKR seleccionado - mostrar solo los relacionados
+    if (filtroOKRSeleccionado) {
+      const okrSeleccionadoId = parseInt(filtroOKRSeleccionado);
+      const okrsRelacionados = new Set([okrSeleccionadoId]);
+      
+      // Buscar todos los OKRs relacionados (hijos y padres)
+      relacionesObjetivos.forEach(rel => {
+        if (rel.id_objetivo_destino === okrSeleccionadoId) {
+          okrsRelacionados.add(rel.id_objetivo_origen);
+        }
+        if (rel.id_objetivo_origen === okrSeleccionadoId) {
+          okrsRelacionados.add(rel.id_objetivo_destino);
+        }
+      });
+
+      // Filtrar objetivos para mostrar solo los relacionados
+      objetivosFiltrados = objetivosFiltrados.filter(obj => 
+        okrsRelacionados.has(obj.id_objetivo)
+      );
+
+      console.log(`🎯 Filtro por OKR ${okrSeleccionadoId}: Mostrando ${objetivosFiltrados.length} OKRs relacionados`, 
+        Array.from(okrsRelacionados));
+    }
+
     const mapa = new Map();
     const raices = [];
 
-    // Crear mapa de objetivos
+    // 1. Crear mapa de objetivos OKR
     objetivosFiltrados.forEach(obj => {
-      mapa.set(obj.id_objetivo, {
+      mapa.set(`OKR-${obj.id_objetivo}`, {
         ...obj,
         children: [],
-        responsable_nombre: staff.find(s => s.id_staff === obj.id_responsable)?.nombre || 'Sin asignar'
+        tipo: 'OKR',
+        responsable_nombre: obj.responsable_nombre || 'Sin asignar'
       });
     });
 
-    // Construir relaciones
-    objetivosFiltrados.forEach(obj => {
-      if (obj.id_objetivo_preexistente && mapa.has(obj.id_objetivo_preexistente)) {
-        mapa.get(obj.id_objetivo_preexistente).children.push(mapa.get(obj.id_objetivo));
-      } else {
-        raices.push(mapa.get(obj.id_objetivo));
+    // 2. Agregar Key Results como nodos - Solo si mostrarKRsNativos está activo
+    if (mostrarKRsNativos) {
+      console.log(`📊 KRs disponibles: ${keyResults.length}`, keyResults.map(kr => `KR-${kr.id_kr}: ${kr.descripcion} (OKR: ${kr.id_objetivo})`));
+      
+      let krsAgregados = 0;
+      keyResults.forEach(kr => {
+        const objetivoPadre = objetivos.find(obj => obj.id_objetivo === kr.id_objetivo);
+        if (objetivoPadre && objetivosFiltrados.find(obj => obj.id_objetivo === kr.id_objetivo)) {
+          mapa.set(`KR-${kr.id_kr}`, {
+            id_objetivo: `KR-${kr.id_kr}`,
+            id_kr: kr.id_kr,
+            titulo: kr.descripcion || `KR ${kr.id_kr}`,
+            descripcion: `${kr.valor_objetivo || 0} ${kr.unidad || ''}`,
+            estado: kr.porcentaje_cumplimiento >= 100 ? 'Completado' : 
+                   kr.porcentaje_cumplimiento >= 70 ? 'Activo' : 'En Riesgo',
+            nivel: 'Key Result',
+            children: [],
+            tipo: 'KR',
+            porcentaje_cumplimiento: kr.porcentaje_cumplimiento || 0,
+            responsable_nombre: kr.responsable_nombre || 'Sin asignar',
+            objetivo_padre_id: kr.id_objetivo
+          });
+          krsAgregados++;
+          console.log(`✅ KR agregado: ${kr.descripcion} -> OKR ${kr.id_objetivo}`);
+        } else {
+          console.log(`❌ KR no agregado: ${kr.descripcion} -> OKR ${kr.id_objetivo} (objetivo padre no encontrado o filtrado)`);
+        }
+      });
+      
+      console.log(`📈 Total KRs agregados como nodos: ${krsAgregados}/${keyResults.length}`);
+    } else {
+      console.log(`🚫 KRs nativos no se agregan como nodos (configuración del usuario)`);
+    }
+
+    // 3. Construir relaciones OKR → OKR (VERDE)
+    relacionesObjetivos.forEach(rel => {
+      const padreKey = `OKR-${rel.id_objetivo_destino}`;
+      const hijoKey = `OKR-${rel.id_objetivo_origen}`;
+      
+      if (mapa.has(padreKey) && mapa.has(hijoKey)) {
+        const padre = mapa.get(padreKey);
+        const hijo = mapa.get(hijoKey);
+        
+        // Crear ID único para comparación
+        const hijoIdUnico = hijo.tipo === 'KR' ? `KR-${hijo.id_kr}` : `OKR-${hijo.id_objetivo}`;
+        if (!padre.children.find(child => {
+          const childIdUnico = child.tipo === 'KR' ? `KR-${child.id_kr}` : `OKR-${child.id_objetivo}`;
+          return childIdUnico === hijoIdUnico;
+        })) {
+          padre.children.push({
+            ...hijo,
+            tipoRelacion: 'OKR_TO_OKR',
+            colorRelacion: '#10B981' // Verde
+          });
+        }
       }
+    });
+
+    // 4. Construir relaciones OKR → KR (ROJO) - Solo si mostrarKRsNativos está activo
+    if (mostrarKRsNativos) {
+      console.log(`🔗 Construyendo relaciones OKR → KR para ${keyResults.length} KRs`);
+      
+      let relacionesKRsCreadas = 0;
+      keyResults.forEach(kr => {
+        const objetivoPadre = objetivos.find(obj => obj.id_objetivo === kr.id_objetivo);
+        if (objetivoPadre && objetivosFiltrados.find(obj => obj.id_objetivo === kr.id_objetivo)) {
+          const padreKey = `OKR-${kr.id_objetivo}`;
+          const hijoKey = `KR-${kr.id_kr}`;
+          
+          console.log(`🔍 Buscando: ${padreKey} -> ${hijoKey}`);
+          console.log(`   Padre en mapa: ${mapa.has(padreKey)}, Hijo en mapa: ${mapa.has(hijoKey)}`);
+          
+          if (mapa.has(padreKey) && mapa.has(hijoKey)) {
+            const padre = mapa.get(padreKey);
+            const hijo = mapa.get(hijoKey);
+            
+            // Verificar si ya existe (por relaciones explícitas)
+            const hijoIdUnico = hijo.tipo === 'KR' ? `KR-${hijo.id_kr}` : `OKR-${hijo.id_objetivo}`;
+            const yaExiste = padre.children.find(child => {
+              const childIdUnico = child.tipo === 'KR' ? `KR-${child.id_kr}` : `OKR-${child.id_objetivo}`;
+              return childIdUnico === hijoIdUnico;
+            });
+            if (!yaExiste) {
+              padre.children.push({
+                ...hijo,
+                tipoRelacion: 'OKR_TO_KR_DIRECTO',
+                colorRelacion: '#EF4444' // Rojo - Relación directa natural
+              });
+              relacionesKRsCreadas++;
+              console.log(`✅ Relación KR nativo creada: ${padre.titulo} → ${hijo.titulo}`);
+            } else {
+              console.log(`⚠️  Relación ya existe: ${padre.titulo} → ${hijo.titulo}`);
+            }
+          } else {
+            console.log(`❌ Nodos no encontrados en mapa: ${padreKey} -> ${hijoKey}`);
+          }
+        } else {
+          console.log(`❌ OKR padre no válido para KR ${kr.id_kr}`);
+        }
+      });
+      
+      console.log(`📊 Total relaciones OKR→KR nativas creadas: ${relacionesKRsCreadas}`);
+    } else {
+      console.log(`🚫 KRs nativos ocultos por configuración del usuario`);
+    }
+
+    // 4.1. Agregar relaciones explícitas OKR → KR adicionales (si las hay)
+    relacionesKRs.forEach(rel => {
+      const padreKey = `OKR-${rel.id_objetivo}`;
+      const hijoKey = `KR-${rel.id_kr}`;
+      
+      if (mapa.has(padreKey) && mapa.has(hijoKey)) {
+        const padre = mapa.get(padreKey);
+        const hijo = mapa.get(hijoKey);
+        
+        // Solo agregar si no existe ya (evitar duplicados)
+        const hijoIdUnico = hijo.tipo === 'KR' ? `KR-${hijo.id_kr}` : `OKR-${hijo.id_objetivo}`;
+        if (!padre.children.find(child => {
+          const childIdUnico = child.tipo === 'KR' ? `KR-${child.id_kr}` : `OKR-${child.id_objetivo}`;
+          return childIdUnico === hijoIdUnico;
+        })) {
+          padre.children.push({
+            ...hijo,
+            tipoRelacion: 'OKR_TO_KR_EXPLICIT',
+            colorRelacion: '#3B82F6', // Azul
+            relacionExplicita: true
+          });
+        }
+      }
+    });
+
+    // 5. Identificar objetivos raíz (OKRs sin relaciones de entrada)
+    const objetivosDestino = new Set();
+    relacionesObjetivos.forEach(rel => {
+      objetivosDestino.add(rel.id_objetivo_origen);
+    });
+
+    objetivosFiltrados.forEach(obj => {
+      if (!objetivosDestino.has(obj.id_objetivo)) {
+        const okrKey = `OKR-${obj.id_objetivo}`;
+        if (mapa.has(okrKey)) {
+          raices.push(mapa.get(okrKey));
+        }
+      }
+    });
+
+    // 6. Si no hay relaciones, mostrar todos los OKRs como raíces
+    if (raices.length === 0 && objetivosFiltrados.length > 0) {
+      objetivosFiltrados.forEach(obj => {
+        const okrKey = `OKR-${obj.id_objetivo}`;
+        if (mapa.has(okrKey)) {
+          raices.push(mapa.get(okrKey));
+        }
+      });
+    }
+
+    console.log('🌳 Jerarquía construida:', {
+      objetivos_totales: objetivos.length,
+      objetivos_filtrados: objetivosFiltrados.length,
+      key_results: keyResults.length,
+      krs_nativos_mostrados: mostrarKRsNativos,
+      filtro_okr_activo: !!filtroOKRSeleccionado,
+      okr_seleccionado: filtroOKRSeleccionado ? objetivos.find(o => o.id_objetivo.toString() === filtroOKRSeleccionado)?.titulo : null,
+      relaciones_okr_okr: relacionesObjetivos.length,
+      relaciones_okr_kr: relacionesKRs.length,
+      objetivos_raiz: raices.length
     });
 
     return raices;
@@ -151,11 +367,19 @@ const OKRHierarchyView = ({
   const calcularPosicionesAvanzadas = (nodos) => {
     const posiciones = [];
     const nodosConNivel = [];
+    const nodosVistos = new Set(); // Para evitar duplicados
     
     // Función recursiva para asignar niveles
     const asignarNiveles = (nodos, nivel = 0) => {
       nodos.forEach(nodo => {
-        nodosConNivel.push({ nodo, nivel });
+        // Crear ID único para verificar duplicados
+        const nodoIdUnico = nodo.tipo === 'KR' ? `KR-${nodo.id_kr}` : `OKR-${nodo.id_objetivo}`;
+        
+        if (!nodosVistos.has(nodoIdUnico)) {
+          nodosVistos.add(nodoIdUnico);
+          nodosConNivel.push({ nodo, nivel });
+        }
+        
         if (nodo.children && nodo.children.length > 0) {
           asignarNiveles(nodo.children, nivel + 1);
         }
@@ -184,8 +408,9 @@ const OKRHierarchyView = ({
       const nivelNum = parseInt(nivel);
       
       nodosEnNivel.forEach((nodo, index) => {
-        // Usar posición personalizada si existe
-        const customPos = okrPositions.get(nodo.id_objetivo.toString());
+        // Usar posición personalizada si existe (solo para OKRs, los KRs no tienen posiciones personalizadas)
+        const nodoKey = nodo.tipo === 'OKR' ? nodo.id_objetivo.toString() : null;
+        const customPos = nodoKey ? okrPositions.get(nodoKey) : null;
         
         let x, y;
         
@@ -214,26 +439,47 @@ const OKRHierarchyView = ({
       });
     });
     
+    console.log('📍 Posiciones calculadas:', {
+      total_nodos: nodosConNivel.length,
+      total_posiciones: posiciones.length,
+      nodos_unicos: nodosVistos.size,
+      okrs: posiciones.filter(p => p.nodo.tipo === 'OKR').length,
+      krs: posiciones.filter(p => p.nodo.tipo === 'KR').length
+    });
+    
     return posiciones;
   };
 
-  // Generar líneas de conexión curvas y delgadas
+  // Generar líneas de conexión diferenciadas: Verde OKR→OKR, Azul OKR→KR
   const generarConexiones = (posiciones) => {
     const conexiones = [];
     
     posiciones.forEach(pos => {
       if (pos.nodo.children && pos.nodo.children.length > 0) {
         pos.nodo.children.forEach(hijo => {
-          const posHijo = posiciones.find(p => p.nodo.id_objetivo === hijo.id_objetivo);
+          const hijoIdUnico = hijo.tipo === 'KR' ? `KR-${hijo.id_kr}` : `OKR-${hijo.id_objetivo}`;
+          const posHijo = posiciones.find(p => {
+            const pIdUnico = p.nodo.tipo === 'KR' ? `KR-${p.nodo.id_kr}` : `OKR-${p.nodo.id_objetivo}`;
+            return pIdUnico === hijoIdUnico;
+          });
           if (posHijo) {
-            let colorLinea = '#3B82F6';
+            // Color según tipo de relación
+            let colorLinea = '#6B7280'; // Gris por defecto
+            let grosorLinea = 2;
+            let tipoConexion = 'desconocida';
             
-            if (pos.nodo.estado === 'Completado' && hijo.estado === 'Completado') {
-              colorLinea = '#10B981';
-            } else if (pos.nodo.estado === 'En Riesgo' || hijo.estado === 'En Riesgo') {
-              colorLinea = '#F59E0B';
-            } else if (pos.nodo.estado === 'Pausado' || hijo.estado === 'Pausado') {
-              colorLinea = '#6B7280';
+            if (hijo.tipoRelacion === 'OKR_TO_OKR') {
+              colorLinea = '#10B981'; // Verde para OKR → OKR
+              grosorLinea = 3;
+              tipoConexion = 'OKR → OKR';
+            } else if (hijo.tipoRelacion === 'OKR_TO_KR_DIRECTO') {
+              colorLinea = '#EF4444'; // Rojo para OKR → KR directo
+              grosorLinea = 2;
+              tipoConexion = 'OKR → KR Directo';
+            } else if (hijo.tipoRelacion === 'OKR_TO_KR_EXPLICIT') {
+              colorLinea = '#3B82F6'; // Azul para OKR → KR explícito
+              grosorLinea = 2;
+              tipoConexion = 'OKR → KR Explícito';
             }
             
             // Puntos de conexión mejorados
@@ -256,10 +502,17 @@ const OKRHierarchyView = ({
               y2 = posHijo.y;
             }
             
+            // Generar ID único para la conexión
+            const padreId = pos.nodo.tipo === 'KR' ? `KR-${pos.nodo.id_kr}` : `OKR-${pos.nodo.id_objetivo}`;
+            const hijoId = hijo.tipo === 'KR' ? `KR-${hijo.id_kr}` : `OKR-${hijo.id_objetivo}`;
+            
             conexiones.push({
               x1, y1, x2, y2,
-              id: `${pos.nodo.id_objetivo}-${hijo.id_objetivo}`,
+              id: `${padreId}-${hijoId}`,
               colorLinea,
+              grosorLinea,
+              tipoConexion,
+              tipoRelacion: hijo.tipoRelacion,
               estadoPadre: pos.nodo.estado,
               estadoHijo: hijo.estado,
               orientacion: layoutOrientation
@@ -267,6 +520,13 @@ const OKRHierarchyView = ({
           }
         });
       }
+    });
+
+    console.log('🔗 Conexiones generadas:', {
+      total: conexiones.length,
+      okr_to_okr: conexiones.filter(c => c.tipoRelacion === 'OKR_TO_OKR').length,
+      okr_to_kr_directo: conexiones.filter(c => c.tipoRelacion === 'OKR_TO_KR_DIRECTO').length,
+      okr_to_kr_explicito: conexiones.filter(c => c.tipoRelacion === 'OKR_TO_KR_EXPLICIT').length
     });
 
     return conexiones;
@@ -298,6 +558,7 @@ const OKRHierarchyView = ({
       case 'Departamento': return '🏬';
       case 'Equipo': return '👥';
       case 'Individual': return '👤';
+      case 'Key Result': return '🎯';
       default: return '📋';
     }
   };
@@ -484,13 +745,23 @@ const OKRHierarchyView = ({
           <div>
             <h2 className="text-xl font-bold text-gray-900">Vista Jerárquica OKR</h2>
             <p className="text-sm text-gray-600">
-              {objetivos.length} objetivos • {jerarquia.length} objetivo(s) raíz • Layout {layoutOrientation}
+              {objetivos.length} OKRs • {keyResults.length} KRs • {jerarquia.length} nodo(s) raíz • Layout {layoutOrientation}
+              {filtroOKRSeleccionado && (
+                <span className="text-blue-600 font-medium">
+                  • Enfocado en: {objetivos.find(o => o.id_objetivo.toString() === filtroOKRSeleccionado)?.titulo}
+                </span>
+              )}
+              {!mostrarKRsNativos && (
+                <span className="text-orange-600 font-medium">
+                  • KRs nativos ocultos
+                </span>
+              )}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Filtros */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Filtros básicos */}
           <Select value={filtroNivel} onValueChange={setFiltroNivel}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filtrar por nivel" />
@@ -517,12 +788,45 @@ const OKRHierarchyView = ({
             </SelectContent>
           </Select>
 
+          {/* Nuevo: Filtro por OKR específico */}
+          <Select value={filtroOKRSeleccionado} onValueChange={setFiltroOKRSeleccionado}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="🎯 Filtrar por OKR" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Todos los OKRs</SelectItem>
+              {objetivos.map(okr => (
+                <SelectItem key={okr.id_objetivo} value={okr.id_objetivo.toString()}>
+                  <div className="flex items-center gap-2">
+                    <Target className="h-3 w-3" />
+                    <span className="truncate max-w-[200px]">{okr.titulo}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Nuevo: Toggle para mostrar/ocultar KRs nativos */}
+          <div className="flex items-center gap-2 px-3 py-1 border rounded-md bg-gray-50" 
+               title="Los KRs nativos son los que vienen directamente asociados a cada OKR. Desactivar esta opción permite centrarse solo en las relaciones entre OKRs.">
+            <Switch
+              id="mostrar-krs-nativos"
+              checked={mostrarKRsNativos}
+              onCheckedChange={setMostrarKRsNativos}
+            />
+            <Label htmlFor="mostrar-krs-nativos" className="text-sm font-medium cursor-pointer">
+              Mostrar KRs nativos
+            </Label>
+          </div>
+
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => {
               setFiltroNivel('');
               setFiltroEstado('');
+              setFiltroOKRSeleccionado('');
+              setMostrarKRsNativos(true);
             }}
           >
             <RotateCcw className="h-4 w-4 mr-1" />
@@ -619,6 +923,29 @@ const OKRHierarchyView = ({
         </div>
       </div>
 
+      {/* Leyenda de tipos de conexiones */}
+      {!loading && posiciones.length > 0 && (
+        <div className="bg-white p-3 rounded-lg border shadow-sm">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Tipos de conexiones:</h3>
+          <div className="flex flex-wrap gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-green-500"></div>
+              <span>OKR → OKR (Relaciones estratégicas)</span>
+            </div>
+            {mostrarKRsNativos && (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-0.5 bg-red-500"></div>
+                <span>OKR → KR (Resultados clave nativos)</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-blue-500"></div>
+              <span>OKR → KR (Relaciones explícitas)</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Área del diagrama */}
       <div 
         ref={containerRef}
@@ -687,7 +1014,7 @@ const OKRHierarchyView = ({
                            ${conexion.x2} ${conexion.y2}`
                     }
                     stroke={conexion.colorLinea}
-                    strokeWidth="1.5"
+                    strokeWidth={conexion.grosorLinea || 1.5}
                     fill="none"
                     markerEnd="url(#arrowhead)"
                     opacity="0.8"
@@ -700,14 +1027,19 @@ const OKRHierarchyView = ({
             {/* Nodos de objetivos simplificados */}
             {posiciones.map((pos, index) => (
               <motion.div
-                key={pos.nodo.id_objetivo}
+                key={pos.nodo.tipo === 'KR' ? `KR-${pos.nodo.id_kr}` : `OKR-${pos.nodo.id_objetivo}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.05, duration: 0.2 }}
-                className={`okr-node-simple absolute border rounded-lg bg-white shadow-md hover:shadow-lg transition-all duration-200 ${
+                className={`okr-node-simple absolute border rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${
+                  pos.nodo.tipo === 'KR' ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                } ${
                   getColorEstado(pos.nodo.estado)
                 } ${
-                  draggingOKR?.id_objetivo === pos.nodo.id_objetivo ? 'ring-2 ring-blue-400 shadow-xl' : ''
+                  draggingOKR && (
+                    (pos.nodo.tipo === 'KR' && draggingOKR.id_kr === pos.nodo.id_kr) ||
+                    (pos.nodo.tipo === 'OKR' && draggingOKR.id_objetivo === pos.nodo.id_objetivo)
+                  ) ? 'ring-2 ring-blue-400 shadow-xl' : ''
                 } ${
                   pos.isCustomPosition ? 'ring-1 ring-indigo-300' : ''
                 }`}
@@ -716,7 +1048,10 @@ const OKRHierarchyView = ({
                   top: pos.y,
                   width: '240px',
                   height: '80px',
-                  zIndex: draggingOKR?.id_objetivo === pos.nodo.id_objetivo ? 1000 : 10,
+                  zIndex: draggingOKR && (
+                    (pos.nodo.tipo === 'KR' && draggingOKR.id_kr === pos.nodo.id_kr) ||
+                    (pos.nodo.tipo === 'OKR' && draggingOKR.id_objetivo === pos.nodo.id_objetivo)
+                  ) ? 1000 : 10,
                   cursor: 'grab'
                 }}
                 onMouseDown={(e) => handleOKRDragStart(e, pos.nodo)}
@@ -733,9 +1068,19 @@ const OKRHierarchyView = ({
                       <h3 className="font-semibold text-sm leading-tight line-clamp-2 mb-1">
                         {pos.nodo.titulo}
                       </h3>
-                      <p className="text-xs text-gray-600 truncate">
-                        👤 {pos.nodo.responsable_nombre}
-                      </p>
+                      {pos.nodo.tipo === 'KR' ? (
+                        <div className="text-xs text-gray-600">
+                          <div className="flex items-center gap-1 mb-1">
+                            <span>📊</span>
+                            <span className="font-medium">{pos.nodo.porcentaje_cumplimiento || 0}%</span>
+                          </div>
+                          <p className="truncate">👤 {pos.nodo.responsable_nombre}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-600 truncate">
+                          👤 {pos.nodo.responsable_nombre}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -782,10 +1127,73 @@ const OKRHierarchyView = ({
         )}
       </div>
 
-      {/* Leyenda simplificada */}
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="flex items-center justify-between text-xs text-gray-600">
-          <span>💡 Arrastra cualquier OKR para reposicionarlo</span>
+      {/* Leyenda diferencial OKR-KR */}
+      <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Tipos de nodos */}
+          <div>
+            <h4 className="font-semibold text-sm text-gray-800 mb-2">📊 Tipos de Nodos</h4>
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-white border border-gray-300 rounded"></div>
+                <span>🏢 <strong>OKR (Objetivos)</strong> - Fondo blanco</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
+                <span>🎯 <strong>Key Results</strong> - Fondo azul claro con %</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Tipos de conexiones */}
+          <div>
+            <h4 className="font-semibold text-sm text-gray-800 mb-2">🔗 Tipos de Conexiones</h4>
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-1 bg-green-500 rounded" style={{ height: '3px' }}></div>
+                <span>🟢 <strong>OKR → OKR</strong> - Relación explícita (verde)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-1 bg-red-500 rounded" style={{ height: '2px' }}></div>
+                <span>🔴 <strong>OKR → KR</strong> - Relación directa (rojo)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-1 bg-blue-500 rounded" style={{ height: '2px' }}></div>
+                <span>🔵 <strong>OKR → KR</strong> - Relación explícita (azul)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Estadísticas en tiempo real */}
+        <div className="bg-white p-3 rounded border">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 text-xs text-center">
+            <div>
+              <div className="font-bold text-lg text-indigo-600">{objetivos.length}</div>
+              <div className="text-gray-600">OKRs</div>
+            </div>
+            <div>
+              <div className="font-bold text-lg text-indigo-600">{keyResults.length}</div>
+              <div className="text-gray-600">Key Results</div>
+            </div>
+            <div>
+              <div className="font-bold text-lg text-green-600">{relacionesObjetivos.length}</div>
+              <div className="text-gray-600">🟢 OKR↔OKR</div>
+            </div>
+            <div>
+              <div className="font-bold text-lg text-red-600">{conexiones.filter(c => c.tipoRelacion === 'OKR_TO_KR_DIRECTO').length}</div>
+              <div className="text-gray-600">🔴 OKR→KR</div>
+            </div>
+            <div>
+              <div className="font-bold text-lg text-blue-600">{relacionesKRs.length}</div>
+              <div className="text-gray-600">🔵 OKR⇄KR</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Controles */}
+        <div className="flex items-center justify-between text-xs text-gray-600 pt-2 border-t">
+          <span>💡 Arrastra cualquier nodo para reposicionarlo</span>
           <span>🔄 Cambia entre layout horizontal y vertical</span>
           <span>🖱️ Usa la rueda del mouse para zoom</span>
           <span>📱 Arrastra el fondo para mover la vista</span>

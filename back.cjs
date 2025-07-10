@@ -73,6 +73,372 @@ app.get('/api/facturas', async (req, res) => {
   }
 });
 
+// Ruta para resetear secuencia de facturas
+app.post('/api/facturas/reset-sequence', async (req, res) => {
+  try {
+    console.log('🔧 Reseteando secuencia de facturas...');
+    
+    // Obtener el MAX ID actual
+    const maxResult = await pool.query('SELECT MAX(id_factura) as max_id FROM adcot_facturas');
+    const maxId = maxResult.rows[0].max_id || 0;
+    
+    console.log(`📊 MAX ID actual: ${maxId}`);
+    
+    // Resetear la secuencia al siguiente valor
+    const nextId = maxId + 1;
+    await pool.query(`SELECT setval('adcot_facturas_id_factura_seq', $1, false)`, [nextId]);
+    
+    console.log(`✅ Secuencia reseteada al ID ${nextId}`);
+    
+    res.json({ 
+      message: `Secuencia reseteada correctamente. Próximo ID: ${nextId}`,
+      maxId: maxId,
+      nextId: nextId
+    });
+  } catch (error) {
+    console.error('❌ Error reseteando secuencia:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Importar facturas desde Excel
+app.post('/api/facturas/import', async (req, res) => {
+  try {
+    console.log('=== IMPORTACIÓN DE FACTURAS ===');
+    console.log('Body recibido:', req.body);
+    
+    const { facturas } = req.body;
+    
+    if (!facturas || !Array.isArray(facturas) || facturas.length === 0) {
+      console.log('Error: Array de facturas inválido');
+      return res.status(400).json({ 
+        message: 'Se requiere un array de facturas para importar' 
+      });
+    }
+
+    console.log(`📥 Importando ${facturas.length} facturas...`);
+
+    const resultados = {
+      exitosas: [],
+      errores: [],
+      total: facturas.length
+    };
+
+    // Procesar cada factura individualmente
+    for (let i = 0; i < facturas.length; i++) {
+      const facturaData = facturas[i];
+      
+      try {
+        // Validar campos requeridos
+        const camposRequeridos = ['numero_factura', 'estatus_factura', 'fecha_radicado', 'subtotal_facturado_moneda'];
+        const camposFaltantes = camposRequeridos.filter(campo => {
+          const valor = facturaData[campo];
+          return !valor || valor === null || valor === undefined || valor === '';
+        });
+        
+        if (camposFaltantes.length > 0) {
+          resultados.errores.push({
+            fila: facturaData._rowIndex || i + 1,
+            data: facturaData,
+            error: `Campos requeridos faltantes: ${camposFaltantes.join(', ')}`
+          });
+          continue;
+        }
+
+        // Limpiar campos que no deben ir a la BD (incluyendo id_factura que es auto-incremental)
+        const { _rowIndex, id_factura, ...cleanData } = facturaData;
+        
+        // ASEGURAR que id_factura nunca esté presente (doble verificación)
+        if ('id_factura' in cleanData) {
+          delete cleanData.id_factura;
+        }
+        
+        console.log('🔍 Datos originales:', facturaData);
+        console.log('🧹 Datos después de limpiar:', cleanData);
+
+        // Preparar datos para inserción
+        const insertQuery = `
+          INSERT INTO adcot_facturas (
+            numero_factura,
+            estatus_factura,
+            id_contrato,
+            fecha_radicado,
+            fecha_estimada_pago,
+            id_moneda,
+            subtotal_facturado_moneda,
+            id_tax,
+            valor_tax,
+            observaciones_factura
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id_factura, numero_factura
+        `;
+
+        const valores = [
+          cleanData.numero_factura,
+          cleanData.estatus_factura,
+          cleanData.id_contrato || null,
+          cleanData.fecha_radicado,
+          cleanData.fecha_estimada_pago || null,
+          cleanData.id_moneda || null,
+          cleanData.subtotal_facturado_moneda,
+          cleanData.id_tax || null,
+          cleanData.valor_tax || null,
+          cleanData.observaciones_factura || null
+        ];
+
+        console.log('🔍 Datos limpios para insertar:', cleanData);
+        console.log('🔍 Valores para query:', valores);
+
+        const result = await pool.query(insertQuery, valores);
+        const nuevaFactura = result.rows[0];
+
+        resultados.exitosas.push({
+          fila: facturaData._rowIndex || i + 1,
+          id: nuevaFactura.id_factura,
+          numero_factura: nuevaFactura.numero_factura
+        });
+        
+        console.log(`✅ Factura ${nuevaFactura.numero_factura} importada exitosamente`);
+        
+             } catch (error) {
+         console.error(`❌ ERROR DETALLADO en fila ${i + 1}:`);
+         console.error('- Mensaje:', error.message);
+         console.error('- Código:', error.code);
+         console.error('- Detalle:', error.detail);
+         console.error('- Constraint:', error.constraint);
+         console.error('- Columna:', error.column);
+         console.error('- Tabla:', error.table);
+         console.error('- Error completo:', error);
+         console.error('- Datos que causaron el error:', facturaData);
+         if (typeof valores !== 'undefined') {
+           console.error('- Valores que se intentaron insertar:', valores);
+         }
+         
+         let mensajeError = error.message;
+         
+         // Manejar errores específicos de PostgreSQL
+         if (error.code === '23505') { // Unique violation
+           mensajeError = `Número de factura duplicado: ${facturaData.numero_factura}`;
+         } else if (error.code === '23502') { // Not null violation
+           mensajeError = `Campo requerido faltante: ${error.column || 'desconocido'}`;
+         } else if (error.code === '23503') { // Foreign key violation
+           mensajeError = `Referencia inválida: ${error.detail || error.message}`;
+         } else if (error.code === '42P01') { // Undefined table
+           mensajeError = `Tabla no existe: ${error.message}`;
+         } else if (error.code === '42703') { // Undefined column
+           mensajeError = `Columna no existe: ${error.message}`;
+         }
+         
+         resultados.errores.push({
+           fila: facturaData._rowIndex || i + 1,
+           data: facturaData,
+           error: mensajeError,
+           errorCode: error.code,
+           errorDetail: error.detail
+         });
+       }
+    }
+
+    // Respuesta con resultados
+    const response = {
+      message: `Importación completada: ${resultados.exitosas.length} exitosas, ${resultados.errores.length} errores`,
+      resultados
+    };
+
+    console.log(`📊 Resultado final: ${resultados.exitosas.length}/${resultados.total} exitosas`);
+
+    // Si hay errores, retornar código 207 (Multi-Status)
+    if (resultados.errores.length > 0) {
+      res.status(207).json(response);
+    } else {
+      res.status(201).json(response);
+    }
+
+  } catch (error) {
+    console.error('💥 Error en importación masiva:', error);
+    res.status(500).json({ 
+      message: 'Error interno en la importación',
+      error: error.message 
+    });
+  }
+});
+
+// Importar transacciones desde Excel
+app.post('/api/transacciones/import', async (req, res) => {
+  try {
+    console.log('=== IMPORTACIÓN DE TRANSACCIONES ===');
+    console.log('Body recibido:', req.body);
+    
+    const { transacciones } = req.body;
+    
+    if (!transacciones || !Array.isArray(transacciones) || transacciones.length === 0) {
+      console.log('Error: Array de transacciones inválido');
+      return res.status(400).json({ 
+        message: 'Se requiere un array de transacciones para importar' 
+      });
+    }
+
+    console.log(`📥 Importando ${transacciones.length} transacciones...`);
+
+    const resultados = {
+      exitosas: [],
+      errores: [],
+      total: transacciones.length
+    };
+
+    // Procesar cada transacción individualmente
+    for (let i = 0; i < transacciones.length; i++) {
+      const transaccionData = transacciones[i];
+      
+      try {
+        // Validar campos requeridos
+        const camposRequeridos = ['titulo_transaccion', 'valor_total_transaccion', 'fecha_transaccion'];
+        const camposFaltantes = camposRequeridos.filter(campo => {
+          const valor = transaccionData[campo];
+          return !valor || valor === null || valor === undefined || valor === '';
+        });
+        
+        if (camposFaltantes.length > 0) {
+          resultados.errores.push({
+            fila: transaccionData._rowIndex || i + 1,
+            data: transaccionData,
+            error: `Campos requeridos faltantes: ${camposFaltantes.join(', ')}`
+          });
+          continue;
+        }
+
+        // Limpiar campos que no deben ir a la BD (incluyendo id_transaccion que es auto-incremental)
+        const { _rowIndex, id_transaccion, ...cleanData } = transaccionData;
+        
+        // ASEGURAR que id_transaccion nunca esté presente
+        if ('id_transaccion' in cleanData) {
+          delete cleanData.id_transaccion;
+        }
+        
+        console.log('🔍 Datos originales:', transaccionData);
+        console.log('🧹 Datos después de limpiar:', cleanData);
+
+        // Preparar datos para inserción
+        const insertQuery = `
+          INSERT INTO adcot_transacciones (
+            id_cuenta,
+            id_tipotransaccion,
+            fecha_transaccion,
+            titulo_transaccion,
+            id_moneda_transaccion,
+            valor_total_transaccion,
+            trm_moneda_base,
+            observacion,
+            url_soporte_adjunto,
+            registro_auxiliar,
+            registro_validado,
+            id_etiqueta_contable,
+            id_tercero,
+            id_cuenta_destino_transf,
+            aplica_retencion,
+            aplica_impuestos,
+            id_concepto
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          RETURNING id_transaccion, titulo_transaccion
+        `;
+
+        const valores = [
+          cleanData.id_cuenta || null,
+          cleanData.id_tipotransaccion || null,
+          cleanData.fecha_transaccion,
+          cleanData.titulo_transaccion,
+          cleanData.id_moneda_transaccion || null,
+          cleanData.valor_total_transaccion,
+          cleanData.trm_moneda_base || 1.0,
+          cleanData.observacion || null,
+          cleanData.url_soporte_adjunto || null,
+          cleanData.registro_auxiliar || false,
+          cleanData.registro_validado || false,
+          cleanData.id_etiqueta_contable || null,
+          cleanData.id_tercero || null,
+          cleanData.id_cuenta_destino_transf || null,
+          cleanData.aplica_retencion || false,
+          cleanData.aplica_impuestos || false,
+          cleanData.id_concepto || null
+        ];
+
+        console.log('🔍 Datos limpios para insertar:', cleanData);
+        console.log('🔍 Valores para query:', valores);
+
+        const result = await pool.query(insertQuery, valores);
+        const nuevaTransaccion = result.rows[0];
+
+        resultados.exitosas.push({
+          fila: transaccionData._rowIndex || i + 1,
+          id: nuevaTransaccion.id_transaccion,
+          titulo_transaccion: nuevaTransaccion.titulo_transaccion
+        });
+        
+        console.log(`✅ Transacción "${nuevaTransaccion.titulo_transaccion}" importada exitosamente`);
+        
+      } catch (error) {
+        console.error(`❌ ERROR DETALLADO en fila ${i + 1}:`);
+        console.error('- Mensaje:', error.message);
+        console.error('- Código:', error.code);
+        console.error('- Detalle:', error.detail);
+        console.error('- Constraint:', error.constraint);
+        console.error('- Columna:', error.column);
+        console.error('- Tabla:', error.table);
+        console.error('- Error completo:', error);
+        console.error('- Datos que causaron el error:', transaccionData);
+        if (typeof valores !== 'undefined') {
+          console.error('- Valores que se intentaron insertar:', valores);
+        }
+        
+        let mensajeError = error.message;
+        
+        // Manejar errores específicos de PostgreSQL
+        if (error.code === '23505') { // Unique violation
+          mensajeError = `Transacción duplicada: ${transaccionData.titulo_transaccion}`;
+        } else if (error.code === '23502') { // Not null violation
+          mensajeError = `Campo requerido faltante: ${error.column || 'desconocido'}`;
+        } else if (error.code === '23503') { // Foreign key violation
+          mensajeError = `Referencia inválida: ${error.detail || error.message}`;
+        } else if (error.code === '42P01') { // Undefined table
+          mensajeError = `Tabla no existe: ${error.message}`;
+        } else if (error.code === '42703') { // Undefined column
+          mensajeError = `Columna no existe: ${error.message}`;
+        }
+        
+        resultados.errores.push({
+          fila: transaccionData._rowIndex || i + 1,
+          data: transaccionData,
+          error: mensajeError,
+          errorCode: error.code,
+          errorDetail: error.detail
+        });
+      }
+    }
+
+    // Respuesta con resultados
+    const response = {
+      message: `Importación completada: ${resultados.exitosas.length} exitosas, ${resultados.errores.length} errores`,
+      resultados
+    };
+
+    console.log(`📊 Resultado final: ${resultados.exitosas.length}/${resultados.total} exitosas`);
+
+    // Si hay errores, retornar código 207 (Multi-Status)
+    if (resultados.errores.length > 0) {
+      res.status(207).json(response);
+    } else {
+      res.status(201).json(response);
+    }
+
+  } catch (error) {
+    console.error('💥 Error en importación masiva de transacciones:', error);
+    res.status(500).json({ 
+      message: 'Error interno en la importación de transacciones',
+      error: error.message 
+    });
+  }
+});
+
 // Rutas de contratos
 app.get('/api/contratos', async (req, res) => {
   try {
@@ -631,6 +997,50 @@ app.get('/api/catalogos/conceptos-transacciones', async (req, res) => {
   }
 });
 
+// Países
+app.get('/api/catalogos/paises', async (req, res) => {
+  console.log('🔍 Consultando países...');
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_pais as id,
+        pais as nombre,
+        codigo_pais,
+        moneda_oficial,
+        id_moneda_oficial
+      FROM crm_paises 
+      WHERE id_pais IS NOT NULL 
+      ORDER BY pais
+    `);
+    console.log(`✅ ${result.rows.length} países encontrados`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando países:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Industrias
+app.get('/api/catalogos/industrias', async (req, res) => {
+  console.log('🔍 Consultando industrias...');
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_industria as id,
+        nombre_industria as nombre,
+        descripcion
+      FROM crm_industrias 
+      WHERE id_industria IS NOT NULL 
+      ORDER BY nombre_industria
+    `);
+    console.log(`✅ ${result.rows.length} industrias encontradas`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando industrias:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Obtener todos los conceptos de transacciones
 app.get('/api/conceptos-transacciones', async (req, res) => {
   try {
@@ -902,26 +1312,37 @@ app.post('/api/transacciones', async (req, res) => {
 // Actualizar una transacción existente
 app.put('/api/transacciones/:id', async (req, res) => {
   const { id } = req.params;
-  const {
-    id_cuenta,
-    id_tipotransaccion,
-    fecha_transaccion,
-    titulo_transaccion,
-    id_moneda_transaccion,
-    valor_total_transaccion,
-    trm_moneda_base,
-    observacion,
-    url_soporte_adjunto,
-    registro_auxiliar,
-    registro_validado,
-    id_etiqueta_contable,
-    id_tercero,
-    id_cuenta_destino_transf,
-    aplica_retencion,
-    aplica_impuestos,
-    id_concepto
-  } = req.body;
+  console.log('🔄 BACKEND - PUT /api/transacciones/:id llamado');
+  console.log('🆔 BACKEND - ID recibido:', id);
+  console.log('📋 BACKEND - Body completo recibido:', JSON.stringify(req.body, null, 2));
+  
   try {
+    // Obtener la transacción actual para preservar valores existentes
+    const currentResult = await pool.query('SELECT * FROM adcot_transacciones WHERE id_transaccion = $1', [id]);
+    
+    if (currentResult.rows.length === 0) {
+      console.log('❌ BACKEND - Transacción no encontrada con ID:', id);
+      return res.status(404).json({ error: 'Transacción no encontrada' });
+    }
+    
+    const currentTransaction = currentResult.rows[0];
+    console.log('📋 BACKEND - Transacción actual:', Object.keys(currentTransaction));
+    
+    // Crear objeto con valores actuales + valores nuevos (solo los que se enviaron)
+    const updatedTransaction = {
+      ...currentTransaction,
+      ...req.body  // Solo sobrescribir los campos que se enviaron
+    };
+    
+    console.log('📝 BACKEND - Campos a actualizar:', Object.keys(req.body));
+    console.log('📝 BACKEND - Valores finales para UPDATE:', {
+      titulo_transaccion: updatedTransaction.titulo_transaccion,
+      valor_total_transaccion: updatedTransaction.valor_total_transaccion,
+      id_tipotransaccion: updatedTransaction.id_tipotransaccion,
+      registro_validado: updatedTransaction.registro_validado
+    });
+    
+    console.log('💾 BACKEND - Ejecutando query UPDATE...');
     const result = await pool.query(`
       UPDATE adcot_transacciones SET
         id_cuenta = $1,
@@ -944,31 +1365,38 @@ app.put('/api/transacciones/:id', async (req, res) => {
       WHERE id_transaccion = $18
       RETURNING *
     `, [
-      id_cuenta,
-      id_tipotransaccion,
-      fecha_transaccion,
-      titulo_transaccion,
-      id_moneda_transaccion,
-      valor_total_transaccion,
-      trm_moneda_base,
-      observacion,
-      url_soporte_adjunto,
-      registro_auxiliar,
-      registro_validado,
-      id_etiqueta_contable,
-      id_tercero,
-      id_cuenta_destino_transf,
-      aplica_retencion,
-      aplica_impuestos,
-      id_concepto,
+      updatedTransaction.id_cuenta,
+      updatedTransaction.id_tipotransaccion,
+      updatedTransaction.fecha_transaccion,
+      updatedTransaction.titulo_transaccion,
+      updatedTransaction.id_moneda_transaccion,
+      updatedTransaction.valor_total_transaccion,
+      updatedTransaction.trm_moneda_base,
+      updatedTransaction.observacion,
+      updatedTransaction.url_soporte_adjunto,
+      updatedTransaction.registro_auxiliar,
+      updatedTransaction.registro_validado,
+      updatedTransaction.id_etiqueta_contable,
+      updatedTransaction.id_tercero,
+      updatedTransaction.id_cuenta_destino_transf,
+      updatedTransaction.aplica_retencion,
+      updatedTransaction.aplica_impuestos,
+      updatedTransaction.id_concepto,
       id
     ]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Transacción no encontrada' });
-    }
+    
+    console.log('📊 BACKEND - Resultado del query:', {
+      rowCount: result.rowCount,
+      rows: result.rows.length,
+      firstRow: result.rows[0] ? Object.keys(result.rows[0]) : 'No hay filas'
+    });
+    
+    console.log('✅ BACKEND - Transacción actualizada exitosamente');
+    console.log('📤 BACKEND - Enviando respuesta:', result.rows[0]);
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Error actualizando transacción:', error);
+    console.error('❌ BACKEND - Error actualizando transacción:', error);
+    console.error('❌ BACKEND - Error completo:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1763,6 +2191,797 @@ app.get('/api/okr/dashboard/stats', async (req, res) => {
   }
 });
 
+// ===== RELACIONES MÚLTIPLES OKR =====
+
+// Crear relación entre objetivos (OKR → múltiples OKRs)
+app.post('/api/okr/relaciones-objetivos', async (req, res) => {
+  const { 
+    id_objetivo_origen, 
+    id_objetivo_destino, 
+    tipo_relacion, 
+    peso_relacion, 
+    descripcion_relacion 
+  } = req.body;
+
+  try {
+    console.log('🔗 Creando relación entre objetivos:', { id_objetivo_origen, id_objetivo_destino, tipo_relacion });
+
+    // Validaciones
+    if (!id_objetivo_origen || !id_objetivo_destino) {
+      return res.status(400).json({ 
+        error: 'Los IDs de objetivo origen y destino son obligatorios' 
+      });
+    }
+
+    if (id_objetivo_origen === id_objetivo_destino) {
+      return res.status(400).json({ 
+        error: 'Un objetivo no puede relacionarse consigo mismo' 
+      });
+    }
+
+    // Verificar que ambos objetivos existan
+    const objetivoOrigen = await pool.query(
+      'SELECT id_objetivo FROM okr_objetivos WHERE id_objetivo = $1',
+      [id_objetivo_origen]
+    );
+
+    const objetivoDestino = await pool.query(
+      'SELECT id_objetivo FROM okr_objetivos WHERE id_objetivo = $1',
+      [id_objetivo_destino]
+    );
+
+    if (objetivoOrigen.rows.length === 0) {
+      return res.status(404).json({ error: 'Objetivo origen no encontrado' });
+    }
+
+    if (objetivoDestino.rows.length === 0) {
+      return res.status(404).json({ error: 'Objetivo destino no encontrado' });
+    }
+
+    // Verificar si la relación ya existe
+    const relacionExistente = await pool.query(
+      'SELECT id_relacion FROM okr_relaciones_objetivos WHERE id_objetivo_origen = $1 AND id_objetivo_destino = $2 AND tipo_relacion = $3',
+      [id_objetivo_origen, id_objetivo_destino, tipo_relacion || 'contribuye_a']
+    );
+
+    if (relacionExistente.rows.length > 0) {
+      return res.status(409).json({ 
+        error: 'Esta relación ya existe entre estos objetivos' 
+      });
+    }
+
+    // Insertar la relación
+    const result = await pool.query(
+      `INSERT INTO okr_relaciones_objetivos 
+       (id_objetivo_origen, id_objetivo_destino, tipo_relacion, peso_relacion, descripcion_relacion) 
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [
+        id_objetivo_origen,
+        id_objetivo_destino,
+        tipo_relacion || 'contribuye_a',
+        peso_relacion || 1.0,
+        descripcion_relacion || null
+      ]
+    );
+
+    // Obtener la relación creada con información adicional
+    const relacionCreada = await pool.query(
+      `SELECT 
+        r.*,
+        o1.titulo as titulo_origen,
+        o2.titulo as titulo_destino
+       FROM okr_relaciones_objetivos r
+       JOIN okr_objetivos o1 ON r.id_objetivo_origen = o1.id_objetivo
+       JOIN okr_objetivos o2 ON r.id_objetivo_destino = o2.id_objetivo
+       WHERE r.id_relacion = $1`,
+      [result.rows[0].id_relacion]
+    );
+
+    console.log('✅ Relación entre objetivos creada exitosamente');
+    res.status(201).json({
+      success: true,
+      message: 'Relación entre objetivos creada exitosamente',
+      relacion: relacionCreada.rows[0]
+    });
+
+  } catch (error) {
+    console.error('💥 Error creando relación entre objetivos:', error);
+    res.status(500).json({ 
+      error: 'Error interno del servidor al crear la relación',
+      details: error.message 
+    });
+  }
+});
+
+// Crear relación entre objetivo y Key Result (OKR → múltiples KRs)
+app.post('/api/okr/relaciones-kr', async (req, res) => {
+  const { 
+    id_objetivo, 
+    id_kr, 
+    tipo_relacion, 
+    peso_contribucion, 
+    porcentaje_impacto, 
+    descripcion_relacion 
+  } = req.body;
+
+  try {
+    console.log('🔗 Creando relación objetivo-KR:', { id_objetivo, id_kr, tipo_relacion });
+
+    // Validaciones
+    if (!id_objetivo || !id_kr) {
+      return res.status(400).json({ 
+        error: 'Los IDs de objetivo y Key Result son obligatorios' 
+      });
+    }
+
+    // Verificar que el objetivo exista
+    const objetivo = await pool.query(
+      'SELECT id_objetivo FROM okr_objetivos WHERE id_objetivo = $1',
+      [id_objetivo]
+    );
+
+    if (objetivo.rows.length === 0) {
+      return res.status(404).json({ error: 'Objetivo no encontrado' });
+    }
+
+    // Verificar que el Key Result exista
+    const keyResult = await pool.query(
+      'SELECT id_kr FROM okr_resultados_clave WHERE id_kr = $1',
+      [id_kr]
+    );
+
+    if (keyResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Key Result no encontrado' });
+    }
+
+    // Verificar si la relación ya existe
+    const relacionExistente = await pool.query(
+      'SELECT id_relacion FROM okr_relaciones_kr WHERE id_objetivo = $1 AND id_kr = $2 AND tipo_relacion = $3',
+      [id_objetivo, id_kr, tipo_relacion || 'contribuye_a']
+    );
+
+    if (relacionExistente.rows.length > 0) {
+      return res.status(409).json({ 
+        error: 'Esta relación ya existe entre este objetivo y Key Result' 
+      });
+    }
+
+    // Validar porcentaje si se proporciona
+    if (porcentaje_impacto !== null && porcentaje_impacto !== undefined) {
+      if (porcentaje_impacto < 1 || porcentaje_impacto > 100) {
+        return res.status(400).json({ 
+          error: 'El porcentaje de impacto debe estar entre 1 y 100' 
+        });
+      }
+    }
+
+    // Insertar la relación
+    const result = await pool.query(
+      `INSERT INTO okr_relaciones_kr 
+       (id_objetivo, id_kr, tipo_relacion, peso_contribucion, porcentaje_impacto, descripcion_relacion) 
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        id_objetivo,
+        id_kr,
+        tipo_relacion || 'contribuye_a',
+        peso_contribucion || 1.0,
+        porcentaje_impacto || null,
+        descripcion_relacion || null
+      ]
+    );
+
+    // Obtener la relación creada con información adicional
+    const relacionCreada = await pool.query(
+      `SELECT 
+        r.*,
+        o.titulo as titulo_objetivo,
+        kr.descripcion as descripcion_kr
+       FROM okr_relaciones_kr r
+       JOIN okr_objetivos o ON r.id_objetivo = o.id_objetivo
+       JOIN okr_resultados_clave kr ON r.id_kr = kr.id_kr
+       WHERE r.id_relacion = $1`,
+      [result.rows[0].id_relacion]
+    );
+
+    console.log('✅ Relación objetivo-KR creada exitosamente');
+    res.status(201).json({
+      success: true,
+      message: 'Relación entre objetivo y Key Result creada exitosamente',
+      relacion: relacionCreada.rows[0]
+    });
+
+  } catch (error) {
+    console.error('💥 Error creando relación objetivo-KR:', error);
+    res.status(500).json({ 
+      error: 'Error interno del servidor al crear la relación',
+      details: error.message 
+    });
+  }
+});
+
+// Obtener relaciones de un objetivo específico
+app.get('/api/okr/objetivos/:id/relaciones', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    console.log(`📋 Obteniendo relaciones del objetivo ${id}`);
+
+    // Obtener relaciones con otros objetivos (como origen)
+    const relacionesObjetivos = await pool.query(
+      `SELECT 
+        r.*,
+        o.titulo as titulo_destino,
+        o.nivel as nivel_destino,
+        o.estado as estado_destino
+       FROM okr_relaciones_objetivos r
+       JOIN okr_objetivos o ON r.id_objetivo_destino = o.id_objetivo
+       WHERE r.id_objetivo_origen = $1 AND r.activo = true
+       ORDER BY r.peso_relacion DESC, r.fecha_creacion ASC`,
+      [id]
+    );
+
+    // Obtener relaciones con Key Results
+    const relacionesKRs = await pool.query(
+      `SELECT 
+        r.*,
+        kr.descripcion as descripcion_kr,
+        kr.valor_objetivo,
+        kr.unidad,
+        o_padre.titulo as titulo_objetivo_padre
+       FROM okr_relaciones_kr r
+       JOIN okr_resultados_clave kr ON r.id_kr = kr.id_kr
+       JOIN okr_objetivos o_padre ON kr.id_objetivo = o_padre.id_objetivo
+       WHERE r.id_objetivo = $1 AND r.activo = true
+       ORDER BY r.peso_contribucion DESC, r.fecha_creacion ASC`,
+      [id]
+    );
+
+    console.log(`✅ Encontradas ${relacionesObjetivos.rows.length} relaciones con objetivos y ${relacionesKRs.rows.length} relaciones con KRs`);
+
+    res.json({
+      success: true,
+      relacionesObjetivos: relacionesObjetivos.rows,
+      relacionesKRs: relacionesKRs.rows,
+      total: relacionesObjetivos.rows.length + relacionesKRs.rows.length
+    });
+
+  } catch (error) {
+    console.error('💥 Error obteniendo relaciones del objetivo:', error);
+    res.status(500).json({ 
+      error: 'Error interno del servidor al obtener las relaciones',
+      details: error.message 
+    });
+  }
+});
+
+// Obtener jerarquía completa OKR usando las nuevas tablas de relaciones
+app.get('/api/okr/jerarquia', async (req, res) => {
+  try {
+    console.log('🌳 Obteniendo jerarquía completa OKR con nuevas relaciones...');
+
+    // Primero verificar la estructura de las tablas
+    console.log('🔍 Verificando estructura de tablas...');
+
+    // Obtener todos los objetivos con información del staff
+    const objetivos = await pool.query(`
+      SELECT 
+        o.*,
+        s.nombre as responsable_nombre
+      FROM okr_objetivos o
+      LEFT JOIN okr_staff s ON o.id_responsable = s.id_staff
+      ORDER BY o.id_objetivo
+    `);
+
+    // Obtener todas las relaciones entre objetivos usando la estructura real
+    const relacionesObjetivos = await pool.query(`
+      SELECT 
+        r.id_relacion,
+        r.id_objetivo_origen,
+        r.id_objetivo_destino,
+        r.tipo_relacion,
+        r.peso_relacion,
+        r.descripcion_relacion,
+        r.fecha_creacion,
+        r.fecha_modificacion,
+        r.activo,
+        o_origen.titulo as titulo_origen,
+        o_origen.nivel as nivel_origen,
+        o_destino.titulo as titulo_destino,
+        o_destino.nivel as nivel_destino
+      FROM okr_relaciones_objetivos r
+      JOIN okr_objetivos o_origen ON r.id_objetivo_origen = o_origen.id_objetivo
+      JOIN okr_objetivos o_destino ON r.id_objetivo_destino = o_destino.id_objetivo
+      WHERE r.activo = true
+      ORDER BY r.peso_relacion DESC
+    `);
+
+    // Obtener todas las relaciones con Key Results usando la estructura real
+    const relacionesKRs = await pool.query(`
+      SELECT 
+        r.id_relacion,
+        r.id_objetivo,
+        r.id_kr,
+        r.tipo_relacion,
+        r.peso_contribucion,
+        r.porcentaje_impacto,
+        r.descripcion_relacion,
+        r.fecha_creacion,
+        r.fecha_modificacion,
+        r.activo,
+        o.titulo as titulo_objetivo,
+        o.nivel as nivel_objetivo,
+        kr.descripcion as descripcion_kr,
+        kr.valor_objetivo,
+        kr.unidad,
+        kr.porcentaje_cumplimiento,
+        o_padre.titulo as titulo_objetivo_kr_padre
+      FROM okr_relaciones_kr r
+      JOIN okr_objetivos o ON r.id_objetivo = o.id_objetivo
+      JOIN okr_resultados_clave kr ON r.id_kr = kr.id_kr
+      JOIN okr_objetivos o_padre ON kr.id_objetivo = o_padre.id_objetivo
+      WHERE r.activo = true
+      ORDER BY r.peso_contribucion DESC
+    `);
+
+    // Obtener todos los Key Results para información adicional
+    const keyResults = await pool.query(`
+      SELECT 
+        kr.*,
+        o.titulo as titulo_objetivo_padre,
+        s.nombre as responsable_nombre
+      FROM okr_resultados_clave kr
+      JOIN okr_objetivos o ON kr.id_objetivo = o.id_objetivo
+      LEFT JOIN okr_staff s ON kr.id_responsable = s.id_staff
+      ORDER BY kr.id_kr
+    `);
+
+    console.log(`✅ Jerarquía obtenida: ${objetivos.rows.length} objetivos, ${relacionesObjetivos.rows.length} relaciones OKR-OKR, ${relacionesKRs.rows.length} relaciones OKR-KR`);
+
+    res.json({
+      success: true,
+      objetivos: objetivos.rows,
+      relacionesObjetivos: relacionesObjetivos.rows,
+      relacionesKRs: relacionesKRs.rows,
+      keyResults: keyResults.rows,
+      resumen: {
+        total_objetivos: objetivos.rows.length,
+        total_relaciones_objetivos: relacionesObjetivos.rows.length,
+        total_relaciones_krs: relacionesKRs.rows.length,
+        total_key_results: keyResults.rows.length
+      }
+    });
+
+  } catch (error) {
+    console.error('💥 Error obteniendo jerarquía OKR:', error);
+    console.error('📋 Detalles completos del error:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint
+    });
+    res.status(500).json({ 
+      error: 'Error interno del servidor al obtener la jerarquía',
+      details: error.message 
+    });
+  }
+});
+
+// ===== RUTAS CRM =====
+
+// 🎯 MERCADOS CRM
+app.get('/api/crm/mercados', async (req, res) => {
+  try {
+    console.log('🔍 Obteniendo mercados CRM...');
+    const result = await pool.query('SELECT * FROM crm_mercados ORDER BY segmento_mercado ASC');
+    console.log(`✅ Encontrados ${result.rows.length} mercados`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error al obtener mercados:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/api/crm/mercados/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM crm_mercados WHERE id_mercado = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Mercado no encontrado' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al obtener mercado:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/crm/mercados', async (req, res) => {
+  try {
+    console.log('📝 Creando mercado:', req.body);
+    const { segmento_mercado, id_pais, id_industria, resumen_mercado, recomendaciones, url_reporte_mercado, observaciones } = req.body;
+    
+    if (!segmento_mercado) {
+      return res.status(400).json({ message: 'El campo segmento_mercado es requerido' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO crm_mercados (segmento_mercado, id_pais, id_industria, resumen_mercado, recomendaciones, url_reporte_mercado, observaciones) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [segmento_mercado, id_pais, id_industria, resumen_mercado, recomendaciones, url_reporte_mercado, observaciones]
+    );
+    console.log('✅ Mercado creado:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al crear mercado:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.put('/api/crm/mercados/:id', async (req, res) => {
+  try {
+    console.log('🔄 Actualizando mercado:', req.params.id, req.body);
+    const { segmento_mercado, id_pais, id_industria, resumen_mercado, recomendaciones, url_reporte_mercado, observaciones } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE crm_mercados SET 
+       segmento_mercado = $1, id_pais = $2, id_industria = $3, resumen_mercado = $4, 
+       recomendaciones = $5, url_reporte_mercado = $6, observaciones = $7
+       WHERE id_mercado = $8 RETURNING *`,
+      [segmento_mercado, id_pais, id_industria, resumen_mercado, recomendaciones, url_reporte_mercado, observaciones, req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Mercado no encontrado' });
+    }
+    
+    console.log('✅ Mercado actualizado:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al actualizar mercado:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete('/api/crm/mercados/:id', async (req, res) => {
+  try {
+    console.log('🗑️ Eliminando mercado:', req.params.id);
+    const result = await pool.query('DELETE FROM crm_mercados WHERE id_mercado = $1 RETURNING *', [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Mercado no encontrado' });
+    }
+    
+    console.log('✅ Mercado eliminado');
+    res.json({ message: 'Mercado eliminado correctamente' });
+  } catch (error) {
+    console.error('❌ Error al eliminar mercado:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 👤 BUYER PERSONAS CRM - PENDIENTE ESTRUCTURA
+// TODO: Necesito la estructura de la tabla crm_buyer_persona para implementar correctamente
+app.get('/api/crm/buyer-personas', async (req, res) => {
+  try {
+    console.log('🔍 Obteniendo buyer personas...');
+    const result = await pool.query('SELECT * FROM crm_buyer_persona ORDER BY id_buyer ASC');
+    console.log(`✅ Encontradas ${result.rows.length} buyer personas`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error al obtener buyer personas:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/api/crm/buyer-personas/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM crm_buyer_persona WHERE id_buyer = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Buyer persona no encontrada' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al obtener buyer persona:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/crm/buyer-personas', async (req, res) => {
+  try {
+    console.log('📝 Creando buyer persona - ENDPOINT PENDIENTE DE IMPLEMENTAR');
+    res.status(501).json({ message: 'Endpoint pendiente - necesito estructura de crm_buyer_persona' });
+  } catch (error) {
+    console.error('❌ Error al crear buyer persona:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.put('/api/crm/buyer-personas/:id', async (req, res) => {
+  try {
+    console.log('🔄 Actualizando buyer persona - ENDPOINT PENDIENTE DE IMPLEMENTAR');
+    res.status(501).json({ message: 'Endpoint pendiente - necesito estructura de crm_buyer_persona' });
+  } catch (error) {
+    console.error('❌ Error al actualizar buyer persona:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete('/api/crm/buyer-personas/:id', async (req, res) => {
+  try {
+    console.log('🗑️ Eliminando buyer persona - ENDPOINT PENDIENTE DE IMPLEMENTAR');
+    res.status(501).json({ message: 'Endpoint pendiente - necesito estructura de crm_buyer_persona' });
+  } catch (error) {
+    console.error('❌ Error al eliminar buyer persona:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 🏢 EMPRESAS CRM  
+app.get('/api/crm/empresas', async (req, res) => {
+  try {
+    console.log('🔍 Obteniendo empresas CRM...');
+    const result = await pool.query(`
+      SELECT 
+        e.*,
+        m.segmento_mercado,
+        m.resumen_mercado
+      FROM crm_empresas e
+      LEFT JOIN crm_mercados m ON e.id_mercado = m.id_mercado
+      ORDER BY e.empresa ASC
+    `);
+    
+    // Transformar para compatibilidad con frontend
+    const empresas = result.rows.map(row => ({
+      id: row.id_empresa, // Mapear para DataTable
+      ...row,
+      mercado: row.segmento_mercado ? {
+        segmento_mercado: row.segmento_mercado,
+        resumen_mercado: row.resumen_mercado
+      } : null
+    }));
+    
+    console.log(`✅ Encontradas ${empresas.length} empresas`);
+    res.json(empresas);
+  } catch (error) {
+    console.error('❌ Error al obtener empresas:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/api/crm/empresas/:id', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        e.*,
+        m.segmento_mercado,
+        m.resumen_mercado
+      FROM crm_empresas e
+      LEFT JOIN crm_mercados m ON e.id_mercado = m.id_mercado
+      WHERE e.id_empresa = $1
+    `, [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Empresa no encontrada' });
+    }
+    
+    const row = result.rows[0];
+    const empresa = {
+      id: row.id_empresa,
+      ...row,
+      mercado: row.segmento_mercado ? {
+        segmento_mercado: row.segmento_mercado,
+        resumen_mercado: row.resumen_mercado
+      } : null
+    };
+    
+    res.json(empresa);
+  } catch (error) {
+    console.error('❌ Error al obtener empresa:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/crm/empresas', async (req, res) => {
+  try {
+    console.log('📝 Creando empresa:', req.body);
+    const { empresa, id_mercado, id_pais, tamano_empleados, website, linkedin, observaciones } = req.body;
+    
+    if (!empresa) {
+      return res.status(400).json({ message: 'El campo empresa es requerido' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO crm_empresas (empresa, id_mercado, id_pais, tamano_empleados, website, linkedin, observaciones) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [empresa, id_mercado, id_pais, tamano_empleados, website, linkedin, observaciones]
+    );
+    
+    console.log('✅ Empresa creada:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al crear empresa:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.put('/api/crm/empresas/:id', async (req, res) => {
+  try {
+    console.log('🔄 Actualizando empresa:', req.params.id);
+    const { empresa, id_mercado, id_pais, tamano_empleados, website, linkedin, observaciones } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE crm_empresas SET 
+       empresa = $1, id_mercado = $2, id_pais = $3, tamano_empleados = $4,
+       website = $5, linkedin = $6, observaciones = $7
+       WHERE id_empresa = $8 RETURNING *`,
+      [empresa, id_mercado, id_pais, tamano_empleados, website, linkedin, observaciones, req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Empresa no encontrada' });
+    }
+    
+    console.log('✅ Empresa actualizada');
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al actualizar empresa:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete('/api/crm/empresas/:id', async (req, res) => {
+  try {
+    console.log('🗑️ Eliminando empresa:', req.params.id);
+    const result = await pool.query('DELETE FROM crm_empresas WHERE id_empresa = $1 RETURNING *', [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Empresa no encontrada' });
+    }
+    
+    console.log('✅ Empresa eliminada');
+    res.json({ message: 'Empresa eliminada correctamente' });
+  } catch (error) {
+    console.error('❌ Error al eliminar empresa:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 👥 CONTACTOS CRM
+app.get('/api/crm/contactos', async (req, res) => {
+  try {
+    console.log('🔍 Obteniendo contactos CRM...');
+    const result = await pool.query(`
+      SELECT 
+        c.*,
+        e.empresa as empresa_nombre,
+        CONCAT(c.nombre_primero, ' ', c.apellido_primero) as nombre_completo
+      FROM crm_personas_interes c
+      LEFT JOIN crm_empresas e ON c.id_empresa = e.id_empresa
+      ORDER BY c.nombre_primero ASC
+    `);
+    
+    // Transformar para compatibilidad con frontend
+    const contactos = result.rows.map(row => ({
+      id: row.id_persona, // Mapear para DataTable
+      ...row,
+      empresa: row.empresa_nombre ? { empresa: row.empresa_nombre } : null
+    }));
+    
+    console.log(`✅ Encontrados ${contactos.length} contactos`);
+    res.json(contactos);
+  } catch (error) {
+    console.error('❌ Error al obtener contactos:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/api/crm/contactos/:id', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        c.*,
+        e.empresa as empresa_nombre,
+        CONCAT(c.nombre_primero, ' ', c.apellido_primero) as nombre_completo
+      FROM crm_personas_interes c
+      LEFT JOIN crm_empresas e ON c.id_empresa = e.id_empresa
+      WHERE c.id_persona = $1
+    `, [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Contacto no encontrado' });
+    }
+    
+    const row = result.rows[0];
+    const contacto = {
+      id: row.id_persona,
+      ...row,
+      empresa: row.empresa_nombre ? { empresa: row.empresa_nombre } : null
+    };
+    
+    res.json(contacto);
+  } catch (error) {
+    console.error('❌ Error al obtener contacto:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/crm/contactos', async (req, res) => {
+  try {
+    console.log('📝 Creando contacto:', req.body);
+    const {
+      nombre_primero, nombre_segundo, apellido_primero, apellido_segundo,
+      id_empresa, cargo, correo_corporativo, correo_personal, telefono, rol, id_buyer
+    } = req.body;
+    
+    if (!nombre_primero || !apellido_primero) {
+      return res.status(400).json({ message: 'Los campos nombre_primero y apellido_primero son requeridos' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO crm_personas_interes (
+        nombre_primero, nombre_segundo, apellido_primero, apellido_segundo,
+        id_empresa, cargo, correo_corporativo, correo_personal, telefono, rol, id_buyer
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [nombre_primero, nombre_segundo, apellido_primero, apellido_segundo,
+       id_empresa, cargo, correo_corporativo, correo_personal, telefono, rol, id_buyer]
+    );
+    
+    console.log('✅ Contacto creado:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al crear contacto:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.put('/api/crm/contactos/:id', async (req, res) => {
+  try {
+    console.log('🔄 Actualizando contacto:', req.params.id);
+    const {
+      nombre_primero, nombre_segundo, apellido_primero, apellido_segundo,
+      id_empresa, cargo, correo_corporativo, correo_personal, telefono, rol, id_buyer
+    } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE crm_personas_interes SET 
+       nombre_primero = $1, nombre_segundo = $2, apellido_primero = $3, apellido_segundo = $4,
+       id_empresa = $5, cargo = $6, correo_corporativo = $7, correo_personal = $8,
+       telefono = $9, rol = $10, id_buyer = $11
+       WHERE id_persona = $12 RETURNING *`,
+      [nombre_primero, nombre_segundo, apellido_primero, apellido_segundo,
+       id_empresa, cargo, correo_corporativo, correo_personal, telefono, rol, id_buyer, req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Contacto no encontrado' });
+    }
+    
+    console.log('✅ Contacto actualizado');
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error al actualizar contacto:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.delete('/api/crm/contactos/:id', async (req, res) => {
+  try {
+    console.log('🗑️ Eliminando contacto:', req.params.id);
+    const result = await pool.query('DELETE FROM crm_personas_interes WHERE id_persona = $1 RETURNING *', [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Contacto no encontrado' });
+    }
+    
+    console.log('✅ Contacto eliminado');
+    res.json({ message: 'Contacto eliminado correctamente' });
+  } catch (error) {
+    console.error('❌ Error al eliminar contacto:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Iniciar servidor y mostrar tablas disponibles
 const PORT = 8081;
 const HOST = '0.0.0.0'; // Escuchar en todas las interfaces
@@ -1770,21 +2989,9 @@ app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
   console.log(`🌐 Accesible desde: http://localhost:${PORT}`);
   console.log(`🌐 Accesible desde cualquier IP de la red en puerto ${PORT}`);
-  // Mostrar tablas disponibles al iniciar
-  pool.query(`
-    SELECT table_name 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public'
-    ORDER BY table_name;
-  `)
-  .then(result => {
-    console.log('\n📋 Tablas disponibles en la base de datos:');
-    result.rows.forEach(row => {
-      console.log(`- ${row.table_name}`);
-    });
-    console.log('\n');
-  })
-  .catch(err => {
-    console.error('❌ Error al consultar tablas:', err);
-  });
+  console.log(`📋 Rutas CRM disponibles:`);
+  console.log(`   GET    /api/crm/mercados`);
+  console.log(`   GET    /api/crm/buyer-personas`); 
+  console.log(`   GET    /api/crm/empresas`);
+  console.log(`   GET    /api/crm/contactos`);
 }); 

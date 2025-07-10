@@ -1,269 +1,422 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { apiCall } from '@/config/api';
+import DataTable from '@/components/DataTable';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import CrearContactoDialog from './contactos/CrearContactoDialog';
+import EditarContactoDialog from './contactos/EditarContactoDialog';
+import VerContactoDialog from './contactos/VerContactoDialog';
+import { 
+  Users,
+  UserPlus,
+  Eye,
+  Edit,
+  Trash2,
+  Building2,
+  Mail,
+  Phone,
+  UserCheck,
+  TrendingUp,
+  Activity,
+  Target,
+  Briefcase
+} from 'lucide-react';
 
 const Contactos = () => {
-  const [contactos, setContactos] = useState([
-    {
-      id: 1,
-      nombre: 'Juan Pérez',
-      cargo: 'Director de TI',
-      empresa: 'TechCorp Solutions',
-      email: 'juan.perez@techcorp.com',
-      telefono: '+52 555 123 4567',
-      tipo: 'Decisor',
-      estado: 'Activo',
-      ultimoContacto: '2024-03-15',
-      notas: 'Interesado en soluciones cloud'
-    },
-    {
-      id: 2,
-      nombre: 'María García',
-      cargo: 'Gerente de Compras',
-      empresa: 'Retail Pro',
-      email: 'maria.garcia@retailpro.com',
-      telefono: '+52 555 987 6543',
-      tipo: 'Influenciador',
-      estado: 'Activo',
-      ultimoContacto: '2024-03-10',
-      notas: 'Requiere cotización para nuevo proyecto'
-    }
-  ]);
+  // Estados principales
+  const [contactos, setContactos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados para los diálogos
+  const [showCrearDialog, setShowCrearDialog] = useState(false);
+  const [showEditarDialog, setShowEditarDialog] = useState(false);
+  const [showVerDialog, setShowVerDialog] = useState(false);
+  const [selectedContacto, setSelectedContacto] = useState(null);
+  
+  // Estados para eliminación
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [contactoToDelete, setContactoToDelete] = useState(null);
+  
+  const { toast } = useToast();
 
-  const [filtro, setFiltro] = useState('');
-  const [dialogoAbierto, setDialogoAbierto] = useState(false);
-  const [contactoActual, setContactoActual] = useState({
-    nombre: '',
-    cargo: '',
-    empresa: '',
-    email: '',
-    telefono: '',
-    tipo: '',
-    estado: '',
-    ultimoContacto: '',
-    notas: ''
-  });
+  // Cargar contactos al montar el componente
+  useEffect(() => {
+    cargarContactos();
+  }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (contactoActual.id) {
-      setContactos(contactos.map(contacto => 
-        contacto.id === contactoActual.id ? {...contactoActual} : contacto
-      ));
-    } else {
-      setContactos([...contactos, { ...contactoActual, id: contactos.length + 1 }]);
+  const cargarContactos = async () => {
+    try {
+      setLoading(true);
+      const data = await apiCall('/api/crm/contactos');
+      setContactos(data || []);
+      console.log('Contactos cargados:', data);
+    } catch (error) {
+      console.error('Error cargando contactos:', error);
+      toast({
+        title: "Error",
+        description: "Error al cargar los contactos",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    setDialogoAbierto(false);
-    setContactoActual({
-      nombre: '',
-      cargo: '',
-      empresa: '',
-      email: '',
-      telefono: '',
-      tipo: '',
-      estado: '',
-      ultimoContacto: '',
-      notas: ''
-    });
   };
 
-  const contactosFiltrados = contactos.filter(contacto =>
-    contacto.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
-    contacto.empresa.toLowerCase().includes(filtro.toLowerCase()) ||
-    contacto.email.toLowerCase().includes(filtro.toLowerCase())
-  );
+  // Función para obtener color del rol
+  const getColorRol = (rol) => {
+    const colores = {
+      'Decisor': 'bg-red-100 text-red-800',
+      'Influenciador': 'bg-yellow-100 text-yellow-800',
+      'Usuario': 'bg-blue-100 text-blue-800',
+      'Comprador': 'bg-green-100 text-green-800',
+      'Bloqueador': 'bg-red-100 text-red-800',
+      'Coach': 'bg-purple-100 text-purple-800',
+      'Campeón': 'bg-emerald-100 text-emerald-800',
+      'Guardián': 'bg-orange-100 text-orange-800'
+    };
+    return colores[rol] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Columnas compatibles con DataTable
+  const columnsForDataTable = [
+    {
+      accessor: 'nombre_completo',
+      header: 'Nombre',
+      cell: (contacto) => {
+        const nombreCompleto = [
+          contacto.nombre_primero,
+          contacto.nombre_segundo,
+          contacto.apellido_primero,
+          contacto.apellido_segundo
+        ].filter(Boolean).join(' ');
+        
+        return (
+          <div>
+            <div className="font-medium text-gray-900">
+              {nombreCompleto || 'Sin nombre'}
+            </div>
+            {contacto.correo_corporativo && (
+              <div className="text-sm text-gray-500 flex items-center gap-1">
+                <Mail className="h-3 w-3" />
+                {contacto.correo_corporativo}
+              </div>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      accessor: 'empresa',
+      header: 'Empresa',
+      cell: (contacto) => (
+        <div>
+          {contacto.empresa ? (
+            <>
+              <div className="font-medium text-gray-900 flex items-center gap-1">
+                <Building2 className="h-3 w-3" />
+                {contacto.empresa.empresa}
+              </div>
+              {contacto.empresa.mercado && (
+                <div className="text-sm text-gray-500">
+                  {contacto.empresa.mercado.segmento_mercado}
+                </div>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-500">Sin empresa</span>
+          )}
+        </div>
+      )
+    },
+    {
+      accessor: 'cargo',
+      header: 'Cargo',
+      cell: (contacto) => (
+        <div>
+          {contacto.cargo ? (
+            <div className="font-medium text-gray-900 flex items-center gap-1">
+              <Briefcase className="h-3 w-3" />
+              {contacto.cargo}
+            </div>
+          ) : (
+            <span className="text-gray-500">No especificado</span>
+          )}
+        </div>
+      )
+    },
+    {
+      accessor: 'rol',
+      header: 'Rol',
+      cell: (contacto) => (
+        contacto.rol ? (
+          <Badge className={getColorRol(contacto.rol)}>
+            <UserCheck className="h-3 w-3 mr-1" />
+            {contacto.rol}
+          </Badge>
+        ) : (
+          <span className="text-gray-500">Sin rol</span>
+        )
+      )
+    },
+    {
+      accessor: 'buyer_persona',
+      header: 'Buyer Persona',
+      cell: (contacto) => (
+        contacto.buyer_persona ? (
+          <Badge variant="outline">
+            <Users className="h-3 w-3 mr-1" />
+            {contacto.buyer_persona.buyer}
+          </Badge>
+        ) : (
+          <span className="text-gray-500">Sin asignar</span>
+        )
+      )
+    }
+  ];
+
+  // Handlers para los diálogos
+  const handleCrear = () => {
+    setShowCrearDialog(true);
+  };
+
+  const handleVer = (contacto) => {
+    setSelectedContacto(contacto);
+    setShowVerDialog(true);
+  };
+
+  const handleEditar = (contacto) => {
+    setSelectedContacto(contacto);
+    setShowEditarDialog(true);
+  };
+
+  const handleEliminar = (contacto) => {
+    setContactoToDelete(contacto);
+    setShowConfirmDelete(true);
+  };
+
+  // Handler para eliminar contacto (recibe solo ID desde DataTable)
+  const handleEliminarPorId = async (id) => {
+    const contacto = contactos.find(c => c.id_persona === id);
+    if (contacto) {
+      setContactoToDelete(contacto);
+      setShowConfirmDelete(true);
+    }
+  };
+
+  // Handler para eliminar contacto
+  const confirmarEliminacion = async () => {
+    try {
+      await apiCall(`/api/crm/contactos/${contactoToDelete.id_persona}`, {
+        method: 'DELETE'
+      });
+
+      toast({
+        title: "¡Éxito!",
+        description: "Contacto eliminado correctamente",
+        variant: "success"
+      });
+
+      await cargarContactos();
+    } catch (error) {
+      console.error('Error al eliminar contacto:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Error al eliminar el contacto",
+        variant: "destructive"
+      });
+    } finally {
+      setShowConfirmDelete(false);
+      setContactoToDelete(null);
+    }
+  };
+
+  // Handler para cuando se crea/actualiza un contacto
+  const handleContactoCreado = () => {
+    cargarContactos();
+    setShowCrearDialog(false);
+  };
+
+  const handleContactoActualizado = () => {
+    cargarContactos();
+    setShowEditarDialog(false);
+  };
+
+
+
+  // Calcular estadísticas
+  const totalContactos = contactos.length;
+  const contactosConEmpresa = contactos.filter(c => c.empresa).length;
+  const contactosConRol = contactos.filter(c => c.rol).length;
+  const contactosConBuyer = contactos.filter(c => c.buyer_persona).length;
+
+  // Estadísticas por rol
+  const estadisticasRol = contactos.reduce((acc, contacto) => {
+    if (contacto.rol) {
+      acc[contacto.rol] = (acc[contacto.rol] || 0) + 1;
+    }
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6 p-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Gestión de Contactos</h1>
-        <Dialog open={dialogoAbierto} onOpenChange={setDialogoAbierto}>
-          <DialogTrigger asChild>
-            <Button>Nuevo Contacto</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{contactoActual.id ? 'Editar' : 'Nuevo'} Contacto</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre Completo</Label>
-                  <Input
-                    id="nombre"
-                    value={contactoActual.nombre}
-                    onChange={(e) => setContactoActual({...contactoActual, nombre: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cargo">Cargo</Label>
-                  <Input
-                    id="cargo"
-                    value={contactoActual.cargo}
-                    onChange={(e) => setContactoActual({...contactoActual, cargo: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="empresa">Empresa</Label>
-                  <Input
-                    id="empresa"
-                    value={contactoActual.empresa}
-                    onChange={(e) => setContactoActual({...contactoActual, empresa: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={contactoActual.email}
-                    onChange={(e) => setContactoActual({...contactoActual, email: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="telefono">Teléfono</Label>
-                  <Input
-                    id="telefono"
-                    value={contactoActual.telefono}
-                    onChange={(e) => setContactoActual({...contactoActual, telefono: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipo">Tipo de Contacto</Label>
-                  <Select
-                    value={contactoActual.tipo}
-                    onValueChange={(value) => setContactoActual({...contactoActual, tipo: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione el tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Decisor">Decisor</SelectItem>
-                      <SelectItem value="Influenciador">Influenciador</SelectItem>
-                      <SelectItem value="Usuario">Usuario</SelectItem>
-                      <SelectItem value="Técnico">Técnico</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estado">Estado</Label>
-                  <Select
-                    value={contactoActual.estado}
-                    onValueChange={(value) => setContactoActual({...contactoActual, estado: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione el estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Activo">Activo</SelectItem>
-                      <SelectItem value="Inactivo">Inactivo</SelectItem>
-                      <SelectItem value="En espera">En espera</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ultimoContacto">Último Contacto</Label>
-                  <Input
-                    id="ultimoContacto"
-                    type="date"
-                    value={contactoActual.ultimoContacto}
-                    onChange={(e) => setContactoActual({...contactoActual, ultimoContacto: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="notas">Notas</Label>
-                  <Input
-                    id="notas"
-                    value={contactoActual.notas}
-                    onChange={(e) => setContactoActual({...contactoActual, notas: e.target.value})}
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full">Guardar</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <Users className="h-8 w-8" />
+            Gestión de Contactos
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Administra tu red de contactos y relaciones comerciales
+          </p>
+        </div>
+        <Button 
+          onClick={handleCrear} 
+          className="flex items-center gap-2"
+        >
+          <UserPlus className="h-4 w-4" />
+          Nuevo Contacto
+        </Button>
       </div>
 
+      {/* Cards de estadísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Contactos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalContactos}</div>
+            <p className="text-xs text-muted-foreground">
+              Red completa de contactos
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Con Empresa</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{contactosConEmpresa}</div>
+            <p className="text-xs text-muted-foreground">
+              {totalContactos > 0 ? Math.round((contactosConEmpresa / totalContactos) * 100) : 0}% del total
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Con Rol Definido</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{contactosConRol}</div>
+            <p className="text-xs text-muted-foreground">
+              {totalContactos > 0 ? Math.round((contactosConRol / totalContactos) * 100) : 0}% clasificados
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Con Buyer Persona</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{contactosConBuyer}</div>
+            <p className="text-xs text-muted-foreground">
+              {totalContactos > 0 ? Math.round((contactosConBuyer / totalContactos) * 100) : 0}% segmentados
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Estadísticas por rol */}
+      {Object.keys(estadisticasRol).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Distribución por Rol en Proceso de Compra
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(estadisticasRol).map(([rol, cantidad]) => (
+                <Badge key={rol} className={getColorRol(rol)}>
+                  {rol}: {cantidad}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
+
+      {/* Tabla de contactos */}
       <Card>
         <CardHeader>
-          <CardTitle>Contactos</CardTitle>
-          <div className="mt-4">
-            <Input
-              placeholder="Buscar contactos..."
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Lista de Contactos ({contactos.length})
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Último Contacto</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contactosFiltrados.map((contacto) => (
-                <TableRow key={contacto.id}>
-                  <TableCell>{contacto.nombre}</TableCell>
-                  <TableCell>{contacto.cargo}</TableCell>
-                  <TableCell>{contacto.empresa}</TableCell>
-                  <TableCell>{contacto.email}</TableCell>
-                  <TableCell>{contacto.tipo}</TableCell>
-                  <TableCell>{contacto.estado}</TableCell>
-                  <TableCell>{contacto.ultimoContacto}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setContactoActual(contacto);
-                          setDialogoAbierto(true);
-                        }}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('¿Está seguro de eliminar este contacto?')) {
-                            setContactos(contactos.filter(c => c.id !== contacto.id));
-                          }
-                        }}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-gray-500">Cargando contactos...</div>
+            </div>
+          ) : (
+            <DataTable
+              data={contactos.map(contacto => ({...contacto, id: contacto.id_persona}))}
+              columns={columnsForDataTable}
+              onEdit={handleEditar}
+              onDelete={handleEliminarPorId}
+              onAdd={handleCrear}
+              title=""
+              description=""
+            />
+          )}
         </CardContent>
       </Card>
+
+      {/* Diálogos */}
+      <CrearContactoDialog
+        open={showCrearDialog}
+        onClose={() => setShowCrearDialog(false)}
+        onContactoCreado={handleContactoCreado}
+      />
+
+      <EditarContactoDialog
+        open={showEditarDialog}
+        onClose={() => setShowEditarDialog(false)}
+        contacto={selectedContacto}
+        onContactoActualizado={handleContactoActualizado}
+      />
+
+      <VerContactoDialog
+        open={showVerDialog}
+        onClose={() => setShowVerDialog(false)}
+        contacto={selectedContacto}
+      />
+
+      <ConfirmDialog
+        open={showConfirmDelete}
+        onClose={() => setShowConfirmDelete(false)}
+        onConfirm={confirmarEliminacion}
+        title="Eliminar Contacto"
+        description={`¿Estás seguro de que quieres eliminar el contacto "${contactoToDelete?.nombre_primero} ${contactoToDelete?.apellido_primero}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
     </div>
   );
 };

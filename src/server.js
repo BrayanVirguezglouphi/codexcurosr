@@ -9,6 +9,12 @@ import setupRelationships from './models/relationships.js';
 import catalogosRouter from './routes/catalogos.cjs';
 import { testConnection } from './config/database.js';
 
+// Rutas CRM
+import mercadosRoutes from './routes/mercados.js';
+import buyerPersonasRoutes from './routes/buyerPersonas.js';
+import empresasRoutes from './routes/empresas.js';
+import contactosRoutes from './routes/contactos.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -47,6 +53,12 @@ app.use(async (req, res, next) => {
 app.use('/api/facturas', facturasRoutes);
 app.use('/api/transacciones', transaccionesRoutes);
 app.use('/api/catalogos', catalogosRouter);
+
+// Rutas CRM
+app.use('/api/crm/mercados', mercadosRoutes);
+app.use('/api/crm/buyer-personas', buyerPersonasRoutes);
+app.use('/api/crm/empresas', empresasRoutes);
+app.use('/api/crm/contactos', contactosRoutes);
 
 // Iniciar servidor
 app.listen(PORT, async () => {

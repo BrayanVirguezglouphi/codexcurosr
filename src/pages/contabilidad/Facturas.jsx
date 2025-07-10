@@ -325,10 +325,9 @@ const Facturas = () => {
     { key: 'id_contrato', label: 'ID Contrato', required: false },
     { key: 'fecha_radicado', label: 'Fecha Radicado', required: true },
     { key: 'fecha_estimada_pago', label: 'Fecha Est. Pago', required: false },
-    { key: 'moneda', label: 'Moneda', required: true },
-    { key: 'id_moneda', label: 'ID Moneda', required: false },
+    { key: 'id_moneda', label: 'Moneda', required: true },
     { key: 'subtotal_facturado_moneda', label: 'Subtotal', required: true },
-    { key: 'id_tax', label: 'ID Tax', required: false },
+    { key: 'id_tax', label: 'Impuesto', required: false },
     { key: 'valor_tax', label: 'IVA', required: false },
     { key: 'observaciones_factura', label: 'Observaciones', required: false }
   ];
@@ -341,10 +340,9 @@ const Facturas = () => {
     id_contrato: false,
     fecha_radicado: true,
     fecha_estimada_pago: true,
-    id_moneda: false,
-    moneda: true,
+    id_moneda: true,
     subtotal_facturado_moneda: true,
-    id_tax: false,
+    id_tax: true,
     valor_tax: true,
     observaciones_factura: true
   });
@@ -364,6 +362,8 @@ const Facturas = () => {
         monedas: Array.isArray(monedasData) ? monedasData.length : 'No es array',
         taxes: Array.isArray(taxesData) ? taxesData.length : 'No es array'
       });
+
+
 
       setContratos(Array.isArray(contratosData) ? contratosData : []);
       setMonedas(Array.isArray(monedasData) ? monedasData : []);
@@ -674,80 +674,117 @@ const Facturas = () => {
       }
 
       // Procesar datos
-      const processedData = jsonData.map((row, index) => {
-        const processedRow = {};
-        
-        // Mapear columnas del Excel a campos de la base de datos
-        availableColumns.forEach(col => {
-          let value = row[col.label];
+      const processedData = jsonData
+        .map((row, index) => {
+          const processedRow = {};
           
-          // También buscar por nombres alternativos para campos con ID
-          if (!value) {
-            if (col.key === 'id_contrato') {
-              value = row['ID Contrato'] || row['Contrato'];
-            } else if (col.key === 'id_moneda') {
-              value = row['ID Moneda'] || row['Moneda'];
-            } else if (col.key === 'id_tax') {
-              value = row['ID Tax'] || row['Impuesto'];
-            }
-          }
+          // Mapear columnas del Excel a campos de la base de datos (excluyendo id_factura)
+          availableColumns
+            .filter(col => col.key !== 'id_factura') // ✅ EXCLUIR id_factura que es auto-incremental
+            .forEach(col => {
+              let value = row[col.label];
+              
+              // También buscar por nombres alternativos para campos con ID
+              if (!value) {
+                if (col.key === 'id_contrato') {
+                  value = row['ID Contrato'] || row['Contrato'];
+                } else if (col.key === 'id_moneda') {
+                  value = row['ID Moneda'] || row['Moneda'];
+                } else if (col.key === 'id_tax') {
+                  value = row['ID Tax'] || row['Impuesto'];
+                }
+              }
+              
+              if (value === undefined || value === '') {
+                value = null;
+              }
+              
+              // Procesar campos con IDs que pueden tener formato dropdown
+              if (col.key === 'id_contrato' || col.key === 'id_moneda' || col.key === 'id_tax') {
+                if (value !== null) {
+                  const extractedId = extractIdFromDropdownValue(value);
+                  processedRow[col.key] = extractedId;
+                } else {
+                  processedRow[col.key] = null;
+                }
+              }
+              // Convertir tipos de datos
+              else if (col.key.includes('fecha') && value !== null) {
+                if (typeof value === 'number') {
+                  const excelDate = new Date((value - 25569) * 86400 * 1000);
+                  processedRow[col.key] = excelDate.toISOString().split('T')[0];
+                } else if (typeof value === 'string') {
+                  const parsedDate = new Date(value);
+                  processedRow[col.key] = isNaN(parsedDate) ? null : parsedDate.toISOString().split('T')[0];
+                } else {
+                  processedRow[col.key] = null;
+                }
+              } else if (col.key.includes('moneda') || col.key.includes('valor') || col.key.includes('subtotal')) {
+                if (value === null || value === '' || isNaN(value)) {
+                  processedRow[col.key] = null;
+                } else {
+                  processedRow[col.key] = parseFloat(value);
+                }
+              } else {
+                processedRow[col.key] = value;
+              }
+            });
           
-          if (value === undefined || value === '') {
-            value = null;
-          }
+          return processedRow;
+        })
+        // ✅ FILTRO IMPORTANTE: Solo incluir filas que tengan al menos número de factura y estado
+        .filter(row => {
+          const hasRequiredFields = row.numero_factura && 
+                                   row.numero_factura !== null && 
+                                   row.numero_factura !== '' &&
+                                   row.estatus_factura && 
+                                   row.estatus_factura !== null && 
+                                   row.estatus_factura !== '';
           
-          // Procesar campos con IDs que pueden tener formato dropdown
-          if (col.key === 'id_contrato' || col.key === 'id_moneda' || col.key === 'id_tax') {
-            if (value !== null) {
-              const extractedId = extractIdFromDropdownValue(value);
-              processedRow[col.key] = extractedId;
-            } else {
-              processedRow[col.key] = null;
-            }
-          }
-          // Convertir tipos de datos
-          else if (col.key.includes('fecha') && value !== null) {
-            if (typeof value === 'number') {
-              const excelDate = new Date((value - 25569) * 86400 * 1000);
-              processedRow[col.key] = excelDate.toISOString().split('T')[0];
-            } else if (typeof value === 'string') {
-              const parsedDate = new Date(value);
-              processedRow[col.key] = isNaN(parsedDate) ? null : parsedDate.toISOString().split('T')[0];
-            } else {
-              processedRow[col.key] = null;
-            }
-          } else if (col.key.includes('moneda') || col.key.includes('valor') || col.key.includes('subtotal')) {
-            if (value === null || value === '' || isNaN(value)) {
-              processedRow[col.key] = null;
-            } else {
-              processedRow[col.key] = parseFloat(value);
-            }
-          } else {
-            processedRow[col.key] = value;
-          }
+          console.log('Fila evaluada:', row);
+          console.log('¿Tiene campos requeridos?', hasRequiredFields);
+          
+          return hasRequiredFields;
         });
-        
-        return processedRow;
-      });
 
-      console.log('Datos procesados para importar:', processedData);
+      console.log(`📋 Total de filas procesadas: ${jsonData.length}`);
+      console.log(`✅ Filas válidas para importar: ${processedData.length}`);
+      console.log('Datos filtrados para importar:', processedData);
+      
+      if (processedData.length === 0) {
+        throw new Error('No se encontraron filas válidas para importar. Asegúrate de llenar al menos el Número de Factura y el Estado.');
+      }
 
       // Enviar datos al servidor
-      const response = await apiCall('/api/facturas/import', {
+      const result = await apiCall('/api/facturas/import', {
         method: 'POST',
         body: JSON.stringify({ facturas: processedData }),
       });
 
-      const result = await response.json();
+      // apiCall ya parsea el JSON automáticamente, así que result contiene los datos directamente
+      console.log('Resultado de importación:', result);
 
-      if (response.ok) {
+      if (result.resultados) {
+        // Mostrar resultados detallados
+        if (result.resultados.errores.length > 0) {
+          toast({
+            title: "Importación Completada con Advertencias",
+            description: `${result.resultados.exitosas.length} facturas importadas, ${result.resultados.errores.length} errores.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Éxito",
+            description: `${result.resultados.exitosas.length} facturas importadas correctamente`,
+          });
+        }
+        cargarFacturas();
+      } else {
         toast({
           title: "Éxito",
           description: `${processedData.length} facturas importadas correctamente`,
         });
         cargarFacturas();
-      } else {
-        throw new Error(result.message || 'Error al importar datos');
       }
     } catch (error) {
       console.error('Error al importar:', error);
@@ -846,18 +883,18 @@ const Facturas = () => {
       const workbook = new ExcelJS.default.Workbook();
       
       // Crear hoja principal
-      const worksheet = workbook.addWorksheet('Plantilla');
+      const worksheet = workbook.addWorksheet('📄 Plantilla Facturas');
       
       // Definir columnas con ancho adecuado
       worksheet.columns = [
         { header: 'Número', key: 'numero', width: 15 },
         { header: 'Estado', key: 'estado', width: 12 },
-        { header: 'ID Contrato', key: 'id_contrato', width: 50 },
+        { header: 'Contrato', key: 'id_contrato', width: 50 },
         { header: 'Fecha Radicado', key: 'fecha_radicado', width: 15 },
         { header: 'Fecha Est. Pago', key: 'fecha_pago', width: 15 },
-        { header: 'ID Moneda', key: 'id_moneda', width: 40 },
+        { header: 'Moneda', key: 'id_moneda', width: 40 },
         { header: 'Subtotal', key: 'subtotal', width: 15 },
-        { header: 'ID Tax', key: 'id_tax', width: 50 },
+        { header: 'Impuesto', key: 'id_tax', width: 50 },
         { header: 'IVA', key: 'iva', width: 15 },
         { header: 'Observaciones', key: 'observaciones', width: 30 }
       ];
@@ -883,6 +920,7 @@ const Facturas = () => {
       wsContratos.columns = [
         { header: 'Opción', key: 'opcion', width: 60 }
       ];
+      wsContratos.state = 'hidden'; // Ocultar hoja auxiliar
       
       const contratosOpciones = contratos.map(c => ({
         opcion: `${c.id_contrato} - ${c.numero_contrato_os || 'Sin número'} - ${c.descripcion_servicio_contratado || 'Sin descripción'}`
@@ -894,6 +932,7 @@ const Facturas = () => {
       wsMonedas.columns = [
         { header: 'Opción', key: 'opcion', width: 40 }
       ];
+      wsMonedas.state = 'hidden'; // Ocultar hoja auxiliar
       
       const monedasOpciones = monedas.map(m => ({
         opcion: `${m.id_moneda} - ${m.codigo_iso || 'N/A'} - ${m.nombre_moneda || 'Sin nombre'}`
@@ -905,6 +944,7 @@ const Facturas = () => {
       wsTaxes.columns = [
         { header: 'Opción', key: 'opcion', width: 60 }
       ];
+      wsTaxes.state = 'hidden'; // Ocultar hoja auxiliar
       
       const taxesOpciones = taxes.map(t => ({
         opcion: `${t.id_tax} - ${t.tipo_obligacion || 'N/A'} - ${t.titulo_impuesto || 'Sin título'}`
@@ -914,7 +954,7 @@ const Facturas = () => {
       // Aplicar validación de datos (dropdowns) a las celdas correspondientes
       
       // Dropdown para Estados
-      const estadosOpciones = ['PENDIENTE', 'PAGADA', 'VENCIDA', 'CANCELADA'];
+      const estadosOpciones = ['PENDIENTE', 'PAGADA', 'ANULADA', 'VENCIDA'];
       worksheet.getColumn('estado').eachCell((cell, rowNumber) => {
         if (rowNumber > 1) { // Saltar header
           cell.dataValidation = {
@@ -1028,21 +1068,34 @@ const Facturas = () => {
       });
       
       // Hoja de instrucciones
-      const wsInstrucciones = workbook.addWorksheet('Instrucciones');
+      const wsInstrucciones = workbook.addWorksheet('📋 Instrucciones');
       wsInstrucciones.columns = [
         { header: 'Paso', key: 'paso', width: 8 },
         { header: 'Instrucción', key: 'instruccion', width: 80 }
       ];
       
       const instrucciones = [
-        { paso: 1, instruccion: 'Use la hoja "Plantilla" para ingresar los datos de facturas' },
+        { paso: 1, instruccion: 'Use la hoja "📄 Plantilla Facturas" para ingresar los datos de facturas' },
         { paso: 2, instruccion: 'Los campos con dropdowns (Estado, Contrato, Moneda, Impuesto) tienen opciones predefinidas' },
-        { paso: 3, instruccion: 'Haga clic en las flechas desplegables para seleccionar opciones' },
-        { paso: 4, instruccion: 'Las fechas deben estar en formato YYYY-MM-DD (ej: 2024-01-15)' },
-        { paso: 5, instruccion: 'Los valores numéricos no deben incluir símbolos de moneda' },
-        { paso: 6, instruccion: 'Al importar, el sistema extraerá automáticamente los IDs del formato seleccionado' }
+        { paso: 3, instruccion: 'Haga clic en las flechas desplegables para seleccionar opciones válidas' },
+        { paso: 4, instruccion: 'Las hojas auxiliares están ocultas pero contienen todas las opciones disponibles' },
+        { paso: 5, instruccion: 'Las fechas deben estar en formato YYYY-MM-DD (ej: 2024-01-15)' },
+        { paso: 6, instruccion: 'Los valores numéricos no deben incluir símbolos de moneda (solo números)' },
+        { paso: 7, instruccion: 'Estados válidos: PENDIENTE, PAGADA, ANULADA, VENCIDA' },
+        { paso: 8, instruccion: 'Al importar, el sistema extraerá automáticamente los IDs del formato seleccionado en los dropdowns' }
       ];
       wsInstrucciones.addRows(instrucciones);
+      
+      // Estilizar las instrucciones
+      wsInstrucciones.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4CAF50' }
+        };
+        cell.font.color = { argb: 'FFFFFFFF' };
+      });
       
       // Guardar archivo
       const fileName = `plantilla-facturas-con-dropdowns-${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -1072,8 +1125,11 @@ const Facturas = () => {
   };
 
   useEffect(() => {
-    cargarFacturas();
-    cargarCatalogos();
+    const cargarDatos = async () => {
+      await cargarCatalogos();  // Cargar catálogos primero
+      await cargarFacturas();   // Luego cargar facturas
+    };
+    cargarDatos();
   }, []);
 
   // Eliminar factura
@@ -1136,9 +1192,6 @@ const Facturas = () => {
 
   // Función para renderizar el valor de una columna
   const renderColumnValue = (factura, columnKey) => {
-    if (columnKey === 'moneda') {
-      return getNombreMoneda(factura.id_moneda);
-    }
     const value = factura[columnKey];
     
     switch (columnKey) {
@@ -1151,9 +1204,9 @@ const Facturas = () => {
       case 'id_contrato':
         return getNombreContrato(value);
       case 'id_moneda':
-        return value || '—';
+        return getNombreMoneda(value); // Mostrar nombre de moneda en lugar del ID
       case 'id_tax':
-        return getNombreTax(value);
+        return getNombreTax(value); // Mostrar nombre de impuesto en lugar del ID
       case 'id_factura':
         return value || '—';
       default:
@@ -1286,7 +1339,7 @@ const Facturas = () => {
             fieldValue = getNombreTax(fieldValue);
           }
           
-          if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+          if (fieldValue === null || fieldValue === undefined || fieldValue === '' || fieldValue === '—') {
             fieldValue = '(Vacío)';
           } else {
             fieldValue = String(fieldValue);
@@ -1329,7 +1382,7 @@ const Facturas = () => {
             fieldValue = getNombreTax(fieldValue);
           }
           
-          if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+          if (fieldValue === null || fieldValue === undefined || fieldValue === '' || fieldValue === '—') {
             fieldValue = '(Vacío)';
           } else {
             fieldValue = String(fieldValue);
@@ -1437,7 +1490,29 @@ const Facturas = () => {
 
     // Actualizar inmediatamente en la base de datos
     try {
-      const updatedData = { [field]: newValue };
+      // Obtener la factura actual completa
+      const facturaActual = facturas.find(f => f.id_factura === facturaId);
+      if (!facturaActual) {
+        throw new Error('Factura no encontrada');
+      }
+
+      // Preparar datos para actualización - incluir datos actuales + el cambio
+      const updatedData = {
+        numero_factura: facturaActual.numero_factura,
+        estatus_factura: facturaActual.estatus_factura,
+        fecha_radicado: facturaActual.fecha_radicado,
+        subtotal_facturado_moneda: facturaActual.subtotal_facturado_moneda,
+        id_contrato: facturaActual.id_contrato,
+        fecha_estimada_pago: facturaActual.fecha_estimada_pago,
+        id_moneda: facturaActual.id_moneda,
+        id_tax: facturaActual.id_tax,
+        valor_tax: facturaActual.valor_tax,
+        observaciones_factura: facturaActual.observaciones_factura,
+        // Aplicar cualquier cambio previo no guardado
+        ...editedFacturas[facturaId],
+        // Aplicar el nuevo cambio
+        [field]: newValue
+      };
       
       // La función apiCall ya maneja la respuesta JSON automáticamente
       const result = await apiCall(`/api/facturas/${facturaId}`, {
@@ -1620,6 +1695,8 @@ const Facturas = () => {
                     'estatus_factura': 'Estado', 
                     'fecha_radicado': 'Fecha Radicado',
                     'fecha_estimada_pago': 'Fecha Est. Pago',
+                    'id_moneda': 'Moneda',
+                    'id_tax': 'Impuesto',
                     'subtotal_facturado_moneda': 'Subtotal',
                     'valor_tax': 'IVA',
                     'observaciones_factura': 'Observaciones'
@@ -1763,6 +1840,28 @@ const Facturas = () => {
               {availableColumns.map(column => {
                 if (!visibleColumns[column.key]) return null;
                 
+                // Función para convertir valores en filtros
+                const getValueConverter = (columnKey) => {
+                  return (field, value) => {
+                    switch (field) {
+                      case 'id_moneda':
+                        return getNombreMoneda(value);
+                      case 'id_tax':
+                        return getNombreTax(value);
+                      case 'id_contrato':
+                        return getNombreContrato(value);
+                      case 'fecha_radicado':
+                      case 'fecha_estimada_pago':
+                        return formatearFecha(value);
+                      case 'subtotal_facturado_moneda':
+                      case 'valor_tax':
+                        return formatearMoneda(value);
+                      default:
+                        return value;
+                    }
+                  };
+                };
+                
                 return (
                   <TableHead key={column.key}>
                     <FilterableTableHeader
@@ -1773,6 +1872,7 @@ const Facturas = () => {
                       onFilter={handleFilter}
                       sortDirection={sortConfig.field === column.key ? sortConfig.direction : null}
                       activeFilters={filters[column.key] || []}
+                      valueConverter={getValueConverter(column.key)}
                     />
                   </TableHead>
                 );
@@ -1911,12 +2011,12 @@ const Facturas = () => {
         templateData={[{
           'Número': 'FAC-2024-001',
           'Estado': 'PENDIENTE',
-          'ID Contrato': '1',
+          'Contrato': '1',
           'Fecha Radicado': '2024-01-15',
           'Fecha Est. Pago': '2024-02-15',
-          'ID Moneda': '1',
+          'Moneda': '1',
           'Subtotal': '1000000',
-          'ID Tax': '1',
+          'Impuesto': '1',
           'IVA': '190000',
           'Observaciones': 'Observaciones de la factura'
         }]}
@@ -1924,6 +2024,7 @@ const Facturas = () => {
         monedas={monedas}
         impuestos={taxes}
         terceros={[]}
+        onDownloadTemplate={handleDownloadTemplate}
       />
     </div>
   );
