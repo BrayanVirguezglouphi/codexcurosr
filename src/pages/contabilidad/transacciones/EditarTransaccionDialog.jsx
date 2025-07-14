@@ -437,9 +437,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   onChange={(value) => setValue('id_tercero', value)}
                   placeholder="Seleccione tercero"
                   searchPlaceholder="Buscar tercero..."
-                  displayKey="razon_social"
-                  valueKey="id_tercero"
-                  formatOption={(option) => option.razon_social || `${option.primer_nombre} ${option.primer_apellido}`}
+                                      displayKey="label"
+                                      valueKey="id"
+                                      formatOption={(option) => option.label || option.nombre}
                 />
               </div>
 
@@ -451,8 +451,9 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
                   onChange={(value) => setValue('id_concepto', value)}
                   placeholder="Seleccione concepto"
                   searchPlaceholder="Buscar concepto..."
-                  displayKey="concepto_dian"
-                  valueKey="id_concepto"
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(option) => `${option.codigo || ''} - ${option.nombre || ''}`}
                 />
               </div>
             </div>

@@ -150,12 +150,15 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
   const cargarDatos = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Cargando datos para EditarContrato...');
       const [contrato, tercerosData, monedasData, taxesData] = await Promise.all([
         apiCall(`/api/contratos/${contratoId}`),
-        apiCall('/api/terceros'),
+        apiCall('/api/catalogos/terceros'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/impuestos')
       ]);
+      
+      console.log('✅ Terceros cargados para edición:', tercerosData?.length || 0);
 
       setTerceros(tercerosData);
       setMonedas(monedasData);
@@ -267,13 +270,9 @@ const EditarContratoDialog = ({ open, onClose, onContratoActualizado, contratoId
                     onChange={(value) => setValue('id_tercero', value)}
                     placeholder="Seleccione un tercero"
                     searchPlaceholder="Buscar tercero..."
-                    displayKey="display"
-                    valueKey="id_tercero"
-                    formatOption={(tercero) => 
-                      tercero.razon_social || 
-                      `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim() || 
-                      'Sin nombre'
-                    }
+                    displayKey="label"
+                    valueKey="id"
+                    formatOption={(tercero) => tercero.label || tercero.nombre}
                   />
                   <input type="hidden" {...register("id_tercero")} />
                 </div>

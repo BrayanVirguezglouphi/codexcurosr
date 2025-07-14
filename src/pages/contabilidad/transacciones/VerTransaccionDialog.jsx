@@ -71,7 +71,7 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
       ] = await Promise.all([
         apiCall('/api/catalogos/cuentas'),
         apiCall('/api/catalogos/monedas'),
-        apiCall('/api/terceros'),
+        apiCall('/api/catalogos/terceros'),
         apiCall('/api/catalogos/etiquetas-contables'),
         apiCall('/api/catalogos/tipos-transaccion'),
         apiCall('/api/catalogos/conceptos-transacciones')
@@ -119,19 +119,10 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
 
   const getNombreTercero = (id) => {
     if (!id) return '—';
-    const tercero = terceros.find(t => t.id_tercero === parseInt(id));
+    const tercero = terceros.find(t => t.id === parseInt(id));
     if (!tercero) return `ID: ${id}`;
     
-    if (tercero.razon_social) {
-      return tercero.razon_social;
-    }
-    
-    const nombres = [
-      tercero.primer_nombre,
-      tercero.primer_apellido
-    ].filter(Boolean).join(' ');
-    
-    return nombres || 'Sin nombre';
+    return tercero.nombre || tercero.label || 'Sin nombre';
   };
 
   const getNombreEtiquetaContable = (id) => {
@@ -148,8 +139,8 @@ export default function VerTransaccionDialog({ open, onClose, transaccion }) {
 
   const getNombreConcepto = (id) => {
     if (!id) return '—';
-    const concepto = conceptos.find(c => c.id_concepto === parseInt(id));
-    return concepto ? concepto.concepto_dian : `ID: ${id}`;
+    const concepto = conceptos.find(c => c.id === parseInt(id));
+    return concepto ? `${concepto.codigo} - ${concepto.nombre}` : `ID: ${id}`;
   };
 
   if (!transaccion) return null;

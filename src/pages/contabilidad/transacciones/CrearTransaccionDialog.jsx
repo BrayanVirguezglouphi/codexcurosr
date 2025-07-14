@@ -174,20 +174,37 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
   // Cargar catálogos al abrir el diálogo
   useEffect(() => {
     if (open) {
+      console.log('🔄 Cargando catálogos para CrearTransaccion...');
       Promise.all([
         apiCall('/api/catalogos/cuentas'),
         apiCall('/api/catalogos/tipos-transaccion'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/catalogos/etiquetas-contables'),
-        apiCall('/api/terceros'),
-        apiCall('/api/catalogos/conceptos')
+        apiCall('/api/catalogos/terceros'),
+        apiCall('/api/catalogos/conceptos-transacciones')
       ]).then(([cuentasData, tiposData, monedasData, etiquetasData, tercerosData, conceptosData]) => {
-        setCuentas(cuentasData);
-        setTiposTransaccion(tiposData);
-        setMonedas(monedasData);
-        setEtiquetas(etiquetasData);
-        setTerceros(tercerosData);
-        setConceptos(conceptosData);
+        console.log('✅ Catálogos cargados en CrearTransaccion:', {
+          cuentas: cuentasData?.length || 0,
+          tipos: tiposData?.length || 0,
+          monedas: monedasData?.length || 0,
+          etiquetas: etiquetasData?.length || 0,
+          terceros: tercerosData?.length || 0,
+          conceptos: conceptosData?.length || 0
+        });
+        
+        setCuentas(cuentasData || []);
+        setTiposTransaccion(tiposData || []);
+        setMonedas(monedasData || []);
+        setEtiquetas(etiquetasData || []);
+        setTerceros(tercerosData || []);
+        setConceptos(conceptosData || []);
+      }).catch(error => {
+        console.error('❌ Error al cargar catálogos:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los catálogos",
+          variant: "destructive",
+        });
       });
     }
   }, [open]);
@@ -420,9 +437,9 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
                   value={currentTercero}
                   onChange={(value) => setValue('id_tercero', value)}
                   placeholder="Seleccione tercero"
-                  displayKey="razon_social"
-                  valueKey="id_tercero"
-                  formatOption={(tercero) => tercero.razon_social ? tercero.razon_social : `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim()}
+                                      displayKey="label"
+                                      valueKey="id"
+                                      formatOption={(tercero) => tercero.label || tercero.nombre}
                   searchPlaceholder="Buscar tercero..."
                 />
                 <input 
@@ -439,8 +456,9 @@ const CrearTransaccionDialog = ({ open, onClose, onTransaccionCreada }) => {
                   value={currentConcepto}
                   onChange={(value) => setValue('id_concepto', value)}
                   placeholder="Seleccione concepto"
-                  displayKey="concepto_dian"
-                  valueKey="id_concepto"
+                  displayKey="nombre"
+                  valueKey="id"
+                  formatOption={(option) => `${option.codigo || ''} - ${option.nombre || ''}`}
                   searchPlaceholder="Buscar concepto..."
                 />
                 <input 

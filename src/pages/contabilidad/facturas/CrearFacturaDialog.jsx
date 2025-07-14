@@ -291,9 +291,9 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
                    value={currentContrato}
                    onChange={(value) => setValue('id_contrato', value)}
                    placeholder="Seleccione un contrato"
-                   displayKey="numero_contrato_os"
-                   valueKey="id_contrato"
-                   formatOption={(contrato) => `${contrato.numero_contrato_os} - ${contrato.descripcion_servicio_contratado?.substring(0, 30)}...`}
+                   displayKey="label"
+                   valueKey="id"
+                   formatOption={(contrato) => contrato.label || contrato.nombre}
                    searchPlaceholder="Buscar contrato..."
                  />
                  <input 

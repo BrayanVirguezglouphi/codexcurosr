@@ -101,6 +101,34 @@ app.post('/api/facturas/reset-sequence', async (req, res) => {
   }
 });
 
+// Ruta para resetear secuencia de contratos
+app.post('/api/contratos/reset-sequence', async (req, res) => {
+  try {
+    console.log('🔧 Reseteando secuencia de contratos...');
+    
+    // Obtener el MAX ID actual
+    const maxResult = await pool.query('SELECT MAX(id_contrato) as max_id FROM adcot_contratos_clientes');
+    const maxId = maxResult.rows[0].max_id || 0;
+    
+    console.log(`📊 MAX ID actual de contratos: ${maxId}`);
+    
+    // Resetear la secuencia al siguiente valor
+    const nextId = maxId + 1;
+    await pool.query(`SELECT setval('adcot_contratos_clientes_id_contrato_seq', $1, false)`, [nextId]);
+    
+    console.log(`✅ Secuencia de contratos reseteada al ID ${nextId}`);
+    
+    res.json({ 
+      message: `Secuencia de contratos reseteada correctamente. Próximo ID: ${nextId}`,
+      maxId: maxId,
+      nextId: nextId
+    });
+  } catch (error) {
+    console.error('❌ Error reseteando secuencia de contratos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Importar facturas desde Excel
 app.post('/api/facturas/import', async (req, res) => {
   try {
@@ -495,6 +523,138 @@ app.get('/api/contratos/:id', async (req, res) => {
   }
 });
 
+// Crear un nuevo contrato
+app.post('/api/contratos', async (req, res) => {
+  try {
+    console.log('📝 Creando nuevo contrato:', req.body);
+    
+    const {
+      numero_contrato_os,
+      id_tercero,
+      descripcion_servicio_contratado,
+      estatus_contrato,
+      fecha_contrato,
+      fecha_inicio_servicio,
+      fecha_final_servicio,
+      id_moneda_cotizacion,
+      valor_cotizado,
+      valor_descuento,
+      trm,
+      id_tax,
+      valor_tax,
+      modo_de_pago,
+      url_cotizacion,
+      url_contrato,
+      observaciones_contrato
+    } = req.body;
+    
+    // Validar campos obligatorios
+    const camposRequeridos = [];
+    if (!numero_contrato_os || numero_contrato_os.trim() === '') {
+      camposRequeridos.push('numero_contrato_os');
+    }
+    if (!id_tercero) {
+      camposRequeridos.push('id_tercero (Cliente/Tercero)');
+    }
+    if (!fecha_contrato) {
+      camposRequeridos.push('fecha_contrato');
+    }
+    
+    if (camposRequeridos.length > 0) {
+      return res.status(400).json({ 
+        error: `Los siguientes campos son obligatorios: ${camposRequeridos.join(', ')}` 
+      });
+    }
+    
+    // Preparar datos con valores por defecto seguros para evitar errores NOT NULL
+    const safeData = {
+      numero_contrato_os: numero_contrato_os.trim(),
+      id_tercero: parseInt(id_tercero),
+      descripcion_servicio_contratado: descripcion_servicio_contratado || '',
+      estatus_contrato: estatus_contrato || 'ACTIVO',
+      fecha_contrato: fecha_contrato,
+      fecha_inicio_servicio: fecha_inicio_servicio || null,
+      fecha_final_servicio: fecha_final_servicio || null,
+      id_moneda_cotizacion: id_moneda_cotizacion ? parseInt(id_moneda_cotizacion) : null,
+      valor_cotizado: valor_cotizado ? parseFloat(valor_cotizado) : 0.0, // Valor por defecto 0 en lugar de null
+      valor_descuento: valor_descuento ? parseFloat(valor_descuento) : 0.0,
+      trm: trm ? parseFloat(trm) : 1.0, // TRM por defecto 1.0
+      id_tax: id_tax ? parseInt(id_tax) : null,
+      valor_tax: valor_tax ? parseFloat(valor_tax) : 0.0,
+      modo_de_pago: modo_de_pago || 'CONTADO',
+      url_cotizacion: url_cotizacion || '',
+      url_contrato: url_contrato || '',
+      observaciones_contrato: observaciones_contrato || ''
+    };
+    
+    console.log('🛡️ Datos procesados con valores seguros:', safeData);
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_contratos_clientes (
+        numero_contrato_os,
+        id_tercero,
+        descripcion_servicio_contratado,
+        estatus_contrato,
+        fecha_contrato,
+        fecha_inicio_servicio,
+        fecha_final_servicio,
+        id_moneda_cotizacion,
+        valor_cotizado,
+        valor_descuento,
+        trm,
+        id_tax,
+        valor_tax,
+        modo_de_pago,
+        url_cotizacion,
+        url_contrato,
+        observaciones_contrato
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      RETURNING *
+    `, [
+      safeData.numero_contrato_os,
+      safeData.id_tercero,
+      safeData.descripcion_servicio_contratado,
+      safeData.estatus_contrato,
+      safeData.fecha_contrato,
+      safeData.fecha_inicio_servicio,
+      safeData.fecha_final_servicio,
+      safeData.id_moneda_cotizacion,
+      safeData.valor_cotizado,
+      safeData.valor_descuento,
+      safeData.trm,
+      safeData.id_tax,
+      safeData.valor_tax,
+      safeData.modo_de_pago,
+      safeData.url_cotizacion,
+      safeData.url_contrato,
+      safeData.observaciones_contrato
+    ]);
+    
+    console.log('✅ Contrato creado exitosamente:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando contrato:', error);
+    
+    // Manejo específico de errores de base de datos
+    let errorMessage = 'Error interno del servidor al crear el contrato';
+    
+    if (error.code === '23502') { // NOT NULL violation
+      errorMessage = `Campo requerido faltante: ${error.column || 'campo desconocido'}`;
+    } else if (error.code === '23503') { // Foreign key violation
+      errorMessage = `Referencia inválida: ${error.detail || 'verifique que los datos relacionados existan'}`;
+    } else if (error.code === '23505') { // Unique violation
+      errorMessage = `Ya existe un registro con estos datos: ${error.detail || 'datos duplicados'}`;
+    } else if (error.code === '22P02') { // Invalid text representation
+      errorMessage = `Formato de datos inválido: ${error.message}`;
+    }
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      details: error.message 
+    });
+  }
+});
+
 // Eliminar un contrato
 app.delete('/api/contratos/:id', async (req, res) => {
   const { id } = req.params;
@@ -531,8 +691,17 @@ app.get('/api/catalogos/tipos-documento', async (req, res) => {
     const result = await pool.query(
       'SELECT id_tipodocumento as id, tipo_documento as nombre FROM adcot_tipo_documento WHERE id_tipodocumento IS NOT NULL ORDER BY id_tipodocumento'
     );
-    console.log(`✅ ${result.rows.length} tipos de documento encontrados`);
-    res.json(result.rows);
+    
+    // Estructura consistente para React
+    const tipos = result.rows.map(tipo => ({
+      id: tipo.id,
+      nombre: tipo.nombre,
+      label: tipo.nombre,
+      value: tipo.id
+    }));
+    
+    console.log(`✅ ${tipos.length} tipos de documento encontrados`);
+    res.json(tipos);
   } catch (error) {
     console.error('❌ Error consultando tipos de documento:', error);
     res.status(500).json({ error: error.message });
@@ -546,8 +715,17 @@ app.get('/api/catalogos/tipos-relacion', async (req, res) => {
     const result = await pool.query(
       'SELECT id_tiporelacion as id, tipo_relacion as nombre FROM adcot_relacion_contractual WHERE id_tiporelacion IS NOT NULL ORDER BY id_tiporelacion'
     );
-    console.log(`✅ ${result.rows.length} tipos de relación encontrados`);
-    res.json(result.rows);
+    
+    // Estructura consistente para React
+    const tipos = result.rows.map(tipo => ({
+      id: tipo.id,
+      nombre: tipo.nombre,
+      label: tipo.nombre,
+      value: tipo.id
+    }));
+    
+    console.log(`✅ ${tipos.length} tipos de relación encontrados`);
+    res.json(tipos);
   } catch (error) {
     console.error('❌ Error consultando tipos de relación:', error);
     res.status(500).json({ error: error.message });
@@ -646,6 +824,77 @@ app.get('/api/terceros/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Crear un nuevo tercero
+app.post('/api/terceros', async (req, res) => {
+  const {
+    tipo_personalidad,
+    id_tipo_documento,
+    numero_documento,
+    dv,
+    razon_social,
+    primer_nombre,
+    otros_nombres,
+    primer_apellido,
+    segundo_apellido,
+    id_tiporelacion,
+    direccion,
+    id_municipio_ciudad,
+    telefono,
+    observaciones
+  } = req.body;
+  try {
+    console.log('📝 Creando nuevo tercero:', req.body);
+    
+    // Validar campos requeridos básicos
+    if (!numero_documento) {
+      return res.status(400).json({ 
+        error: 'El campo numero_documento es obligatorio' 
+      });
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_terceros_exogenos (
+        tipo_personalidad,
+        id_tipo_documento,
+        numero_documento,
+        dv,
+        razon_social,
+        primer_nombre,
+        otros_nombres,
+        primer_apellido,
+        segundo_apellido,
+        id_tiporelacion,
+        direccion,
+        id_municipio_ciudad,
+        telefono,
+        observaciones
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
+      tipo_personalidad,
+      id_tipo_documento,
+      numero_documento,
+      dv,
+      razon_social,
+      primer_nombre,
+      otros_nombres,
+      primer_apellido,
+      segundo_apellido,
+      id_tiporelacion,
+      direccion,
+      id_municipio_ciudad,
+      telefono,
+      observaciones
+    ]);
+    
+    console.log('✅ Tercero creado exitosamente:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando tercero:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -757,6 +1006,65 @@ app.delete('/api/terceros/:id', async (req, res) => {
   } catch (error) {
     console.error('💥 Error al eliminar tercero:', error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Crear una nueva factura
+app.post('/api/facturas', async (req, res) => {
+  const {
+    numero_factura,
+    estatus_factura,
+    id_contrato,
+    fecha_radicado,
+    fecha_estimada_pago,
+    id_moneda,
+    subtotal_facturado_moneda,
+    id_tax,
+    valor_tax,
+    observaciones_factura
+  } = req.body;
+  try {
+    console.log('📝 Creando nueva factura:', req.body);
+    
+    // Validar campos requeridos
+    if (!numero_factura || !estatus_factura || !fecha_radicado || !subtotal_facturado_moneda) {
+      return res.status(400).json({ 
+        error: 'Los campos numero_factura, estatus_factura, fecha_radicado y subtotal_facturado_moneda son obligatorios' 
+      });
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_facturas (
+        numero_factura,
+        estatus_factura,
+        id_contrato,
+        fecha_radicado,
+        fecha_estimada_pago,
+        id_moneda,
+        subtotal_facturado_moneda,
+        id_tax,
+        valor_tax,
+        observaciones_factura
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `, [
+      numero_factura,
+      estatus_factura,
+      id_contrato,
+      fecha_radicado,
+      fecha_estimada_pago,
+      id_moneda,
+      subtotal_facturado_moneda,
+      id_tax,
+      valor_tax,
+      observaciones_factura
+    ]);
+    
+    console.log('✅ Factura creada exitosamente:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando factura:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -886,9 +1194,13 @@ app.get('/api/catalogos/monedas', async (req, res) => {
       WHERE id_moneda IS NOT NULL
       ORDER BY id_moneda
     `);
-    // Mapear los campos para que coincidan con lo que espera el frontend
+    // Mapear los campos para estructura consistente con React
     const monedas = result.rows.map(m => ({
+      id: m.id_moneda,
       id_moneda: m.id_moneda,
+      nombre: `${m.codigo_iso} - ${m.nombre_moneda}`,
+      label: `${m.codigo_iso} - ${m.nombre_moneda}`,
+      value: m.id_moneda,
       codigo_iso: m.codigo_iso,
       nombre_moneda: m.nombre_moneda,
       simbolo: m.simbolo,
@@ -926,6 +1238,71 @@ app.get('/api/impuestos', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error consultando impuestos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Crear nuevo impuesto
+app.post('/api/impuestos', async (req, res) => {
+  try {
+    console.log('📝 Creando impuesto:', req.body);
+    const {
+      tipo_obligacion,
+      institucion_reguladora,
+      titulo_impuesto,
+      formula_aplicacion,
+      periodicidad_declaracion,
+      estado,
+      observaciones,
+      url_referencia_normativa,
+      fecha_inicio_impuesto,
+      fecha_final_impuesto,
+      url_instrucciones,
+      fecha_fin
+    } = req.body;
+    
+    // Valores por defecto para campos obligatorios
+    const safeData = {
+      tipo_obligacion: tipo_obligacion || 'IMPUESTO',
+      institucion_reguladora: institucion_reguladora || 'DIAN',
+      titulo_impuesto: titulo_impuesto || 'Impuesto General',
+      formula_aplicacion: formula_aplicacion || '',
+      periodicidad_declaracion: periodicidad_declaracion || 'MENSUAL',
+      estado: estado || 'ACTIVO',
+      observaciones: observaciones || '',
+      url_referencia_normativa: url_referencia_normativa || '',
+      fecha_inicio_impuesto: fecha_inicio_impuesto || null,
+      fecha_final_impuesto: fecha_final_impuesto || null,
+      url_instrucciones: url_instrucciones || '',
+      fecha_fin: fecha_fin || null
+    };
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_taxes (
+        tipo_obligacion, institucion_reguladora, titulo_impuesto, formula_aplicacion,
+        periodicidad_declaracion, estado, observaciones, url_referencia_normativa,
+        fecha_inicio_impuesto, fecha_final_impuesto, url_instrucciones, fecha_fin
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *
+    `, [
+      safeData.tipo_obligacion,
+      safeData.institucion_reguladora,
+      safeData.titulo_impuesto,
+      safeData.formula_aplicacion,
+      safeData.periodicidad_declaracion,
+      safeData.estado,
+      safeData.observaciones,
+      safeData.url_referencia_normativa,
+      safeData.fecha_inicio_impuesto,
+      safeData.fecha_final_impuesto,
+      safeData.url_instrucciones,
+      safeData.fecha_fin
+    ]);
+    
+    console.log('✅ Impuesto creado:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando impuesto:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1055,6 +1432,221 @@ app.get('/api/catalogos/industrias', async (req, res) => {
   }
 });
 
+// Contratos (catálogo para dropdowns)
+app.get('/api/catalogos/contratos', async (req, res) => {
+  console.log('🔍 Consultando catálogo de contratos...');
+  try {
+    const result = await pool.query(`
+      SELECT 
+        c.id_contrato,
+        c.numero_contrato_os,
+        c.descripcion_servicio_contratado,
+        c.estatus_contrato,
+        t.razon_social as tercero_nombre,
+        c.valor_cotizado
+      FROM adcot_contratos_clientes c
+      LEFT JOIN adcot_terceros_exogenos t ON c.id_tercero = t.id_tercero
+      WHERE c.id_contrato IS NOT NULL
+      ORDER BY c.numero_contrato_os NULLS LAST, c.id_contrato
+    `);
+    
+    // Crear un nombre más descriptivo para cada contrato
+    const contratos = result.rows.map(contrato => {
+      // Crear un nombre descriptivo basado en los datos disponibles
+      let nombreContrato = '';
+      
+      if (contrato.numero_contrato_os && contrato.numero_contrato_os.trim() !== '') {
+        nombreContrato = contrato.numero_contrato_os.trim();
+      } else {
+        nombreContrato = `Contrato-${contrato.id_contrato}`;
+      }
+      
+      // Agregar información del tercero si está disponible
+      if (contrato.tercero_nombre) {
+        nombreContrato += ` (${contrato.tercero_nombre})`;
+      }
+      
+      // Si no hay número de contrato, usar descripción truncada
+      if (!contrato.numero_contrato_os && contrato.descripcion_servicio_contratado) {
+        const descripcionCorta = contrato.descripcion_servicio_contratado.length > 50 
+          ? contrato.descripcion_servicio_contratado.substring(0, 50) + '...'
+          : contrato.descripcion_servicio_contratado;
+        nombreContrato = `${nombreContrato} - ${descripcionCorta}`;
+      }
+
+      return {
+        id: contrato.id_contrato,
+        value: contrato.id_contrato,
+        label: nombreContrato,
+        nombre: nombreContrato,
+        numero_contrato_os: contrato.numero_contrato_os,
+        descripcion_servicio_contratado: contrato.descripcion_servicio_contratado,
+        estatus_contrato: contrato.estatus_contrato,
+        tercero_nombre: contrato.tercero_nombre,
+        valor_cotizado: contrato.valor_cotizado
+      };
+    });
+    
+    console.log(`✅ ${contratos.length} contratos encontrados para catálogo`);
+    console.log(`📋 Ejemplo de contrato:`, contratos[0]);
+    res.json(contratos);
+  } catch (error) {
+    console.error('❌ Error consultando catálogo de contratos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Terceros (catálogo para dropdowns)
+app.get('/api/catalogos/terceros', async (req, res) => {
+  console.log('🔍 Consultando catálogo de terceros...');
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_tercero as id,
+        COALESCE(razon_social, CONCAT(primer_nombre, ' ', primer_apellido)) as nombre,
+        numero_documento,
+        tipo_personalidad,
+        direccion,
+        telefono
+      FROM adcot_terceros_exogenos
+      WHERE id_tercero IS NOT NULL
+      ORDER BY COALESCE(razon_social, CONCAT(primer_nombre, ' ', primer_apellido))
+    `);
+    
+    // Asegurar estructura consistente para React
+    const terceros = result.rows.map(tercero => ({
+      id: tercero.id,
+      nombre: tercero.nombre || `Tercero-${tercero.id}`,
+      label: tercero.nombre || `Tercero-${tercero.id}`,
+      value: tercero.id,
+      numero_documento: tercero.numero_documento,
+      tipo_personalidad: tercero.tipo_personalidad,
+      direccion: tercero.direccion,
+      telefono: tercero.telefono
+    }));
+    
+    console.log(`✅ ${terceros.length} terceros encontrados para catálogo`);
+    res.json(terceros);
+  } catch (error) {
+    console.error('❌ Error consultando catálogo de terceros:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Modelos de negocio (catálogo para dropdowns)
+app.get('/api/catalogos/modelos-negocio', async (req, res) => {
+  console.log('🔍 Consultando catálogo de modelos de negocio...');
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_modelonegocio as id,
+        modelo as nombre,
+        descripcion
+      FROM adcot_modelos_servicios
+      ORDER BY modelo
+    `);
+    console.log(`✅ ${result.rows.length} modelos de negocio encontrados para catálogo`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando catálogo de modelos de negocio:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Staff OKR (catálogo para dropdowns)
+app.get('/api/catalogos/staff-okr', async (req, res) => {
+  console.log('🔍 Consultando catálogo de staff OKR...');
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_staff as id,
+        nombre,
+        correo,
+        rol
+      FROM okr_staff
+      ORDER BY nombre
+    `);
+    console.log(`✅ ${result.rows.length} staff encontrado para catálogo`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando catálogo de staff OKR:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Objetivos OKR (catálogo para dropdowns de relaciones)
+app.get('/api/catalogos/objetivos-okr', async (req, res) => {
+  console.log('🔍 Consultando catálogo de objetivos OKR...');
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_objetivo as id,
+        titulo as nombre,
+        nivel,
+        estado,
+        fecha_inicio,
+        fecha_fin
+      FROM okr_objetivos
+      WHERE estado = 'Activo' OR estado IS NULL
+      ORDER BY titulo
+    `);
+    console.log(`✅ ${result.rows.length} objetivos encontrados para catálogo`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error consultando catálogo de objetivos OKR:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Estados de contrato (catálogo para dropdowns)
+app.get('/api/catalogos/estados-contrato', async (req, res) => {
+  try {
+    const estados = [
+      { id: 'ACTIVO', nombre: 'Activo' },
+      { id: 'FINALIZADO', nombre: 'Finalizado' },
+      { id: 'CANCELADO', nombre: 'Cancelado' },
+      { id: 'SUSPENDIDO', nombre: 'Suspendido' },
+      { id: 'EN_PROCESO', nombre: 'En Proceso' }
+    ];
+    res.json(estados);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Modos de pago (catálogo para dropdowns)
+app.get('/api/catalogos/modos-pago', async (req, res) => {
+  try {
+    const modos = [
+      { id: 'CONTADO', nombre: 'Contado' },
+      { id: 'CREDITO_30', nombre: 'Crédito 30 días' },
+      { id: 'CREDITO_60', nombre: 'Crédito 60 días' },
+      { id: 'CREDITO_90', nombre: 'Crédito 90 días' },
+      { id: 'ANTICIPO', nombre: 'Anticipo' },
+      { id: 'CUOTAS', nombre: 'Cuotas' }
+    ];
+    res.json(modos);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Tipos de personalidad (catálogo para dropdowns)
+app.get('/api/catalogos/tipos-personalidad', async (req, res) => {
+  try {
+    const tipos = [
+      { id: 'NATURAL', nombre: 'Persona Natural' },
+      { id: 'JURIDICA', nombre: 'Persona Jurídica' }
+    ];
+    res.json(tipos);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Obtener todos los conceptos de transacciones
 app.get('/api/conceptos-transacciones', async (req, res) => {
   try {
@@ -1070,6 +1662,32 @@ app.get('/api/conceptos-transacciones', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error consultando conceptos de transacciones:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Crear nuevo concepto de transacción
+app.post('/api/conceptos-transacciones', async (req, res) => {
+  try {
+    console.log('📝 Creando concepto de transacción:', req.body);
+    const { id_tipo_transaccion, codigo_dian, concepto_dian } = req.body;
+    
+    if (!concepto_dian) {
+      return res.status(400).json({ 
+        error: 'El campo concepto_dian es obligatorio' 
+      });
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_conceptos_transacciones (id_tipo_transaccion, codigo_dian, concepto_dian)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [id_tipo_transaccion, codigo_dian, concepto_dian]);
+    
+    console.log('✅ Concepto de transacción creado:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando concepto de transacción:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1230,6 +1848,35 @@ app.get('/api/lineas-servicios', async (req, res) => {
   }
 });
 
+// Crear nueva línea de servicio
+app.post('/api/lineas-servicios', async (req, res) => {
+  try {
+    console.log('📝 Creando línea de servicio:', req.body);
+    const { nombre, servicio, descripcion_servicio, id_modelonegocio } = req.body;
+    
+    // El nombre puede venir como 'nombre' o 'servicio'
+    const servicioNombre = nombre || servicio;
+    
+    if (!servicioNombre) {
+      return res.status(400).json({ 
+        error: 'El campo servicio/nombre es obligatorio' 
+      });
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_lineas_de_servicios (servicio, descripcion_servicio, id_modelonegocio)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [servicioNombre, descripcion_servicio, id_modelonegocio]);
+    
+    console.log('✅ Línea de servicio creada:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando línea de servicio:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Modelos de negocio
 app.get('/api/modelos-negocio', async (req, res) => {
   try {
@@ -1256,6 +1903,32 @@ app.get('/api/centros-costos', async (req, res) => {
   }
 });
 
+// Crear nuevo centro de costos
+app.post('/api/centros-costos', async (req, res) => {
+  try {
+    console.log('📝 Creando centro de costos:', req.body);
+    const { sub_centro_costo, centro_costo_macro, descripcion_cc } = req.body;
+    
+    if (!sub_centro_costo) {
+      return res.status(400).json({ 
+        error: 'El campo sub_centro_costo es obligatorio' 
+      });
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_centro_costos (sub_centro_costo, centro_costo_macro, descripcion_cc)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [sub_centro_costo, centro_costo_macro, descripcion_cc]);
+    
+    console.log('✅ Centro de costos creado:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando centro de costos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Etiquetas Contables
 app.get('/api/etiquetas-contables', async (req, res) => {
   try {
@@ -1269,35 +1942,38 @@ app.get('/api/etiquetas-contables', async (req, res) => {
   }
 });
 
+// Crear nueva etiqueta contable
+app.post('/api/etiquetas-contables', async (req, res) => {
+  try {
+    console.log('📝 Creando etiqueta contable:', req.body);
+    const { etiqueta_contable, descripcion_etiqueta } = req.body;
+    
+    if (!etiqueta_contable) {
+      return res.status(400).json({ 
+        error: 'El campo etiqueta_contable es obligatorio' 
+      });
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_etiquetas_contables (etiqueta_contable, descripcion_etiqueta)
+      VALUES ($1, $2)
+      RETURNING *
+    `, [etiqueta_contable, descripcion_etiqueta]);
+    
+    console.log('✅ Etiqueta contable creada:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creando etiqueta contable:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Crear una nueva transacción
 app.post('/api/transacciones', async (req, res) => {
-  const {
-    id_cuenta,
-    id_tipotransaccion,
-    fecha_transaccion,
-    titulo_transaccion,
-    id_moneda_transaccion,
-    valor_total_transaccion,
-    trm_moneda_base,
-    observacion,
-    url_soporte_adjunto,
-    registro_auxiliar,
-    registro_validado,
-    id_etiqueta_contable,
-    id_tercero,
-    id_cuenta_destino_transf,
-    aplica_retencion,
-    aplica_impuestos,
-    id_concepto
-  } = req.body;
   try {
-    const result = await pool.query(`
-      INSERT INTO adcot_transacciones (
-        id_cuenta, id_tipotransaccion, fecha_transaccion, titulo_transaccion, id_moneda_transaccion, valor_total_transaccion, trm_moneda_base, observacion, url_soporte_adjunto, registro_auxiliar, registro_validado, id_etiqueta_contable, id_tercero, id_cuenta_destino_transf, aplica_retencion, aplica_impuestos, id_concepto
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
-      ) RETURNING *
-    `, [
+    console.log('📝 Creando nueva transacción:', req.body);
+    
+    const {
       id_cuenta,
       id_tipotransaccion,
       fecha_transaccion,
@@ -1315,11 +1991,97 @@ app.post('/api/transacciones', async (req, res) => {
       aplica_retencion,
       aplica_impuestos,
       id_concepto
+    } = req.body;
+    
+    // Validar campos obligatorios
+    const camposRequeridos = [];
+    if (!titulo_transaccion || titulo_transaccion.trim() === '') {
+      camposRequeridos.push('titulo_transaccion');
+    }
+    if (!fecha_transaccion) {
+      camposRequeridos.push('fecha_transaccion');
+    }
+    if (!valor_total_transaccion && valor_total_transaccion !== 0) {
+      camposRequeridos.push('valor_total_transaccion');
+    }
+    
+    if (camposRequeridos.length > 0) {
+      return res.status(400).json({ 
+        error: `Los siguientes campos son obligatorios: ${camposRequeridos.join(', ')}` 
+      });
+    }
+    
+    // Preparar datos con valores por defecto seguros
+    const safeData = {
+      id_cuenta: id_cuenta ? parseInt(id_cuenta) : null,
+      id_tipotransaccion: id_tipotransaccion ? parseInt(id_tipotransaccion) : null,
+      fecha_transaccion: fecha_transaccion,
+      titulo_transaccion: titulo_transaccion.trim(),
+      id_moneda_transaccion: id_moneda_transaccion ? parseInt(id_moneda_transaccion) : null,
+      valor_total_transaccion: parseFloat(valor_total_transaccion),
+      trm_moneda_base: trm_moneda_base ? parseFloat(trm_moneda_base) : 1.0,
+      observacion: observacion || '',
+      url_soporte_adjunto: url_soporte_adjunto || '',
+      registro_auxiliar: registro_auxiliar || false,
+      registro_validado: registro_validado || false,
+      id_etiqueta_contable: id_etiqueta_contable ? parseInt(id_etiqueta_contable) : null,
+      id_tercero: id_tercero ? parseInt(id_tercero) : null,
+      id_cuenta_destino_transf: id_cuenta_destino_transf ? parseInt(id_cuenta_destino_transf) : null,
+      aplica_retencion: aplica_retencion || false,
+      aplica_impuestos: aplica_impuestos || false,
+      id_concepto: id_concepto ? parseInt(id_concepto) : null
+    };
+    
+    console.log('🛡️ Datos procesados con valores seguros:', safeData);
+    
+    const result = await pool.query(`
+      INSERT INTO adcot_transacciones (
+        id_cuenta, id_tipotransaccion, fecha_transaccion, titulo_transaccion, id_moneda_transaccion, valor_total_transaccion, trm_moneda_base, observacion, url_soporte_adjunto, registro_auxiliar, registro_validado, id_etiqueta_contable, id_tercero, id_cuenta_destino_transf, aplica_retencion, aplica_impuestos, id_concepto
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+      ) RETURNING *
+    `, [
+      safeData.id_cuenta,
+      safeData.id_tipotransaccion,
+      safeData.fecha_transaccion,
+      safeData.titulo_transaccion,
+      safeData.id_moneda_transaccion,
+      safeData.valor_total_transaccion,
+      safeData.trm_moneda_base,
+      safeData.observacion,
+      safeData.url_soporte_adjunto,
+      safeData.registro_auxiliar,
+      safeData.registro_validado,
+      safeData.id_etiqueta_contable,
+      safeData.id_tercero,
+      safeData.id_cuenta_destino_transf,
+      safeData.aplica_retencion,
+      safeData.aplica_impuestos,
+      safeData.id_concepto
     ]);
+    
+    console.log('✅ Transacción creada exitosamente:', result.rows[0]);
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error creando transacción:', error);
-    res.status(500).json({ error: error.message });
+    
+    // Manejo específico de errores de base de datos
+    let errorMessage = 'Error interno del servidor al crear la transacción';
+    
+    if (error.code === '23502') { // NOT NULL violation
+      errorMessage = `Campo requerido faltante: ${error.column || 'campo desconocido'}`;
+    } else if (error.code === '23503') { // Foreign key violation
+      errorMessage = `Referencia inválida: ${error.detail || 'verifique que los datos relacionados existan'}`;
+    } else if (error.code === '23505') { // Unique violation
+      errorMessage = `Ya existe un registro con estos datos: ${error.detail || 'datos duplicados'}`;
+    } else if (error.code === '22P02') { // Invalid text representation
+      errorMessage = `Formato de datos inválido: ${error.message}`;
+    }
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      details: error.message 
+    });
   }
 });
 
@@ -3125,9 +3887,27 @@ app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
   console.log(`🌐 Accesible desde: http://localhost:${PORT}`);
   console.log(`🌐 Accesible desde cualquier IP de la red en puerto ${PORT}`);
-  console.log(`📋 Rutas CRM disponibles:`);
-  console.log(`   GET    /api/crm/mercados`);
-  console.log(`   GET    /api/crm/buyer-personas`); 
-  console.log(`   GET    /api/crm/empresas`);
-  console.log(`   GET    /api/crm/contactos`);
+  console.log(`📋 Rutas principales disponibles:`);
+  console.log(`   📊 FACTURAS: GET/POST/PUT/DELETE /api/facturas`);
+  console.log(`   🤝 CONTRATOS: GET/POST/PUT/DELETE /api/contratos`);
+  console.log(`   👥 TERCEROS: GET/POST/PUT/DELETE /api/terceros`);
+  console.log(`   💰 TRANSACCIONES: GET/POST/PUT/DELETE /api/transacciones`);
+  console.log(`   🎯 OKR: GET/POST/PUT/DELETE /api/okr/*`);
+  console.log(`   📋 CATÁLOGOS disponibles:`);
+  console.log(`      • /api/catalogos/contratos`);
+  console.log(`      • /api/catalogos/terceros`);
+  console.log(`      • /api/catalogos/monedas`);
+  console.log(`      • /api/catalogos/tipos-documento`);
+  console.log(`      • /api/catalogos/tipos-relacion`);
+  console.log(`      • /api/catalogos/tipos-transaccion`);
+  console.log(`      • /api/catalogos/estados-factura`);
+  console.log(`      • /api/catalogos/estados-contrato`);
+  console.log(`      • /api/catalogos/modos-pago`);
+  console.log(`      • /api/catalogos/tipos-personalidad`);
+  console.log(`      • /api/catalogos/etiquetas-contables`);
+  console.log(`      • /api/catalogos/conceptos-transacciones`);
+  console.log(`      • /api/catalogos/modelos-negocio`);
+  console.log(`      • /api/catalogos/staff-okr`);
+  console.log(`      • /api/catalogos/objetivos-okr`);
+  console.log(`   🏢 CRM: GET/POST/PUT/DELETE /api/crm/*`);
 }); 

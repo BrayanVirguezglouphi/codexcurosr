@@ -31,12 +31,15 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
     setLoading(true);
     try {
       // Cargar el contrato y los catálogos en paralelo
+      console.log('🔄 Cargando datos para VerContrato...');
       const [contratoData, tercerosData, monedasData, impuestosData] = await Promise.all([
         apiCall(`/api/contratos/${contratoId}`),
-        apiCall('/api/terceros'),
+        apiCall('/api/catalogos/terceros'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/impuestos')
       ]);
+      
+      console.log('✅ Terceros cargados para visualización:', tercerosData?.length || 0);
 
       setContrato(contratoData);
       setTerceros(Array.isArray(tercerosData) ? tercerosData : []);
@@ -52,17 +55,15 @@ const VerContratoDialog = ({ open, onClose, contratoId }) => {
   // Funciones auxiliares para obtener nombres legibles
   const getNombreTercero = (id) => {
     if (!id) return 'No asignado';
-    const tercero = terceros.find(t => t.id_tercero === id);
+    const tercero = terceros.find(t => t.id === parseInt(id));
     if (!tercero) return `ID: ${id}`;
     
-    return tercero.razon_social || 
-           `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim() || 
-           `Tercero ${id}`;
+    return tercero.nombre || tercero.label || `Tercero ${id}`;
   };
 
   const getDocumentoTercero = (id) => {
     if (!id) return 'No disponible';
-    const tercero = terceros.find(t => t.id_tercero === id);
+    const tercero = terceros.find(t => t.id === parseInt(id));
     if (!tercero) return 'No disponible';
     
     return tercero.numero_documento ? 

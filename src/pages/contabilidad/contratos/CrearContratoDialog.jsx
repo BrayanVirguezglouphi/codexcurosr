@@ -171,17 +171,19 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
   const cargarCatalogos = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Cargando catálogos para CrearContrato...');
       const [tercerosData, monedasData, taxesData] = await Promise.all([
-        apiCall('/api/terceros'),
+        apiCall('/api/catalogos/terceros'),
         apiCall('/api/catalogos/monedas'),
         apiCall('/api/impuestos')
       ]);
       
+      console.log('✅ Terceros cargados:', tercerosData?.length || 0);
       setTerceros(tercerosData);
       setMonedas(monedasData);
       setTaxes(taxesData);
     } catch (error) {
-      console.error('Error al cargar catálogos:', error);
+      console.error('❌ Error al cargar catálogos:', error);
       toast({ title: "Error", description: "No se pudieron cargar los catálogos", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -278,13 +280,9 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
                     onChange={(value) => setValue('id_tercero', value)}
                     placeholder="Seleccione un tercero"
                     searchPlaceholder="Buscar tercero..."
-                    displayKey="display"
-                    valueKey="id_tercero"
-                    formatOption={(tercero) => 
-                      tercero.razon_social || 
-                      `${tercero.primer_nombre || ''} ${tercero.primer_apellido || ''}`.trim() || 
-                      'Sin nombre'
-                    }
+                    displayKey="label"
+                    valueKey="id"
+                    formatOption={(tercero) => tercero.label || tercero.nombre}
                   />
                   <input type="hidden" {...register("id_tercero")} />
                 </div>
