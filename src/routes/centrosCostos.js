@@ -32,6 +32,7 @@ router.get('/:id', async (req, res) => {
 
 // Crear un nuevo centro de costo
 router.post('/', async (req, res) => {
+  if ('id_centro_costo' in req.body) delete req.body.id_centro_costo;
   try {
     const nuevoCentroCosto = await CentroCosto.create(req.body);
     res.status(201).json(nuevoCentroCosto);

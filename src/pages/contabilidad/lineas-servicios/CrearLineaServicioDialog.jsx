@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,33 +127,25 @@ const SearchableSelect = ({
 const CrearLineaServicioDialog = ({ open, onClose, onLineaServicioCreada }) => {
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm({
     defaultValues: {
-      servicio: '',
-      tipo_servicio: '',
+      nombre: '',
+      id_modelonegocio: '',
       descripcion_servicio: ''
     }
   });
   const { toast } = useToast();
 
-  // Watch para campos controlados
-  const currentTipoServicio = watch('tipo_servicio');
+  // Estado para modelos de negocio
+  const [modelosNegocio, setModelosNegocio] = useState([]);
+  const currentModeloNegocio = watch('id_modelonegocio');
 
-  const tiposServicio = [
-    { id: 'Internet', name: 'Internet' },
-    { id: 'Telefonía', name: 'Telefonía' },
-    { id: 'Televisión', name: 'Televisión' },
-    { id: 'Streaming', name: 'Streaming' },
-    { id: 'Seguridad', name: 'Seguridad' },
-    { id: 'Soporte', name: 'Soporte' },
-    { id: 'Cloud', name: 'Cloud' },
-    { id: 'IoT', name: 'IoT' },
-    { id: 'CONSULTORIA', name: 'Consultoría' },
-    { id: 'DESARROLLO', name: 'Desarrollo' },
-    { id: 'MANTENIMIENTO', name: 'Mantenimiento' },
-    { id: 'CAPACITACION', name: 'Capacitación' },
-    { id: 'ANALISIS', name: 'Análisis' },
-    { id: 'IMPLEMENTACION', name: 'Implementación' },
-    { id: 'OTRO', name: 'Otro' }
-  ];
+  useEffect(() => {
+    // Cargar modelos de negocio al abrir el diálogo
+    if (open) {
+      apiCall('/api/modelos-negocio').then(data => {
+        setModelosNegocio(data);
+      });
+    }
+  }, [open]);
 
   const onSubmit = async (data) => {
     try {
@@ -201,69 +193,45 @@ const CrearLineaServicioDialog = ({ open, onClose, onLineaServicioCreada }) => {
             </h3>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="servicio">Nombre del Servicio *</Label>
+                <Label htmlFor="nombre">Nombre del Servicio *</Label>
                 <Input 
-                  id="servicio" 
-                  {...register("servicio", { 
-                    required: "El nombre del servicio es requerido",
-                    maxLength: { value: 200, message: "El servicio no puede exceder 200 caracteres" }
-                  })} 
-                  placeholder="Ej: Consultoría en sistemas, Desarrollo web, Soporte técnico..."
+                  id="nombre" 
+                  {...register('nombre', { required: 'El nombre es requerido' })}
+                  placeholder="Ej: Internet Corporativo"
                 />
-                {errors.servicio && (
-                  <p className="text-sm text-red-500">{errors.servicio.message}</p>
-                )}
+                {errors.nombre && <span className="text-red-500 text-sm">{errors.nombre.message}</span>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="id_modelonegocio">Modelo de Negocio *</Label>
+                <SearchableSelect
+                  options={modelosNegocio}
+                  value={currentModeloNegocio}
+                  onChange={(value) => setValue('id_modelonegocio', value)}
+                  placeholder="Seleccione modelo de negocio"
+                  displayKey="modelo"
+                  valueKey="id_modelonegocio"
+                  searchPlaceholder="Buscar modelo..."
+                />
+                <input type="hidden" {...register('id_modelonegocio', { required: 'El modelo de negocio es requerido' })} value={currentModeloNegocio || ''} />
+                {errors.id_modelonegocio && <span className="text-red-500 text-sm">{errors.id_modelonegocio.message}</span>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="descripcion_servicio">Descripción del Servicio</Label>
+                <Textarea 
+                  id="descripcion_servicio" 
+                  {...register('descripcion_servicio')}
+                  placeholder="Describa detalladamente el servicio"
+                  rows={3}
+                />
               </div>
             </div>
           </div>
-
-          {/* Clasificación del Servicio */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <Tag className="w-5 h-5" />
-              🏷️ Clasificación del Servicio
-            </h3>
-            <div className="space-y-2">
-              <Label htmlFor="tipo_servicio">Tipo de Servicio</Label>
-              <SearchableSelect
-                options={tiposServicio}
-                value={currentTipoServicio}
-                onChange={(value) => setValue('tipo_servicio', value)}
-                placeholder="Seleccione el tipo de servicio"
-                searchPlaceholder="Buscar tipo de servicio..."
-                displayKey="name"
-                valueKey="id"
-              />
-              <input type="hidden" {...register("tipo_servicio")} />
-            </div>
-          </div>
-
-          {/* Descripción Detallada */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4">
-              <Info className="w-5 h-5" />
-              📝 Descripción Detallada del Servicio
-            </h3>
-            <div className="space-y-2">
-              <Label htmlFor="descripcion_servicio">Descripción del Servicio</Label>
-              <Textarea 
-                id="descripcion_servicio" 
-                {...register("descripcion_servicio")} 
-                placeholder="Describa detalladamente en qué consiste el servicio, metodología, entregables, etc."
-                rows={4}
-              />
-              <p className="text-xs text-gray-500">
-                Incluya información relevante como metodología, tecnologías, entregables esperados, etc.
-              </p>
-            </div>
-          </div>
-
-          {/* Botones */}
           <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={() => { reset(); onClose(); }}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
+            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <Plus className="w-4 h-4 mr-2" />
               Crear Línea de Servicio
             </Button>
           </div>

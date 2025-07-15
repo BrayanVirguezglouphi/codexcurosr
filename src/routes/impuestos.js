@@ -32,6 +32,7 @@ router.get('/:id', async (req, res) => {
 
 // Crear un nuevo impuesto
 router.post('/', async (req, res) => {
+  if ('id_tax' in req.body) delete req.body.id_tax;
   try {
     const nuevoImpuesto = await Tax.create(req.body);
     res.status(201).json(nuevoImpuesto);

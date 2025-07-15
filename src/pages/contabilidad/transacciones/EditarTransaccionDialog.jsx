@@ -177,7 +177,16 @@ const EditarTransaccionDialog = ({ open, onClose, transaccion, onTransaccionActu
         setTiposTransaccion(tiposData || []);
         setMonedas(monedasData || []);
         setEtiquetas(etiquetasData || []);
-        setTerceros(tercerosData || []);
+        setTerceros(
+          (tercerosData || []).map(t => ({
+            ...t,
+            id: t.id_tercero,
+            label: t.razon_social 
+              || [t.primer_nombre, t.otros_nombres, t.primer_apellido, t.segundo_apellido].filter(Boolean).join(' ')
+              || t.numero_documento
+              || `Tercero #${t.id_tercero}`
+          }))
+        );
         setConceptos(conceptosData || []);
       }).catch(error => {
         console.error('❌ Error al cargar catálogos:', error);

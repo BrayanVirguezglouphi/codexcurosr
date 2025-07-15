@@ -35,12 +35,16 @@ const CrearEtiquetaContableDialog = ({ open, onOpenChange, onEtiquetaCreada }) =
   const onSubmit = async (data) => {
     setLoading(true);
     try {
+      // Eliminar id_etiqueta_contable si existe para evitar errores de clave duplicada
+      const dataToSend = { ...data };
+      delete dataToSend.id_etiqueta_contable;
+
       const response = await fetch('/api/etiquetas-contables', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(dataToSend),
       });
 
       if (response.ok) {

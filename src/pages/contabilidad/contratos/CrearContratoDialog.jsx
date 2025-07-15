@@ -191,6 +191,18 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
   };
 
   const onSubmit = async (data) => {
+    // Validación manual de campos requeridos
+    const camposFaltantes = [];
+    if (!data.id_tercero) camposFaltantes.push("Cliente/Tercero");
+    if (!data.fecha_contrato) camposFaltantes.push("Fecha del Contrato");
+    if (camposFaltantes.length > 0) {
+      toast({
+        title: "Campos obligatorios faltantes",
+        description: "Por favor complete: " + camposFaltantes.join(", "),
+        variant: "destructive"
+      });
+      return;
+    }
     try {
       // Formatear datos
       const formattedData = {
@@ -206,6 +218,9 @@ const CrearContratoDialog = ({ open, onClose, onContratoCreado }) => {
         fecha_inicio_servicio: data.fecha_inicio_servicio ? new Date(data.fecha_inicio_servicio).toISOString().split('T')[0] : null,
         fecha_final_servicio: data.fecha_final_servicio ? new Date(data.fecha_final_servicio).toISOString().split('T')[0] : null
       };
+
+      // Eliminar id_contrato si existe para evitar errores de clave duplicada
+      delete formattedData.id_contrato;
 
       console.log('🔄 Creando contrato con datos:', formattedData);
 

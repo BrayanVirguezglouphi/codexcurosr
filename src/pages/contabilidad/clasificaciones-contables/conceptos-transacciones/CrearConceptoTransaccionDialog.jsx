@@ -146,7 +146,7 @@ const CrearConceptoTransaccionDialog = ({ open, onOpenChange, onConceptoCreado }
     reset
   } = useForm({
     defaultValues: {
-      id_tipotransaccion: '',
+      id_tipo_transaccion: '',
       codigo_dian: '',
       concepto_dian: ''
     }
@@ -241,20 +241,21 @@ const CrearConceptoTransaccionDialog = ({ open, onOpenChange, onConceptoCreado }
                 <Label htmlFor="id_tipotransaccion">Tipo de Transacción *</Label>
                 <SearchableSelect
                   options={tiposTransaccion}
-                  value={watchedFields.id_tipotransaccion}
-                  onChange={(value) => setValue('id_tipotransaccion', value)}
+                  value={watchedFields.id_tipo_transaccion}
+                  onChange={(value) => setValue('id_tipo_transaccion', value)}
                   placeholder="Seleccione un tipo de transacción"
                   displayKey="tipo_transaccion"
                   valueKey="id_tipotransaccion"
+                  formatOption={(option) => option ? `${option.tipo_transaccion}${option.descripcion_tipo_transaccion ? ` - ${option.descripcion_tipo_transaccion}` : ''}` : ''}
                 />
                 <input
                   type="hidden"
-                  {...register("id_tipotransaccion", { 
+                  {...register("id_tipo_transaccion", { 
                     required: "El tipo de transacción es requerido" 
                   })}
                 />
-                {errors.id_tipotransaccion && (
-                  <p className="text-sm text-red-500">{errors.id_tipotransaccion.message}</p>
+                {errors.id_tipo_transaccion && (
+                  <p className="text-sm text-red-500">{errors.id_tipo_transaccion.message}</p>
                 )}
               </div>
 

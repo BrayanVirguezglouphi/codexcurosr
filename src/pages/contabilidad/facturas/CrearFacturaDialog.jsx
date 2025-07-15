@@ -204,14 +204,13 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
       
       delete formattedData.id_factura;
       
-      const response = await apiCall('/api/facturas', {
+      const responseData = await apiCall('/api/facturas', {
         method: 'POST',
         body: JSON.stringify(formattedData),
       });
       
-      const responseData = await response.json();
-      
-      if (response.ok) {
+      // Suponiendo que si hay error viene como responseData.error o responseData.success === false
+      if (responseData && !responseData.error && responseData.success !== false) {
         toast({ title: "Éxito", description: "Factura creada correctamente" });
         onFacturaCreada();
         onClose();
@@ -223,7 +222,7 @@ const CrearFacturaDialog = ({ open, onClose, onFacturaCreada }) => {
           const errorMessage = responseData.details.map(error => `${error.field}: ${error.message}`).join('\n');
           toast({ title: "Error de validación", description: errorMessage, variant: "destructive" });
         } else {
-          throw new Error(responseData.message || 'Error al crear la factura');
+          throw new Error(responseData.message || responseData.error || 'Error al crear la factura');
         }
       }
     } catch (error) {

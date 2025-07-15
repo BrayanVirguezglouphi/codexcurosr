@@ -32,6 +32,7 @@ router.get('/:id', async (req, res) => {
 
 // Crear una nueva etiqueta contable
 router.post('/', async (req, res) => {
+  if ('id_etiqueta_contable' in req.body) delete req.body.id_etiqueta_contable;
   try {
     const nuevaEtiquetaContable = await EtiquetaContable.create(req.body);
     res.status(201).json(nuevaEtiquetaContable);

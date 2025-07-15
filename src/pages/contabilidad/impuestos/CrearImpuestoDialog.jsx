@@ -179,6 +179,9 @@ const CrearImpuestoDialog = ({ open, onClose, onImpuestoCreado }) => {
         fecha_final_impuesto: data.fecha_final_impuesto ? new Date(data.fecha_final_impuesto).toISOString().split('T')[0] : null,
       };
 
+      // Eliminar id_tax si existe para evitar errores de clave duplicada
+      delete formattedData.id_tax;
+
       const response = await fetch('/api/impuestos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

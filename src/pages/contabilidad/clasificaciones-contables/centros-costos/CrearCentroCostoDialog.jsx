@@ -92,12 +92,16 @@ const CrearCentroCostoDialog = ({ open, onClose, onCentroCostoCreado }) => {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
+      // Eliminar id_centro_costo si existe para evitar errores de clave duplicada
+      const dataToSend = { ...data };
+      delete dataToSend.id_centro_costo;
+
       const response = await fetch('/api/centros-costos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(dataToSend),
       });
 
       if (response.ok) {

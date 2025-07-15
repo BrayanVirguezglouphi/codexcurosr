@@ -70,7 +70,9 @@ router.get('/:id', async (req, res) => {
 
 // Crear un nuevo contrato
 router.post('/', async (req, res) => {
+  console.log('BODY RECIBIDO EN API CONTRATOS:', req.body);
   try {
+    if ('id_contrato' in req.body) delete req.body.id_contrato;
     const nuevoContrato = await Contrato.create(req.body);
     res.status(201).json(nuevoContrato);
   } catch (error) {
