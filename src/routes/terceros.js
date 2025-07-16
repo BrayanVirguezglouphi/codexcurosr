@@ -7,7 +7,8 @@ const router = express.Router();
 // Obtener todos los terceros
 router.get('/', async (req, res) => {
   try {
-    const query = `
+    const { tipo_documento, numero_documento } = req.query;
+    let query = `
       SELECT 
         t.*,
         r.tipo_relacion as nombre_tipo_relacion,
@@ -15,10 +16,22 @@ router.get('/', async (req, res) => {
       FROM adcot_terceros_exogenos t
       LEFT JOIN adcot_relacion_contractual r ON t.tipo_relacion = r.id_tiporelacion
       LEFT JOIN adcot_tipo_documento d ON t.tipo_documento = d.id_tipodocumento
-      ORDER BY t.id_tercero DESC
     `;
-    
-    const result = await pool.query(query);
+    const params = [];
+    if (tipo_documento && numero_documento) {
+      query += ` WHERE t.id_tipo_documento = $1 AND t.numero_documento = $2`;
+      params.push(tipo_documento, numero_documento);
+    }
+    query += ` ORDER BY t.id_tercero DESC`;
+
+    // Log de depuración
+    console.log('--- FILTRO TERCEROS ---');
+    console.log('tipo_documento:', tipo_documento, 'numero_documento:', numero_documento);
+    console.log('SQL:', query);
+    console.log('params:', params);
+    //
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     console.error('Error al obtener terceros:', error);
@@ -54,6 +67,10 @@ router.get('/:id', async (req, res) => {
 // Crear un nuevo tercero
 router.post('/', async (req, res) => {
   try {
+    // Eliminar id_tercero si viene en el body
+    if ('id_tercero' in req.body) {
+      delete req.body.id_tercero;
+    }
     const nuevoTercero = await Tercero.create(req.body);
     res.status(201).json(nuevoTercero);
   } catch (error) {

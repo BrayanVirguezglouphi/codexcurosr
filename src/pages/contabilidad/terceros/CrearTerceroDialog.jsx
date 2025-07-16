@@ -153,67 +153,62 @@ const CrearTerceroDialog = ({ open, onClose, onTerceroCreado }) => {
   });
   const { toast } = useToast();
   
-  // Estado para tipos de documento dinámicos
+  // Estado para tipos de documento y relación dinámicos
   const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [tiposRelacion, setTiposRelacion] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Watch para campos controlados
   const currentTipoRelacion = watch('tipo_relacion');
   const currentTipoPersonalidad = watch('tipo_personalidad');
   const currentTipoDocumento = watch('tipo_documento');
 
-  const tiposRelacion = [
-    { id: 'CLIENTE', name: 'Cliente' },
-    { id: 'PROVEEDOR', name: 'Proveedor' },
-    { id: 'EMPLEADO', name: 'Empleado' },
-    { id: 'ACCIONISTA', name: 'Accionista' },
-    { id: 'CONTRATISTA', name: 'Contratista' },
-    { id: 'OTRO', name: 'Otro' }
-  ];
-
   const tiposPersonalidad = [
-    { id: 'NATURAL', name: 'Persona Natural' },
-    { id: 'JURIDICA', name: 'Persona Jurídica' }
+    { id: 'NATURAL', nombre: 'Persona Natural' },
+    { id: 'JURIDICA', nombre: 'Persona Jurídica' }
   ];
 
-  // Cargar tipos de documento de la base de datos
+  // Cargar tipos de documento y relación de la base de datos
   useEffect(() => {
-    const cargarTiposDocumento = async () => {
+    const cargarCatalogos = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        const data = await apiCall('/api/catalogos/tipos-documento');
-        console.log('📋 Tipos de documento cargados en crear:', data);
-        
-        // Mapear los datos para el formato esperado por SearchableSelect
-        const tiposFormateados = data.map(tipo => ({
-          id: tipo.id_tipodocumento || tipo.id_tipo_documento,
-          name: tipo.tipo_documento || tipo.codigo || `Tipo ${tipo.id_tipodocumento || tipo.id_tipo_documento}`
-        }));
-        
-        setTiposDocumento(tiposFormateados);
-      } catch (error) {
-        console.error('Error al cargar tipos de documento:', error);
-        // Fallback a tipos hardcodeados
-        setTiposDocumento([
-          { id: 'CC', name: 'Cédula de Ciudadanía' },
-          { id: 'CE', name: 'Cédula de Extranjería' },
-          { id: 'NIT', name: 'NIT' },
-          { id: 'TI', name: 'Tarjeta de Identidad' },
-          { id: 'RC', name: 'Registro Civil' },
-          { id: 'PA', name: 'Pasaporte' },
-          { id: 'RUT', name: 'RUT' }
+        const [dataDocumentos, dataRelaciones] = await Promise.all([
+          apiCall('/api/catalogos/tipos-documento'),
+          apiCall('/api/catalogos/tipos-relacion')
         ]);
+        // Usar los datos directamente ya que vienen en el formato correcto
+        setTiposDocumento(dataDocumentos || []);
+        setTiposRelacion(dataRelaciones || []);
+        setIsLoading(false);
+      } catch (error) {
+        setError('No se pudieron cargar los catálogos');
+        setIsLoading(false);
+        setTiposDocumento([]);
+        setTiposRelacion([]);
       }
     };
-
     if (open) {
-      cargarTiposDocumento();
+      cargarCatalogos();
     }
   }, [open]);
 
   const onSubmit = async (data) => {
     try {
+      // Transformar los campos para que coincidan con el backend
+      const dataTransform = {
+        ...data,
+        id_tipo_documento: data.tipo_documento,
+        id_tiporelacion: data.tipo_relacion
+      };
+      delete dataTransform.tipo_documento;
+      delete dataTransform.tipo_relacion;
+
       await apiCall('/api/terceros', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(dataTransform),
       });
 
       toast({ title: "Éxito", description: "Tercero creado correctamente" });
@@ -259,12 +254,16 @@ const CrearTerceroDialog = ({ open, onClose, onTerceroCreado }) => {
                   options={tiposRelacion}
                   value={currentTipoRelacion}
                   onChange={(value) => setValue('tipo_relacion', value)}
-                  placeholder="Seleccione el tipo de relación"
+                  placeholder={tiposRelacion.length === 0 ? "No hay tipos de relación disponibles" : "Seleccione el tipo de relación"}
                   searchPlaceholder="Buscar tipo de relación..."
-                  displayKey="name"
+                  displayKey="nombre"
                   valueKey="id"
+                  disabled={isLoading}
                 />
                 <input type="hidden" {...register("tipo_relacion")} />
+                {tiposRelacion.length === 0 && (
+                  <span className="text-sm text-yellow-600">No hay tipos de relación cargados. Revisa la consola para más información.</span>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -275,7 +274,7 @@ const CrearTerceroDialog = ({ open, onClose, onTerceroCreado }) => {
                   onChange={(value) => setValue('tipo_personalidad', value)}
                   placeholder="Seleccione el tipo de personalidad"
                   searchPlaceholder="Buscar tipo de personalidad..."
-                  displayKey="name"
+                  displayKey="nombre"
                   valueKey="id"
                 />
                 <input type="hidden" {...register("tipo_personalidad")} />
@@ -286,13 +285,17 @@ const CrearTerceroDialog = ({ open, onClose, onTerceroCreado }) => {
                 <SearchableSelect
                   options={tiposDocumento}
                   value={currentTipoDocumento}
-                  onChange={(value) => setValue('tipo_documento', value)}
-                  placeholder="Seleccione el tipo de documento"
+                  onChange={(value) => setValue('tipo_documento', Number(value))}
+                  placeholder={tiposDocumento.length === 0 ? "No hay tipos de documento disponibles" : "Seleccione el tipo de documento"}
                   searchPlaceholder="Buscar tipo de documento..."
-                  displayKey="name"
+                  displayKey="nombre"
                   valueKey="id"
+                  disabled={isLoading}
                 />
                 <input type="hidden" {...register("tipo_documento", { required: "El tipo de documento es requerido" })} />
+                {tiposDocumento.length === 0 && (
+                  <span className="text-sm text-yellow-600">No hay tipos de documento cargados. Revisa la consola para más información.</span>
+                )}
                 {errors.tipo_documento && (
                   <p className="text-sm text-red-500">{errors.tipo_documento.message}</p>
                 )}

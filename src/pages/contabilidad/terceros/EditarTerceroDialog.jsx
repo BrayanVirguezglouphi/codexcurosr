@@ -190,12 +190,12 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
   useEffect(() => {
     if (tercero) {
       console.log('📝 Estableciendo valores iniciales del tercero:', tercero);
-      
       // Extraer solo los campos que necesitamos
       const {
         id_tiporelacion,
         tipo_personalidad,
         id_tipodocumento,
+        id_tipo_documento,
         numero_documento,
         dv,
         razon_social,
@@ -210,11 +210,9 @@ const EditarTerceroDialog = ({ open, onClose, tercero, onTerceroActualizado }) =
         municipio_ciudad,
         pais
       } = tercero;
-      
-      // Establecer valores iniciales usando los campos extraídos
       setValue('tipo_relacion', id_tiporelacion || '');
       setValue('tipo_personalidad', tipo_personalidad || '');
-      setValue('tipo_documento', id_tipodocumento || '');
+      setValue('tipo_documento', (id_tipodocumento || id_tipo_documento) ? Number(id_tipodocumento || id_tipo_documento) : '');
       setValue('numero_documento', numero_documento || '');
       setValue('dv', dv || '');
       setValue('razon_social', razon_social || '');
