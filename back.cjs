@@ -3585,23 +3585,78 @@ app.get('/api/crm/buyer-personas/:id', async (req, res) => {
   }
 });
 
-app.post('/api/crm/buyer-personas', async (req, res) => {
-  try {
-    console.log('📝 Creando buyer persona - ENDPOINT PENDIENTE DE IMPLEMENTAR');
-    res.status(501).json({ message: 'Endpoint pendiente - necesito estructura de crm_buyer_persona' });
-  } catch (error) {
-    console.error('❌ Error al crear buyer persona:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
 app.put('/api/crm/buyer-personas/:id', async (req, res) => {
   try {
-    console.log('🔄 Actualizando buyer persona - ENDPOINT PENDIENTE DE IMPLEMENTAR');
-    res.status(501).json({ message: 'Endpoint pendiente - necesito estructura de crm_buyer_persona' });
+    const {
+      buyer,
+      background,
+      metas,
+      retos,
+      identificadores,
+      objeciones_comunes,
+      conductas_compra,
+      que_podemos_hacer,
+      posible_mensaje,
+      que_oye,
+      que_piensa_siente,
+      que_ve,
+      que_dice_hace,
+      esfuerzos,
+      resultados_valor,
+      observacion,
+      url_file
+    } = req.body;
+
+    const result = await pool.query(
+      `UPDATE crm_buyer_persona SET
+        buyer = $1,
+        background = $2,
+        metas = $3,
+        retos = $4,
+        identificadores = $5,
+        objeciones_comunes = $6,
+        conductas_compra = $7,
+        que_podemos_hacer = $8,
+        posible_mensaje = $9,
+        que_oye = $10,
+        que_piensa_siente = $11,
+        que_ve = $12,
+        que_dice_hace = $13,
+        esfuerzos = $14,
+        resultados_valor = $15,
+        observacion = $16,
+        url_file = $17
+      WHERE id_buyer = $18 RETURNING *`,
+      [
+        buyer,
+        background,
+        metas,
+        retos,
+        identificadores,
+        objeciones_comunes,
+        conductas_compra,
+        que_podemos_hacer,
+        posible_mensaje,
+        que_oye,
+        que_piensa_siente,
+        que_ve,
+        que_dice_hace,
+        esfuerzos,
+        resultados_valor,
+        observacion,
+        url_file,
+        req.params.id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Buyer persona no encontrada' });
+    }
+
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Error al actualizar buyer persona:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Error al actualizar buyer persona:', error);
+    res.status(500).json({ message: 'Error al actualizar buyer persona', error: error.message });
   }
 });
 
@@ -3910,4 +3965,61 @@ app.listen(PORT, HOST, () => {
   console.log(`      • /api/catalogos/staff-okr`);
   console.log(`      • /api/catalogos/objetivos-okr`);
   console.log(`   🏢 CRM: GET/POST/PUT/DELETE /api/crm/*`);
+}); 
+
+// Endpoint para crear una buyer persona
+app.post('/api/crm/buyer-personas', async (req, res) => {
+  try {
+    const {
+      buyer,
+      background,
+      metas,
+      retos,
+      identificadores,
+      objeciones_comunes,
+      conductas_compra,
+      que_podemos_hacer,
+      posible_mensaje,
+      que_oye,
+      que_piensa_siente,
+      que_ve,
+      que_dice_hace,
+      esfuerzos,
+      resultados_valor,
+      observacion,
+      url_file
+    } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO crm_buyer_persona (
+        buyer, background, metas, retos, identificadores, objeciones_comunes, conductas_compra, que_podemos_hacer, posible_mensaje, que_oye, que_piensa_siente, que_ve, que_dice_hace, esfuerzos, resultados_valor, observacion, url_file
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+      ) RETURNING *`,
+      [
+        buyer,
+        background,
+        metas,
+        retos,
+        identificadores,
+        objeciones_comunes,
+        conductas_compra,
+        que_podemos_hacer,
+        posible_mensaje,
+        que_oye,
+        que_piensa_siente,
+        que_ve,
+        que_dice_hace,
+        esfuerzos,
+        resultados_valor,
+        observacion,
+        url_file
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al crear buyer persona:', error);
+    res.status(500).json({ message: 'Error al crear buyer persona', error: error.message });
+  }
 }); 

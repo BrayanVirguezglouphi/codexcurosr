@@ -76,7 +76,7 @@ const CrearEmpresaDialog = ({ open, onClose, onEmpresaCreada }) => {
         empresa: data.empresa,
         id_mercado: data.id_mercado ? parseInt(data.id_mercado) : null,
         id_pais: data.id_pais ? parseInt(data.id_pais) : null,
-        tamano_empleados: data.tamano_empleados || null,
+        tamano_empleados: data.tamano_empleados ? parseInt(data.tamano_empleados) : null,
         website: data.website || null,
         linkedin: data.linkedin || null,
         observaciones: data.observaciones || null
@@ -117,26 +117,30 @@ const CrearEmpresaDialog = ({ open, onClose, onEmpresaCreada }) => {
   };
 
   // Opciones para los selects
-  const opcionesMercados = mercados.map(mercado => ({
-    value: mercado.id_mercado?.toString(),
-    label: `${mercado.segmento_mercado} - ${mercado.resumen_mercado || 'Sin descripción'}`,
-    searchText: `${mercado.segmento_mercado} ${mercado.resumen_mercado || ''} ${mercado.id_mercado}`
-  }));
+  const opcionesMercados = mercados
+    .filter((mercado, idx, arr) => mercado.id_mercado && arr.findIndex(m => m.id_mercado === mercado.id_mercado) === idx)
+    .map(mercado => ({
+      value: mercado.id_mercado?.toString(),
+      label: `${mercado.segmento_mercado} - ${mercado.resumen_mercado || 'Sin descripción'}`,
+      searchText: `${mercado.segmento_mercado} ${mercado.resumen_mercado || ''} ${mercado.id_mercado}`
+    }));
 
-  const opcionesPaises = paises.map(pais => ({
-    value: pais.id_pais?.toString(),
-    label: pais.pais,
-    searchText: `${pais.pais} ${pais.codigo_iso} ${pais.region || ''}`
-  }));
+  const opcionesPaises = paises
+    .filter((pais, idx, arr) => pais.id && arr.findIndex(p => p.id === pais.id) === idx)
+    .map(pais => ({
+      value: pais.id?.toString(),
+      label: pais.nombre,
+      searchText: `${pais.nombre} ${pais.codigo_pais || ''}`
+    }));
 
   const opcionesTamanoEmpleados = [
-    { value: '1-10', label: '1-10 empleados' },
-    { value: '11-50', label: '11-50 empleados' },
-    { value: '51-200', label: '51-200 empleados' },
-    { value: '201-500', label: '201-500 empleados' },
-    { value: '501-1000', label: '501-1000 empleados' },
-    { value: '1001-5000', label: '1001-5000 empleados' },
-    { value: '5000+', label: 'Más de 5000 empleados' }
+    { value: 1, label: '1-10 empleados' },
+    { value: 11, label: '11-50 empleados' },
+    { value: 51, label: '51-200 empleados' },
+    { value: 201, label: '201-500 empleados' },
+    { value: 501, label: '501-1000 empleados' },
+    { value: 1001, label: '1001-5000 empleados' },
+    { value: 5000, label: 'Más de 5000 empleados' }
   ];
 
   return (
@@ -243,21 +247,16 @@ const CrearEmpresaDialog = ({ open, onClose, onEmpresaCreada }) => {
                     <Users className="h-4 w-4" />
                     Tamaño (Empleados)
                   </Label>
-                  <Select
-                    value={watch('tamano_empleados')}
-                    onValueChange={(value) => setValue('tamano_empleados', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tamaño..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {opcionesTamanoEmpleados.map((tamano) => (
-                        <SelectItem key={tamano.value} value={tamano.value}>
-                          {tamano.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="tamano_empleados"
+                    type="number"
+                    min="1"
+                    placeholder="Cantidad de empleados"
+                    {...register('tamano_empleados', { min: 1 })}
+                  />
+                  {errors.tamano_empleados && (
+                    <p className="text-sm text-red-500">{errors.tamano_empleados.message}</p>
+                  )}
                 </div>
               </div>
             </CardContent>

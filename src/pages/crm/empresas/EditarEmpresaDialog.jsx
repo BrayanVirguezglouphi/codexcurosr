@@ -94,7 +94,7 @@ const EditarEmpresaDialog = ({ open, onClose, empresa, onEmpresaActualizada }) =
         empresa: data.empresa,
         id_mercado: data.id_mercado ? parseInt(data.id_mercado) : null,
         id_pais: data.id_pais ? parseInt(data.id_pais) : null,
-        tamano_empleados: data.tamano_empleados || null,
+        tamano_empleados: data.tamano_empleados ? parseInt(data.tamano_empleados) : null,
         website: data.website || null,
         linkedin: data.linkedin || null,
         observaciones: data.observaciones || null
@@ -149,13 +149,13 @@ const EditarEmpresaDialog = ({ open, onClose, empresa, onEmpresaActualizada }) =
   }));
 
   const opcionesTamanoEmpleados = [
-    { value: '1-10', label: '1-10 empleados' },
-    { value: '11-50', label: '11-50 empleados' },
-    { value: '51-200', label: '51-200 empleados' },
-    { value: '201-500', label: '201-500 empleados' },
-    { value: '501-1000', label: '501-1000 empleados' },
-    { value: '1001-5000', label: '1001-5000 empleados' },
-    { value: '5000+', label: 'Más de 5000 empleados' }
+    { value: 1, label: '1-10 empleados' },
+    { value: 11, label: '11-50 empleados' },
+    { value: 51, label: '51-200 empleados' },
+    { value: 201, label: '201-500 empleados' },
+    { value: 501, label: '501-1000 empleados' },
+    { value: 1001, label: '1001-5000 empleados' },
+    { value: 5000, label: 'Más de 5000 empleados' }
   ];
 
   return (
@@ -262,21 +262,16 @@ const EditarEmpresaDialog = ({ open, onClose, empresa, onEmpresaActualizada }) =
                     <Users className="h-4 w-4" />
                     Tamaño (Empleados)
                   </Label>
-                  <Select
-                    value={watch('tamano_empleados')}
-                    onValueChange={(value) => setValue('tamano_empleados', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tamaño..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {opcionesTamano.map((tamano) => (
-                        <SelectItem key={tamano.value} value={tamano.value}>
-                          {tamano.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="tamano_empleados"
+                    type="number"
+                    min="1"
+                    placeholder="Cantidad de empleados"
+                    {...register('tamano_empleados', { min: 1 })}
+                  />
+                  {errors.tamano_empleados && (
+                    <p className="text-sm text-red-500">{errors.tamano_empleados.message}</p>
+                  )}
                 </div>
               </div>
             </CardContent>

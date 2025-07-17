@@ -5,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Edit, Trash2, Search, Plus, FileDown, Filter } from 'lucide-react';
+import { Menu } from '@headlessui/react';
+import { ChevronDown, ArrowDownAZ, ArrowUpZA } from 'lucide-react';
 
 const DataTable = ({ 
   data, 
@@ -36,6 +38,9 @@ const DataTable = ({
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
+
+  // Detectar si el usuario ya definió una columna de acciones personalizada
+  const tieneColumnaAcciones = columns.some(col => col.accessor === 'acciones');
 
   return (
     <motion.div
@@ -73,10 +78,38 @@ const DataTable = ({
             <TableRow>
               {columns.map((column) => (
                 <TableHead key={column.accessor} className={column.className}>
-                  {column.header}
+                  <div className="flex items-center gap-1">
+                    {column.header}
+                    {column.accessor !== 'acciones' && (
+                      <Menu as="div" className="relative inline-block text-left">
+                        <Menu.Button className="ml-1 p-1 rounded hover:bg-accent focus:outline-none">
+                          <ChevronDown className="h-4 w-4" />
+                        </Menu.Button>
+                        <Menu.Items className="absolute z-10 mt-2 w-40 origin-top-right rounded-md bg-popover shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button className={`flex items-center w-full px-2 py-2 text-sm ${active ? 'bg-accent' : ''}`}> <ArrowDownAZ className="h-4 w-4 mr-2" /> Ordenar A → Z </button>
+                            )}
+                          </Menu.Item>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button className={`flex items-center w-full px-2 py-2 text-sm ${active ? 'bg-accent' : ''}`}> <ArrowUpZA className="h-4 w-4 mr-2" /> Ordenar Z → A </button>
+                            )}
+                          </Menu.Item>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button className={`flex items-center w-full px-2 py-2 text-sm ${active ? 'bg-accent' : ''}`}> <Filter className="h-4 w-4 mr-2" /> Filtros </button>
+                            )}
+                          </Menu.Item>
+                        </Menu.Items>
+                      </Menu>
+                    )}
+                  </div>
                 </TableHead>
               ))}
-              <TableHead className="w-[100px]">Acciones</TableHead>
+              {!tieneColumnaAcciones && (
+                <TableHead className="w-[100px]">Acciones</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -88,21 +121,23 @@ const DataTable = ({
                       {column.cell ? column.cell(row) : row[column.accessor]}
                     </TableCell>
                   ))}
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => onEdit(row)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => onDelete(row.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {!tieneColumnaAcciones && (
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(row)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => onDelete(row.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                <TableCell colSpan={columns.length + (tieneColumnaAcciones ? 0 : 1)} className="h-24 text-center">
                   No se encontraron resultados.
                 </TableCell>
               </TableRow>

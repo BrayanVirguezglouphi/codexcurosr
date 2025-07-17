@@ -28,6 +28,8 @@ import {
 import CrearEmpresaDialog from './empresas/CrearEmpresaDialog';
 import EditarEmpresaDialog from './empresas/EditarEmpresaDialog';
 import VerEmpresaDialog from './empresas/VerEmpresaDialog';
+import ExcelImportExport from '@/components/ui/excel-import-export';
+import { Select } from '@/components/ui/select';
 
 const Empresas = () => {
   // Estados principales
@@ -46,9 +48,17 @@ const Empresas = () => {
   
   const { toast } = useToast();
 
+  // Estados para filtros
+  const [filtroPais, setFiltroPais] = useState('');
+  const [filtroIndustria, setFiltroIndustria] = useState('');
+  const [paises, setPaises] = useState([]);
+  const [industrias, setIndustrias] = useState([]); // <-- Agregado
+
   // Cargar datos iniciales
   useEffect(() => {
     cargarEmpresas();
+    apiCall('/api/catalogos/paises').then(data => setPaises(data || []));
+    apiCall('/api/catalogos/industrias').then(data => setIndustrias(data || [])); // <-- Agregado
   }, []);
 
   const cargarEmpresas = async () => {
@@ -283,7 +293,51 @@ const Empresas = () => {
         </div>
       </div>
 
+      {/* Filtros avanzados */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <div>
+          <label className="block text-xs mb-1">Filtrar por país</label>
+          <Select
+            options={paises}
+            value={filtroPais}
+            onChange={setFiltroPais}
+            placeholder="Todos los países"
+            searchPlaceholder="Buscar país..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Filtrar por industria</label>
+          <Select
+            options={industrias}
+            value={filtroIndustria}
+            onChange={setFiltroIndustria}
+            placeholder="Todas las industrias"
+            searchPlaceholder="Buscar industria..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
+        </div>
+      </div>
 
+      {/* Importar/Exportar Excel */}
+      <div className="flex gap-4 mb-4">
+        <ExcelImportExport
+          data={empresas}
+          columns={columnsForDataTable.map(col => ({ key: col.accessor, label: col.header }))}
+          filename="empresas"
+          onImport={async (importedRows) => {
+            toast({
+              title: "Importación no implementada",
+              description: "La lógica de importación debe ser implementada.",
+              variant: "destructive"
+            });
+          }}
+        />
+      </div>
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

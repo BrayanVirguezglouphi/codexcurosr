@@ -22,6 +22,8 @@ import {
 import CrearMercadoDialog from './mercados/CrearMercadoDialog';
 import EditarMercadoDialog from './mercados/EditarMercadoDialog';
 import VerMercadoDialog from './mercados/VerMercadoDialog';
+import ExcelImportExport from '@/components/ui/excel-import-export';
+import { Select } from '@/components/ui/select';
 
 const Mercado = () => {
   // Estados principales
@@ -41,6 +43,10 @@ const Mercado = () => {
   // Estados para catálogos (para filtros)
   const [paises, setPaises] = useState([]);
   const [industrias, setIndustrias] = useState([]);
+  
+  // Filtros de país e industria
+  const [filtroPais, setFiltroPais] = useState('');
+  const [filtroIndustria, setFiltroIndustria] = useState('');
   
   const { toast } = useToast();
 
@@ -145,17 +151,24 @@ const Mercado = () => {
     setShowDeleteDialog(true);
   };
 
+  // Filtrar mercados según los filtros seleccionados
+  const mercadosFiltrados = mercados.filter(m => {
+    const coincidePais = !filtroPais || m.id_pais == filtroPais;
+    const coincideIndustria = !filtroIndustria || m.id_industria == filtroIndustria;
+    return coincidePais && coincideIndustria;
+  });
+
   // Obtener nombres de catálogos
   const getNombrePais = (idPais) => {
     if (!idPais) return '';
-    const pais = paises.find(p => p.id_pais === idPais);
-    return pais ? pais.nombre_pais : `ID: ${idPais}`;
+    const pais = paises.find(p => p.id === idPais || p.id == idPais);
+    return pais ? pais.nombre : `ID: ${idPais}`;
   };
 
   const getNombreIndustria = (idIndustria) => {
     if (!idIndustria) return '';
-    const industria = industrias.find(i => i.id_industria === idIndustria);
-    return industria ? industria.nombre_industria : `ID: ${idIndustria}`;
+    const industria = industrias.find(i => i.id === idIndustria || i.id == idIndustria);
+    return industria ? industria.nombre : `ID: ${idIndustria}`;
   };
 
   // Configuración de columnas compatibles con DataTable
@@ -219,6 +232,23 @@ const Mercado = () => {
           Sin reporte
         </Badge>
       )
+    },
+    {
+      accessor: 'acciones',
+      header: 'Acciones',
+      cell: (mercado) => (
+        <div className="flex gap-2">
+          <Button size="icon" variant="ghost" onClick={() => abrirDialogoVer(mercado)} title="Ver detalles">
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => abrirDialogoEditar(mercado)} title="Editar">
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => abrirDialogoEliminar(mercado)} title="Eliminar">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )
     }
   ];
 
@@ -251,14 +281,83 @@ const Mercado = () => {
         </div>
       </div>
 
+      {/* Filtros avanzados */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <div>
+          <label className="block text-xs mb-1">Filtrar por país</label>
+          <Select
+            options={paises}
+            value={filtroPais}
+            onChange={setFiltroPais}
+            placeholder="Todos los países"
+            searchPlaceholder="Buscar país..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Filtrar por industria</label>
+          <Select
+            options={industrias}
+            value={filtroIndustria}
+            onChange={setFiltroIndustria}
+            placeholder="Todas las industrias"
+            searchPlaceholder="Buscar industria..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
+        </div>
+      </div>
 
+      {/* Importar/Exportar Excel */}
+      <div className="flex gap-4 mb-4">
+        <ExcelImportExport
+          data={mercados}
+          columns={columnsForDataTable.map(col => ({ key: col.accessor, label: col.header }))}
+          filename="mercados"
+          onImport={async (importedRows) => {
+            let exitosos = 0;
+            let fallidos = 0;
+            for (const row of importedRows) {
+              try {
+                // Adaptar los campos según el formato esperado por el backend
+                const formattedData = {
+                  segmento_mercado: row.segmento_mercado,
+                  id_pais: row.id_pais || null,
+                  id_industria: row.id_industria || null,
+                  resumen_mercado: row.resumen_mercado || null,
+                  recomendaciones: row.recomendaciones || null,
+                  url_reporte_mercado: row.url_reporte_mercado || null,
+                  observaciones: row.observaciones || null
+                };
+                await apiCall('/api/crm/mercados', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(formattedData)
+                });
+                exitosos++;
+              } catch (e) {
+                fallidos++;
+              }
+            }
+            await cargarMercados();
+            toast({
+              title: `Importación finalizada`,
+              description: `Mercados importados: ${exitosos}. Fallidos: ${fallidos}.`,
+              variant: fallidos === 0 ? "success" : "destructive"
+            });
+          }}
+        />
+      </div>
 
       {/* Tabla de mercados */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building className="h-5 w-5" />
-            Mercados ({mercados.length})
+            Mercados ({mercadosFiltrados.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -268,7 +367,7 @@ const Mercado = () => {
             </div>
           ) : (
             <DataTable
-              data={mercados.map(mercado => ({...mercado, id: mercado.id_mercado}))}
+              data={mercadosFiltrados.map(mercado => ({...mercado, id: mercado.id_mercado}))}
               columns={columnsForDataTable}
               onEdit={abrirDialogoEditar}
               onDelete={(id) => {

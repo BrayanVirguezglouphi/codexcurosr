@@ -249,7 +249,7 @@ const VerBuyerPersonaDialog = ({ open, onClose, buyerPersona }) => {
           </Tabs>
 
           {/* Observaciones */}
-          {buyerPersona.observaciones && (
+          {buyerPersona.observacion && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -259,7 +259,7 @@ const VerBuyerPersonaDialog = ({ open, onClose, buyerPersona }) => {
               </CardHeader>
               <CardContent>
                 <div className="bg-background border rounded-lg p-4">
-                  <p className="text-sm whitespace-pre-wrap">{buyerPersona.observaciones}</p>
+                  <p className="text-sm whitespace-pre-wrap">{buyerPersona.observacion}</p>
                 </div>
               </CardContent>
             </Card>

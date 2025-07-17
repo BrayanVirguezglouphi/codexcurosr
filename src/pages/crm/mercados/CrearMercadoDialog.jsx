@@ -236,34 +236,28 @@ const CrearMercadoDialog = ({ open, onClose, onMercadoCreado }) => {
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                País
-              </Label>
+              <Label htmlFor="id_pais">País</Label>
               <SearchableSelect
                 options={paises}
                 value={currentPais}
                 onChange={(value) => setValue('id_pais', value)}
                 placeholder="Seleccionar país"
                 searchPlaceholder="Buscar país..."
-                displayKey="nombre_pais"
-                valueKey="id_pais"
+                displayKey="nombre"
+                valueKey="id"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Industria
-              </Label>
+              <Label htmlFor="id_industria">Industria</Label>
               <SearchableSelect
                 options={industrias}
                 value={currentIndustria}
                 onChange={(value) => setValue('id_industria', value)}
                 placeholder="Seleccionar industria"
                 searchPlaceholder="Buscar industria..."
-                displayKey="nombre_industria"
-                valueKey="id_industria"
+                displayKey="nombre"
+                valueKey="id"
               />
             </div>
 

@@ -27,6 +27,8 @@ import {
 import CrearBuyerPersonaDialog from './buyer-personas/CrearBuyerPersonaDialog';
 import EditarBuyerPersonaDialog from './buyer-personas/EditarBuyerPersonaDialog';
 import VerBuyerPersonaDialog from './buyer-personas/VerBuyerPersonaDialog';
+import ExcelImportExport from '@/components/ui/excel-import-export';
+import { Select } from '@/components/ui/select';
 
 const Buyer = () => {
   // Estados principales
@@ -43,18 +45,26 @@ const Buyer = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [buyerPersonaToDelete, setBuyerPersonaToDelete] = useState(null);
   
+  // Estados para filtros
+  const [filtroMercado, setFiltroMercado] = useState('');
+  const [filtroPais, setFiltroPais] = useState('');
+  const [mercados, setMercados] = useState([]);
+  const [paises, setPaises] = useState([]);
+
   const { toast } = useToast();
 
   // Cargar datos iniciales
   useEffect(() => {
     cargarBuyerPersonas();
+    apiCall('/api/crm/mercados').then(data => setMercados(data || []));
+    apiCall('/api/catalogos/paises').then(data => setPaises(data || []));
   }, []);
 
   const cargarBuyerPersonas = async () => {
     try {
       setLoading(true);
       const data = await apiCall('/api/crm/buyer-personas');
-      setBuyerPersonas(data);
+      setBuyerPersonas((data || []).map(bp => ({ ...bp, id: bp.id_buyer })));
       console.log('Buyer Personas cargadas:', data);
     } catch (error) {
       console.error('Error cargando buyer personas:', error);
@@ -233,6 +243,23 @@ const Buyer = () => {
           </Badge>
         );
       }
+    },
+    {
+      accessor: 'acciones',
+      header: 'Acciones',
+      cell: (bp) => (
+        <div className="flex gap-2">
+          <Button size="icon" variant="ghost" onClick={() => abrirDialogoVer(bp)} title="Ver detalles">
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => abrirDialogoEditar(bp)} title="Editar">
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => abrirDialogoEliminar(bp)} title="Eliminar">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )
     }
   ];
 
@@ -242,30 +269,64 @@ const Buyer = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
+            <Target className="h-8 w-8" />
             Buyer Personas
           </h1>
           <p className="text-muted-foreground mt-1">
-            Gestione los perfiles de clientes ideales y arquetipos de usuarios
+            Caracterización de clientes y perfiles de compra
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={cargarBuyerPersonas}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-          <Button onClick={() => setShowCrearDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Buyer Persona
-          </Button>
+        <Button onClick={() => setShowCrearDialog(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nueva Buyer Persona
+        </Button>
+      </div>
+
+      {/* Filtros avanzados */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <div>
+          <label className="block text-xs mb-1">Filtrar por mercado</label>
+          <Select
+            options={mercados}
+            value={filtroMercado}
+            onChange={setFiltroMercado}
+            placeholder="Todos los mercados"
+            searchPlaceholder="Buscar mercado..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Filtrar por país</label>
+          <Select
+            options={paises}
+            value={filtroPais}
+            onChange={setFiltroPais}
+            placeholder="Todos los países"
+            searchPlaceholder="Buscar país..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
         </div>
       </div>
 
-
+      {/* Importar/Exportar Excel */}
+      <div className="flex gap-4 mb-4">
+        <ExcelImportExport
+          data={buyerPersonas}
+          columns={columnsForDataTable.map(col => ({ key: col.accessor, label: col.header }))}
+          filename="buyer_personas"
+          onImport={async (importedRows) => {
+            toast({
+              title: "Importación no implementada",
+              description: "La lógica de importación debe ser implementada.",
+              variant: "destructive"
+            });
+          }}
+        />
+      </div>
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -346,7 +407,7 @@ const Buyer = () => {
         </CardHeader>
         <CardContent>
           <DataTable
-            data={buyerPersonas}
+            data={buyerPersonas.map(bp => ({ ...bp, id: bp.id_buyer }))}
             columns={columnsForDataTable}
             onEdit={abrirDialogoEditar}
             onView={abrirDialogoVer}

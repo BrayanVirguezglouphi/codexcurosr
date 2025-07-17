@@ -38,14 +38,14 @@ const VerMercadoDialog = ({ open, onClose, mercado }) => {
   // Obtener nombres de catálogos
   const getNombrePais = () => {
     if (!mercado?.id_pais) return 'No especificado';
-    const pais = paises.find(p => p.id_pais === mercado.id_pais);
-    return pais ? pais.nombre_pais : `ID: ${mercado.id_pais}`;
+    const pais = paises.find(p => p.id === mercado.id_pais || p.id == mercado.id_pais);
+    return pais ? pais.nombre : `ID: ${mercado.id_pais}`;
   };
 
   const getNombreIndustria = () => {
     if (!mercado?.id_industria) return 'No especificado';
-    const industria = industrias.find(i => i.id_industria === mercado.id_industria);
-    return industria ? industria.nombre_industria : `ID: ${mercado.id_industria}`;
+    const industria = industrias.find(i => i.id === mercado.id_industria || i.id == mercado.id_industria);
+    return industria ? industria.nombre : `ID: ${mercado.id_industria}`;
   };
 
   if (!mercado) return null;

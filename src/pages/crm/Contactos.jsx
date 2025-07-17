@@ -10,6 +10,8 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import CrearContactoDialog from './contactos/CrearContactoDialog';
 import EditarContactoDialog from './contactos/EditarContactoDialog';
 import VerContactoDialog from './contactos/VerContactoDialog';
+import ExcelImportExport from '@/components/ui/excel-import-export';
+import { Select } from '@/components/ui/select';
 import { 
   Users,
   UserPlus,
@@ -41,11 +43,19 @@ const Contactos = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [contactoToDelete, setContactoToDelete] = useState(null);
   
+  // Estados para filtros
+  const [filtroEmpresa, setFiltroEmpresa] = useState('');
+  const [filtroPais, setFiltroPais] = useState('');
+  const [empresas, setEmpresas] = useState([]);
+  const [paises, setPaises] = useState([]);
+
   const { toast } = useToast();
 
   // Cargar contactos al montar el componente
   useEffect(() => {
     cargarContactos();
+    apiCall('/api/crm/empresas').then(data => setEmpresas(data || []));
+    apiCall('/api/catalogos/paises').then(data => setPaises(data || []));
   }, []);
 
   const cargarContactos = async () => {
@@ -281,6 +291,52 @@ const Contactos = () => {
           <UserPlus className="h-4 w-4" />
           Nuevo Contacto
         </Button>
+      </div>
+
+      {/* Filtros avanzados */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <div>
+          <label className="block text-xs mb-1">Filtrar por empresa</label>
+          <Select
+            options={empresas}
+            value={filtroEmpresa}
+            onChange={setFiltroEmpresa}
+            placeholder="Todas las empresas"
+            searchPlaceholder="Buscar empresa..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Filtrar por país</label>
+          <Select
+            options={paises}
+            value={filtroPais}
+            onChange={setFiltroPais}
+            placeholder="Todos los países"
+            searchPlaceholder="Buscar país..."
+            displayKey="nombre"
+            valueKey="id"
+            clearable
+          />
+        </div>
+      </div>
+
+      {/* Importar/Exportar Excel */}
+      <div className="flex gap-4 mb-4">
+        <ExcelImportExport
+          data={contactos}
+          columns={columnsForDataTable.map(col => ({ key: col.accessor, label: col.header }))}
+          filename="contactos"
+          onImport={async (importedRows) => {
+            toast({
+              title: "Importación no implementada",
+              description: "La lógica de importación debe ser implementada.",
+              variant: "destructive"
+            });
+          }}
+        />
       </div>
 
       {/* Cards de estadísticas */}

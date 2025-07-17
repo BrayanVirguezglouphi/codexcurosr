@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
       params.push(tipo_documento, numero_documento);
     }
     query += ` ORDER BY t.id_tercero DESC`;
-
+    
     // Log de depuración
     console.log('--- FILTRO TERCEROS ---');
     console.log('tipo_documento:', tipo_documento, 'numero_documento:', numero_documento);
